@@ -1,0 +1,46 @@
+import {test,expect} from '@playwright/test';
+test('消息 → 任务 → 持久审批 → 日程，关键页面与候选管理',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>{errors.push(e.message);console.log('PAGE ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.log('CONSOLE',m.text())});
+ await page.goto('/');
+ await expect(page).toHaveTitle('知性 · 个人工作助理');
+ await expect(page.getByAltText('知性标志')).toBeVisible();
+ expect(await page.getByAltText('知性标志').evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBeTruthy();
+ expect((await page.request.get('/zhixing-mark.svg')).status()).toBe(200);
+ await expect(page.getByText('离线演示模式')).toBeVisible();
+ await page.getByRole('button',{name:'填入演示案例'}).click();
+ await page.getByRole('button',{name:'开始处理'}).click();
+ await expect(page.getByRole('status')).toContainText('已进入工作流');
+ await page.locator('nav').getByRole('button',{name:'审批中心'}).click();
+ await expect(page.getByRole('button',{name:'批准',exact:true}).first()).toBeVisible({timeout:15000});
+ await page.reload();
+ await page.locator('nav').getByRole('button',{name:'审批中心'}).click();
+ await page.getByRole('button',{name:'批准',exact:true}).first().click();
+ await expect(page.getByText('send_feishu',{exact:true})).toBeVisible({timeout:15000});
+ await page.getByRole('button',{name:'拒绝',exact:true}).first().click();
+ await page.locator('nav').getByRole('button',{name:'日程',exact:false}).click();
+ await expect(page.getByRole('heading',{name:'组会',exact:true})).toBeVisible();
+ await page.locator('nav').getByRole('button',{name:'Agent 运行'}).click();
+ await page.getByRole('button',{name:'查看执行链'}).first().click();
+ await expect(page.getByRole('heading',{name:'运行 Trace'})).toBeVisible();
+ await expect(page.locator('.timeline')).toContainText('运行结束');
+ await expect(page.locator('.trace-heading code')).toHaveText(/[a-f0-9]{32}/);
+ await expect(page.getByText('关联模型调用',{exact:true})).toBeVisible();
+ const exported=page.waitForEvent('download');
+ await page.getByRole('button',{name:'导出 Trace JSON'}).click();
+ expect((await exported).suggestedFilename()).toMatch(/^zhixing-trace-[a-f0-9]+\.json$/);
+ await page.screenshot({path:'../docs/trace-preview.png',fullPage:true});
+ await page.getByRole('button',{name:'关闭',exact:true}).click();
+ await page.locator('nav').getByRole('button',{name:'记忆',exact:false}).click();
+ await page.getByRole('button',{name:'记忆候选'}).click();
+ await page.getByLabel('内容',{exact:true}).fill('我偏好中文摘要');
+ await page.getByRole('button',{name:'保存',exact:true}).click();
+ await page.getByRole('button',{name:'确认生效'}).click();
+ await expect(page.locator('.badge.published')).toBeVisible();
+ for(const name of ['Skills','Parsers','渐进式信任','评测','审计日志','设置']){
+  await page.locator('nav').getByRole('button',{name,exact:false}).click();
+  await expect(page.getByRole('heading',{name,exact:true}).first()).toBeVisible();
+ }
+ await page.locator('nav').getByRole('button',{name:'工作概览'}).click();
+ await page.screenshot({path:'../docs/console-preview.png',fullPage:true});
+ expect(errors).toEqual([]);
+});

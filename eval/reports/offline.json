@@ -1,0 +1,1109 @@
+{
+  "mode": "offline_rule_regression",
+  "dataset": "synthetic",
+  "cases": 120,
+  "model_quality_verified": false,
+  "cost_per_message": null,
+  "token_per_message": null,
+  "parser_hit_rate": null,
+  "p50_ms": 0.024900000084926432,
+  "p95_ms": 0.038300000142044155,
+  "splits": {
+    "train": {
+      "tools_pass": 1.0,
+      "risk_pass": 1.0,
+      "clarification_pass": 1.0,
+      "high_risk_gated": 1.0,
+      "extraction_pass": 1.0
+    },
+    "holdout": {
+      "tools_pass": 1.0,
+      "risk_pass": 1.0,
+      "clarification_pass": 1.0,
+      "high_risk_gated": 1.0,
+      "extraction_pass": 1.0
+    }
+  },
+  "results": [
+    {
+      "id": "case-00-00",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-00-01",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-00-02",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-00-03",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-00-04",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-00-05",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-00-06",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-00-07",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-00-08",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-00-09",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-01-00",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-01-01",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-01-02",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-01-03",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-01-04",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-01-05",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-01-06",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-01-07",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-01-08",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-01-09",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-02-00",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-02-01",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-02-02",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-02-03",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-02-04",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-02-05",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-02-06",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-02-07",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-02-08",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-02-09",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-03-00",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-03-01",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-03-02",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-03-03",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-03-04",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-03-05",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-03-06",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-03-07",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-03-08",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-03-09",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-04-00",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-04-01",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-04-02",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-04-03",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-04-04",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-04-05",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-04-06",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-04-07",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-04-08",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-04-09",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-05-00",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-05-01",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-05-02",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-05-03",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-05-04",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-05-05",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-05-06",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-05-07",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-05-08",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-05-09",
+      "split": "train",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-06-00",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-06-01",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-06-02",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-06-03",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-06-04",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-06-05",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-06-06",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-06-07",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-06-08",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-06-09",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-07-00",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-07-01",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-07-02",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-07-03",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-07-04",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-07-05",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-07-06",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-07-07",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-07-08",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-07-09",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-08-00",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-08-01",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-08-02",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-08-03",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-08-04",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-08-05",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-08-06",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-08-07",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-08-08",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-08-09",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-09-00",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-09-01",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-09-02",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-09-03",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-09-04",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-09-05",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-09-06",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-09-07",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-09-08",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-09-09",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-10-00",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-10-01",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-10-02",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-10-03",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-10-04",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-10-05",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-10-06",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-10-07",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-10-08",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-10-09",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-11-00",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-11-01",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-11-02",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-11-03",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-11-04",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-11-05",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-11-06",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-11-07",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": null
+    },
+    {
+      "id": "case-11-08",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    },
+    {
+      "id": "case-11-09",
+      "split": "holdout",
+      "tools_pass": true,
+      "risk_pass": true,
+      "clarification_pass": true,
+      "high_risk_gated": true,
+      "extraction_pass": true
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+fastapi>=0.115,<1
+uvicorn>=0.34,<1
+langgraph>=1,<2
+langgraph-checkpoint-sqlite>=3,<4
+sqlalchemy>=2,<3
+pydantic-settings>=2,<3
+httpx>=0.28,<1
+lark-oapi>=1.4,<2
+regex>=2024
+tzdata
+pytest>=8,<10
