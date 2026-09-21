@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $ZhiXingRoot = Split-Path $PSScriptRoot -Parent
 $ZhiXingParent = Split-Path $ZhiXingRoot -Parent
 $ZhiXingCache = Join-Path $ZhiXingParent '.cache'

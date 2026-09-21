@@ -18,3 +18,4 @@ frontend/playwright-report/
 *.db-wal
 *.db-shm
 *.sqlite*
+artifacts/

@@ -1,4 +1,4 @@
-. "$PSScriptRoot\env.ps1"
+﻿. "$PSScriptRoot\env.ps1"
 if (-not (Test-Path -LiteralPath $ZhiXingPython)) {
     & D:\Anaconda\python.exe "$PSScriptRoot\create_environment.py" (Split-Path $ZhiXingPython -Parent)
     if ($LASTEXITCODE -ne 0) { throw 'Conda 环境创建失败' }

@@ -1,4 +1,4 @@
-. "$PSScriptRoot\env.ps1"
+﻿. "$PSScriptRoot\env.ps1"
 $ZhiXingPidFile = Join-Path $ZhiXingRoot 'data\processes.json'
 if (Test-Path -LiteralPath $ZhiXingPidFile) {
     foreach ($ZhiXingEntry in (Get-Content -LiteralPath $ZhiXingPidFile -Raw | ConvertFrom-Json)) {

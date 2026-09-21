@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-test('消息 → 任务 → 持久审批 → 日程，关键页面与候选管理',async({page})=>{
+test('消息 → 任务 → 持久审批 → 日程，关键页面与候选管理',async({page},testInfo)=>{
  const errors:string[]=[];page.on('pageerror',e=>{errors.push(e.message);console.log('PAGE ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.log('CONSOLE',m.text())});
  await page.goto('/');
  await expect(page).toHaveTitle('知性 · 个人工作助理');
@@ -27,8 +27,10 @@ test('消息 → 任务 → 持久审批 → 日程，关键页面与候选管�
  await expect(page.getByText('关联模型调用',{exact:true})).toBeVisible();
  const exported=page.waitForEvent('download');
  await page.getByRole('button',{name:'导出 Trace JSON'}).click();
- expect((await exported).suggestedFilename()).toMatch(/^zhixing-trace-[a-f0-9]+\.json$/);
- await page.screenshot({path:'../docs/trace-preview.png',fullPage:true});
+ const download=await exported;
+ expect(download.suggestedFilename()).toMatch(/^zhixing-trace-[a-f0-9]+\.json$/);
+ await download.saveAs(testInfo.outputPath('agent-trace.json'));
+ await page.screenshot({path:testInfo.outputPath('trace-preview.png'),fullPage:true});
  await page.getByRole('button',{name:'关闭',exact:true}).click();
  await page.locator('nav').getByRole('button',{name:'记忆',exact:false}).click();
  await page.getByRole('button',{name:'记忆候选'}).click();
@@ -41,6 +43,6 @@ test('消息 → 任务 → 持久审批 → 日程，关键页面与候选管�
   await expect(page.getByRole('heading',{name,exact:true}).first()).toBeVisible();
  }
  await page.locator('nav').getByRole('button',{name:'工作概览'}).click();
- await page.screenshot({path:'../docs/console-preview.png',fullPage:true});
+ await page.screenshot({path:testInfo.outputPath('console-preview.png'),fullPage:true});
  expect(errors).toEqual([]);
 });

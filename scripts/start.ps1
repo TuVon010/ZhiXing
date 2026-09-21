@@ -1,4 +1,4 @@
-. "$PSScriptRoot\env.ps1"
+﻿. "$PSScriptRoot\env.ps1"
 if (-not (Test-Path -LiteralPath $ZhiXingPython)) { throw '请先运行 scripts\install.ps1' }
 if (-not (Test-Path 'frontend\dist\index.html')) { throw '请先安装并构建前端' }
 if (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue) { throw '8000 端口已被使用，请先停止旧服务。' }

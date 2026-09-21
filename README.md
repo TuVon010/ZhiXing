@@ -102,7 +102,7 @@ npm run test:e2e
 Pop-Location
 ```
 
-浏览器测试会在 8000 端口启动独立演示服务，先停止日常服务。测试数据库位于 `.tmp/e2e-*`，不会覆盖正式数据。
+推荐运行 `powershell -ExecutionPolicy Bypass -File scripts/test.ps1`，自动保存完整测试过程并恢复原服务。归档位于 `artifacts/test-runs/`，包含日志、逐条评测输入输出、数据库、浏览器 Trace、录像、截图及源码快照。详见 [测试与研究说明](docs/TESTING.md)。单独浏览器测试会在 8000 端口启动独立演示服务，需先停止日常服务；结果和数据库位于 `artifacts/browser/`，不会覆盖正式数据。
 
 `eval/datasets/regression.jsonl` 有 120 条带标注的合成案例，按 60/60 划分训练与保留部分。用于离线规则、工具选择、风险和澄清行为回归；同类模板变体不代表真实泛化能力，报告不能当作真实 LLM 准确率。配置模型后可用 `eval/run.py --live`，按调用预算运行，失败和未知成本如实记录。
 

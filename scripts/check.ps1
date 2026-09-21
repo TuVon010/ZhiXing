@@ -1,4 +1,4 @@
-. "$PSScriptRoot\env.ps1"
+﻿. "$PSScriptRoot\env.ps1"
 & $ZhiXingPython --version
 & node --version
 & $ZhiXingPython -m pip check
