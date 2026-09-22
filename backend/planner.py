@@ -8,6 +8,7 @@ import httpx
 from .config import settings
 from .db import now
 from .schemas import ActionPlan
+from .billing import snapshot, estimate
 
 trace_run = ContextVar('trace_run',default='system')
 
@@ -51,7 +52,8 @@ def model_json(db, messages, schema=None, purpose='planning'):
     sent_messages = [*messages]
     if schema:
         sent_messages.append({'role':'system','content':'返回严格 JSON，符合 schema：'+json.dumps(schema,ensure_ascii=False)})
-    metadata = {'purpose':purpose,'messages':sent_messages,'model':settings.model_name,'run_id':trace_run.get(),'trace_id':trace_run.get()}
+    price_snapshot = snapshot(db)
+    metadata = {'purpose':purpose,'messages':sent_messages,'model':settings.model_name,'run_id':trace_run.get(),'trace_id':trace_run.get(),'pricing_snapshot':price_snapshot}
     # Reserve before network access, including concurrent workers and failed calls.
     from sqlalchemy import text
     with db.engine.connect() as c:
@@ -67,6 +69,7 @@ def model_json(db, messages, schema=None, purpose='planning'):
     db.audit(trace_run.get(),'MODEL_REQUEST',call_id=call_id,purpose=purpose,model=settings.model_name)
     usage = {}
     cost = None
+    billing = estimate(price_snapshot, {})
     raw_response = None
     try:
         with httpx.Client(timeout=settings.model_timeout, trust_env=False) as client:
@@ -74,15 +77,15 @@ def model_json(db, messages, schema=None, purpose='planning'):
             response.raise_for_status()
             body = response.json()
         usage = body.get('usage',{})
-        if settings.model_input_price is not None and settings.model_output_price is not None and 'prompt_tokens' in usage and 'completion_tokens' in usage:
-            cost = (usage.get('prompt_tokens',0)*settings.model_input_price+usage.get('completion_tokens',0)*settings.model_output_price)/1_000_000
+        billing = estimate(price_snapshot, usage, now())
+        cost = float(billing['amount']) if billing['amount'] is not None else None
         raw_response = body['choices'][0]['message']['content']
         result = json.loads(raw_response)
-        db.update(call_id, {**metadata,'response':result,'usage':usage,'cost':cost,'latency_ms':round((time.monotonic()-started)*1000)}, 'completed')
+        db.update(call_id, {**metadata,'response':result,'usage':usage,'cost':cost,'billing':billing,'latency_ms':round((time.monotonic()-started)*1000)}, 'completed')
         db.audit(trace_run.get(),'MODEL_RESPONSE',call_id=call_id,usage=usage,cost=cost)
         return result
     except Exception as e:
-        db.update(call_id, {**metadata,'error':type(e).__name__,'raw_response':raw_response,'usage':usage,'cost':cost,'latency_ms':round((time.monotonic()-started)*1000)}, 'failed')
+        db.update(call_id, {**metadata,'error':type(e).__name__,'raw_response':raw_response,'usage':usage,'cost':cost,'billing':billing,'latency_ms':round((time.monotonic()-started)*1000)}, 'failed')
         db.audit(trace_run.get(),'MODEL_FAILED',call_id=call_id,error=type(e).__name__)
         raise
 

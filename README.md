@@ -44,7 +44,7 @@ Python + LangGraph 驱动的本地个人工作助理。消息进入后形成结�
 
 复制 `.env.example` 为 `.env`，填入凭证后重启。不要将 `.env` 提交到版本库。
 
-1. 模型：设置 `ZHIXING_MODE=live`、`ZHIXING_MODEL_BASE_URL`、`ZHIXING_MODEL_NAME`、`ZHIXING_MODEL_API_KEY`。服务需要支持 Chat Completions 和 JSON 输出。返回值必须通过 Pydantic 校验；非法工具、循环依赖不会执行。模型调用上限默认每天 100 次，生成候选和评测也计入。价格按百万 Token 填写，不配置则成本显示未知。
+1. 模型：设置 `ZHIXING_MODE=live`、`ZHIXING_MODEL_BASE_URL`、`ZHIXING_MODEL_NAME`、`ZHIXING_MODEL_API_KEY`。服务需要支持 Chat Completions 和 JSON 输出。返回值必须通过 Pydantic 校验；非法工具、循环依赖不会执行。模型调用上限默认每天 100 次，生成候选和评测也计入。设置页可按百万 Token 自定义计价；已知官方模型使用内置默认价，未知模型未配置时费用显示未知。
 2. 飞书：创建企业自建应用、开启机器人，配置长连接，订阅 `im.message.receive_v1` 和 `card.action.trigger`。申请消息读取、机器人发信权限；任务、日历功能需要相应写权限和目标日历写入授权。填写 App ID / Secret；私聊机器人后，在本地“设置”确认绑定申请。也可以在 `.env` 填写 owner open_id。只允许已绑定用户私聊，群聊必须加入设置里的允许列表。
 3. 飞书审批：卡片批准或拒绝；修改复杂参数使用 Web。也支持本人向机器人发送 `/edit 审批ID {完整参数JSON}`，再 `/approve 审批ID` 或 `/reject 审批ID`。所有入口使用同一版本校验和审批记录。
 4. QQ 邮箱：在邮箱设置启用 IMAP/SMTP，填写邮箱地址与授权码。IMAP 使用 `imap.qq.com:993`，SMTP 使用 `smtp.qq.com:465`，均验证 TLS。首次连接只记录当前游标；需要历史邮件时在设置中手动导入，每次最多 100 封，已入库事件去重。附件只保留名称和 MIME 类型。
@@ -64,7 +64,7 @@ Python + LangGraph 驱动的本地个人工作助理。消息进入后形成结�
 
 ## 可观测 Trace
 
-下一版设计：[模型缓存命中率与分段计费](docs/design/CACHE_AND_BILLING.md)，覆盖供应商缓存统计、分时价格、费用明细、历史价格快照和未知数据处理。目前是设计稿，尚未替换现有简单计费逻辑。
+设置页现已支持[自定义计价与默认值](docs/PRICING.md)：逐项覆盖、零价、恢复默认、分时计价、缓存统计、调用价格快照与分币种估算。更完整的账单与阶梯方案见[后续计费设计](docs/design/CACHE_AND_BILLING.md)；[消息限量与广告过滤方案](docs/design/INGESTION_FILTERING.md)暂为设计，尚未更改收取行为。
 
 入口：**Agent 运行 → 查看执行链**。每条运行的 `run_id` 同时作为稳定 `trace_id`，重启、等待审批和恢复执行沿用同一个 ID。
 

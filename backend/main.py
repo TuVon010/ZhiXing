@@ -15,6 +15,7 @@ from .schemas import NormalizedMessage, Approval, ActionPlan, PlannedAction
 from .runtime import ingest, approve
 from . import evolution
 from .tracing import RunDetail, detail as trace_detail
+from . import billing
 
 SESSION = secrets.token_urlsafe(32)
 
@@ -123,7 +124,7 @@ def stats():
     calls=store.list('model_call',limit=10000)
     usages=[r['body'].get('usage',{}) for r in calls]
     observations=store.list('parser_observation',limit=10000)
-    return {'counts':[dict(r) for r in counts],'average_latency_ms':statistics.mean(durations) if durations else None,'model_calls':len(calls),'tokens':sum(u.get('total_tokens',0) for u in usages),'cost':sum(r['body']['cost'] for r in calls) if calls and all(r['body'].get('cost') is not None for r in calls) else None,'parser_hit_rate':sum(bool(r['body']['hit']) for r in observations)/len(observations) if observations else None}
+    return {'counts':[dict(r) for r in counts],'average_latency_ms':statistics.mean(durations) if durations else None,'model_calls':len(calls),'tokens':sum(u.get('total_tokens',0) for u in usages),'cost':None,'billing':billing_summary(),'parser_hit_rate':sum(bool(r['body']['hit']) for r in observations)/len(observations) if observations else None}
 
 @app.get('/api/runs/{id}',response_model=RunDetail)
 def run_detail(id:str):
@@ -297,6 +298,20 @@ def import_mail():
     from .channels import poll_mail
     poll_mail(store,ingest,historical=True)
     return {'ok':True}
+
+@app.get('/api/pricing',response_model=list[billing.PricingProfile])
+def pricing():
+    return billing.profiles(store)
+
+@app.post('/api/pricing/{profile_id}',response_model=billing.PricingProfile)
+def update_pricing(profile_id:str,body:billing.PricingUpdate):
+    return billing.save_profile(store,profile_id,body)
+
+@app.get('/api/billing-summary')
+def billing_summary():
+    with store.engine.connect() as conn:
+        rows=conn.execute(text("SELECT body,status FROM records WHERE kind IN ('model_call','jev_call')")).mappings()
+        return billing.summarize({'body':json.loads(row['body']),'status':row['status']} for row in rows)
 
 @app.get('/api/{collection}')
 def listing(collection:str,limit:int=Query(50,ge=1,le=200),offset:int=Query(0,ge=0),status:str|None=None):

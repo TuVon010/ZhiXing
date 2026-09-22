@@ -64,7 +64,8 @@ def test_review_records_contract_and_preserves_high_risk_approval(enabled,monkey
     assert not db.list('decision')
     review=trace.jev_calls[0]
     assert review['status']=='completed'
-    assert review['body']['cost'] is None
+    assert review['body']['cost'] == pytest.approx(120*.042/1_000_000)
+    assert review['body']['billing']['currency'] == 'USD'
     assert review['body']['advisory_only'] is True
     assert trace.trace.jev_call_count==1 and trace.trace.model_call_count==0
     assert 'test-jev-secret' not in trace.model_dump_json()

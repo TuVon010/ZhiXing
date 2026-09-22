@@ -14,14 +14,14 @@ class Settings(BaseSettings):
     model_api_key: str = ''
     model_timeout: int = Field(default=60,ge=1,le=600)
     model_daily_calls: int = Field(default=100,ge=1,le=10000)
-    model_input_price: float | None = None
-    model_output_price: float | None = None
+    model_input_price: float | None = Field(default=None,ge=0,le=1000000000,allow_inf_nan=False)
+    model_output_price: float | None = Field(default=None,ge=0,le=1000000000,allow_inf_nan=False)
     jev_mode: Literal['off','shadow'] = 'off'
     jev_api_key: str = ''
     jev_model: str = 'jev-1.13.0'
     jev_timeout: int = Field(default=5,ge=1,le=60)
     jev_daily_calls: int = Field(default=30,ge=1,le=10000)
-    jev_input_price: float | None = Field(default=None,ge=0)
+    jev_input_price: float | None = Field(default=None,ge=0,le=1000000000,allow_inf_nan=False)
     feishu_app_id: str = ''
     feishu_app_secret: str = ''
     feishu_owner: str = ''

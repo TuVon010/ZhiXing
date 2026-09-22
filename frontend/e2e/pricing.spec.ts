@@ -1,0 +1,32 @@
+import {test,expect} from '@playwright/test';
+
+test('自定义计价：逐项覆盖、零价、持久化、恢复默认',async({page},testInfo)=>{
+ await page.goto('/');
+ await expect(page.getByText('离线演示模式')).toBeVisible();
+ await page.locator('nav').getByRole('button',{name:'设置',exact:false}).click();
+ const panel=page.locator('.pricing-settings');
+ await expect(panel.getByRole('heading',{name:'模型计价'})).toBeVisible();
+ await panel.getByLabel('计价模型',{exact:true}).selectOption('deepseek-flash');
+ await expect(panel.getByTestId('effective-input')).toHaveText('生效：1 · 默认');
+ await panel.getByLabel('缓存命中输入单价',{exact:true}).fill('0');
+ await panel.getByRole('button',{name:'保存计价',exact:true}).click();
+ await expect(panel.getByRole('status')).toContainText('计价已保存');
+ await expect(panel.getByTestId('effective-cached_input')).toHaveText('生效：0 · 自定义');
+ await expect(panel.getByTestId('effective-input')).toHaveText('生效：1 · 默认');
+ await page.reload();
+ await page.locator('nav').getByRole('button',{name:'设置',exact:false}).click();
+ await panel.getByLabel('计价模型',{exact:true}).selectOption('deepseek-flash');
+ await expect(panel.getByLabel('缓存命中输入单价',{exact:true})).toHaveValue('0');
+ await panel.getByLabel('缓存命中输入单价',{exact:true}).fill('');
+ await panel.getByLabel('输出单价',{exact:true}).fill('5.25');
+ await panel.getByRole('button',{name:'保存计价',exact:true}).click();
+ await expect(panel.getByTestId('effective-cached_input')).toHaveText('生效：.02 · 默认');
+ await expect(panel.getByTestId('effective-output')).toHaveText('生效：5.25 · 自定义');
+ await page.screenshot({path:testInfo.outputPath('pricing-custom.png'),fullPage:true});
+ await panel.getByRole('button',{name:'恢复默认计价',exact:true}).click();
+ await expect(panel.getByRole('status')).toHaveText('已恢复默认计价');
+ await expect(panel.getByTestId('effective-output')).toHaveText('生效：4 · 默认');
+ await panel.getByLabel('计价模型',{exact:true}).selectOption('jev');
+ await expect(panel.getByTestId('effective-input')).toHaveText('生效：.042 · 默认');
+ await testInfo.attach('pricing-configs.json',{body:await (await page.request.get('/api/pricing')).body(),contentType:'application/json'});
+});

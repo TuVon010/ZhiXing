@@ -328,6 +328,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pricing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pricing */
+        get: operations["pricing_api_pricing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pricing/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Pricing */
+        post: operations["update_pricing_api_pricing__profile_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/billing-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Billing Summary */
+        get: operations["billing_summary_api_billing_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/{collection}": {
         parameters: {
             query?: never;
@@ -500,6 +551,74 @@ export interface components {
             /** Clarification */
             clarification?: string | null;
         };
+        /** PricingOverrides */
+        PricingOverrides: {
+            /** Input */
+            input?: number | string | null;
+            /** Cached Input */
+            cached_input?: number | string | null;
+            /** Output */
+            output?: number | string | null;
+            /** Peak Input */
+            peak_input?: number | string | null;
+            /** Peak Cached Input */
+            peak_cached_input?: number | string | null;
+            /** Peak Output */
+            peak_output?: number | string | null;
+            /** Currency */
+            currency?: string | null;
+            /** Peak Enabled */
+            peak_enabled?: boolean | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Peak Windows */
+            peak_windows?: string[] | null;
+            /** Peak Weekdays */
+            peak_weekdays?: number[] | null;
+            /** Holiday Dates */
+            holiday_dates?: string[] | null;
+            /** Calendar Years */
+            calendar_years?: number[] | null;
+        };
+        /** PricingProfile */
+        PricingProfile: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Active */
+            active: boolean;
+            /** Version */
+            version: number;
+            /** Default Version */
+            default_version: string;
+            /** Source */
+            source: string | null;
+            /** Calendar Source */
+            calendar_source: string | null;
+            /** Defaults */
+            defaults: {
+                [key: string]: unknown;
+            };
+            /** Overrides */
+            overrides: {
+                [key: string]: unknown;
+            };
+            /** Effective */
+            effective: {
+                [key: string]: unknown;
+            };
+            /** Field Sources */
+            field_sources: {
+                [key: string]: string;
+            };
+        };
+        /** PricingUpdate */
+        PricingUpdate: {
+            /** Version */
+            version: number;
+            overrides: components["schemas"]["PricingOverrides"];
+        };
         /** Reconciliation */
         Reconciliation: {
             /** Action Id */
@@ -579,6 +698,10 @@ export interface components {
             jev_latency_ms?: number | null;
             /** Jev Cost */
             jev_cost?: number | null;
+            /** Billing */
+            billing?: {
+                [key: string]: unknown;
+            };
         };
         /** ValidationError */
         ValidationError: {
@@ -1170,6 +1293,81 @@ export interface operations {
         };
     };
     import_mail_api_mail_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    pricing_api_pricing_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PricingProfile"][];
+                };
+            };
+        };
+    };
+    update_pricing_api_pricing__profile_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PricingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PricingProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_summary_api_billing_summary_get: {
         parameters: {
             query?: never;
             header?: never;

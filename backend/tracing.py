@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 from typing import Any
 from pydantic import BaseModel, Field
+from .billing import summarize
 
 class TraceSummary(BaseModel):
     trace_id: str
@@ -17,6 +18,7 @@ class TraceSummary(BaseModel):
     jev_call_count: int = 0
     jev_latency_ms: float | None = None
     jev_cost: float | None = None
+    billing: dict[str, Any] = Field(default_factory=dict)
 
 class RunDetail(BaseModel):
     run: dict[str, Any]
@@ -58,4 +60,10 @@ def detail(db, run_id):
     costs=[r['body'].get('cost') for r in attempted]
     summary.jev_latency_ms=sum(latencies) if latencies and all(v is not None for v in latencies) else None
     summary.jev_cost=sum(costs) if costs and all(v is not None for v in costs) else None
+    summary.billing=summarize(calls+attempted)
+    # Compatibility fields never add unlike or unidentified currencies.
+    for records, key in [(calls,'cost'),(attempted,'jev_cost')]:
+        currencies={(r['body'].get('billing') or {}).get('currency') for r in records}
+        if None in currencies or len(currencies)!=1:
+            setattr(summary,key,None)
     return RunDetail(run=run,audit=list(reversed(audit)),model_calls=calls,jev_calls=reviews,trace=summary)
