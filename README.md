@@ -108,6 +108,8 @@ Pop-Location
 
 ## 备份与结构
 
+面试准备资料见 [知性面试资料导航](docs/interview/README.md)，包含项目讲述、业务架构、技术选型、实际排查与测试案例、48 个 Agent 高频问答、评测说明及模拟面试。资料明确区分已验证实现、一般知识和后续设计。
+
 停止 API 与 Worker 后运行 `scripts/backup.ps1`，通过 SQLite backup API 成对备份业务库和 checkpoint 库。恢复时保持服务停止，将同一次备份中的两个数据库一起还原；密钥文件另行保存。
 
 ```text
