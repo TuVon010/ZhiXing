@@ -1,0 +1,44 @@
+{
+  "status": "design_fixture_not_implemented",
+  "checked_at": "2026-09-22",
+  "currency": "CNY",
+  "source_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+  "provider": "deepseek_official",
+  "model": "deepseek-flash",
+  "verified_effective_from": null,
+  "note": "Illustrative fixtures only; no real model calls or validated holiday calendar. Never activate directly as a historical rate card.",
+  "rates_per_million": {
+    "peak": {"cache_read": "0.04", "uncached_input": "2", "output": "8"},
+    "off_peak": {"cache_read": "0.02", "uncached_input": "1", "output": "4"}
+  },
+  "cases": [
+    {
+      "id": "partial-hit-peak",
+      "period": "peak",
+      "usage_raw": {"prompt_tokens": 10000, "prompt_cache_hit_tokens": 8000, "prompt_cache_miss_tokens": 2000, "prompt_tokens_details": {"cached_tokens": 8000}, "completion_tokens": 1000, "completion_tokens_details": {"reasoning_tokens": 200}, "total_tokens": 11000},
+      "expected": {"token_hit_rate": "0.8", "cost": "0.01232", "all_miss_cost": "0.028", "cache_savings": "0.01568", "output_billed_tokens": 1000}
+    },
+    {
+      "id": "partial-hit-off-peak",
+      "period": "off_peak",
+      "usage_raw": {"prompt_tokens": 10000, "prompt_cache_hit_tokens": 8000, "prompt_cache_miss_tokens": 2000, "completion_tokens": 1000, "total_tokens": 11000},
+      "expected": {"token_hit_rate": "0.8", "cost": "0.00616", "all_miss_cost": "0.014", "cache_savings": "0.00784"}
+    },
+    {
+      "id": "unknown-cache-breakdown",
+      "period": "peak",
+      "usage_raw": {"prompt_tokens": 10000, "completion_tokens": 1000, "total_tokens": 11000},
+      "expected": {"token_hit_rate": null, "cost": null, "min_cost": "0.0084", "max_cost": "0.028", "status": "range_estimate"}
+    },
+    {
+      "id": "conflicting-cache-aliases",
+      "usage_raw": {"prompt_tokens": 10000, "prompt_cache_hit_tokens": 8000, "prompt_tokens_details": {"cached_tokens": 7000}, "prompt_cache_miss_tokens": 2000, "completion_tokens": 1000},
+      "expected": {"token_hit_rate": null, "cost": null, "cache_observability": "invalid"}
+    }
+  ],
+  "aggregation_case": {
+    "calls": [{"input_tokens": 100, "cache_read_tokens": 100}, {"input_tokens": 9900, "cache_read_tokens": 0}],
+    "expected_token_hit_rate": "0.01",
+    "expected_request_hit_rate": "0.5"
+  }
+}
