@@ -6,6 +6,7 @@ from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(root))
 os.environ['ZHIXING_MODE']='demo'
+os.environ['ZHIXING_JEV_MODE']='off'
 os.environ['ZHIXING_DATA_DIR']=os.environ.get('ZHIXING_E2E_DATA_DIR',str(root/'.tmp'/('e2e-'+str(time.time_ns()))))
 from backend.runtime import work_once
 from backend.main import app

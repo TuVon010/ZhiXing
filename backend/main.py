@@ -97,7 +97,7 @@ def get_settings():
         local=store.get('runtime-settings')['body']
     except KeyError:
         local={}
-    return {'mode':settings.mode,'model_name':settings.model_name,'model_base_url':settings.model_base_url,'model_configured':bool(settings.model_api_key and settings.model_name),'feishu_configured':bool(settings.feishu_app_id and settings.feishu_app_secret),'feishu_owner':settings.feishu_owner,'feishu_groups':settings.feishu_groups,'mail_configured':bool(settings.mail_address and settings.mail_password),'notifications':settings.notifications,'daily_call_limit':settings.model_daily_calls,'evolution_enabled':local.get('evolution_enabled',False),'data_dir':str(store.path.parent)}
+    return {'mode':settings.mode,'model_name':settings.model_name,'model_base_url':settings.model_base_url,'model_configured':bool(settings.model_api_key and settings.model_name),'feishu_configured':bool(settings.feishu_app_id and settings.feishu_app_secret),'feishu_owner':settings.feishu_owner,'feishu_groups':settings.feishu_groups,'mail_configured':bool(settings.mail_address and settings.mail_password),'notifications':settings.notifications,'daily_call_limit':settings.model_daily_calls,'evolution_enabled':local.get('evolution_enabled',False),'data_dir':str(store.path.parent),'jev_mode':settings.jev_mode,'jev_configured':bool(settings.jev_api_key),'jev_model':settings.jev_model,'jev_daily_calls':settings.jev_daily_calls}
 
 class LocalSettings(BaseModel):
     evolution_enabled: bool = False

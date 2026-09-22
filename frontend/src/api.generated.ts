@@ -523,6 +523,10 @@ export interface components {
             model_calls: {
                 [key: string]: unknown;
             }[];
+            /** Jev Calls */
+            jev_calls?: {
+                [key: string]: unknown;
+            }[];
             trace: components["schemas"]["TraceSummary"];
         };
         /** SampleInput */
@@ -566,6 +570,15 @@ export interface components {
             total_tokens: number | null;
             /** Cost */
             cost: number | null;
+            /**
+             * Jev Call Count
+             * @default 0
+             */
+            jev_call_count: number;
+            /** Jev Latency Ms */
+            jev_latency_ms?: number | null;
+            /** Jev Cost */
+            jev_cost?: number | null;
         };
         /** ValidationError */
         ValidationError: {
