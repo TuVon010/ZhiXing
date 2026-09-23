@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, model_validator
 
 class NormalizedMessage(BaseModel):
     message_id: str = Field(min_length=1, max_length=300)
-    source: Literal['web', 'feishu', 'email', 'demo'] = 'web'
+    source: Literal['web', 'email', 'demo'] = 'web'
     sender_id: str = 'owner'
     conversation_id: str = 'inbox'
     text: str = Field(min_length=1, max_length=30000)
@@ -12,7 +12,7 @@ class NormalizedMessage(BaseModel):
 
 class PlannedAction(BaseModel):
     id: str = ''
-    tool: Literal['create_todo','update_todo','create_calendar','update_calendar','create_reminder','create_memory_candidate','draft_email','summarize','send_email','send_feishu','sync_todo','sync_calendar','invite_calendar','delete_item']
+    tool: Literal['create_todo','update_todo','create_calendar','update_calendar','create_reminder','create_memory_candidate','draft_email','summarize','send_email','delete_item']
     args: dict[str, Any]
     depends_on: list[str] = Field(default_factory=list)
     scenario: str = 'general'

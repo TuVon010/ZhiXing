@@ -15,7 +15,7 @@ from .policy import decide, risk, key, suspend, suggest
 from .tools import execute, validate
 from .channels import ExternalUnknown
 
-def ingest(message, db=store, explicit_plan=None, replay=False):
+def ingest(message, db=store, explicit_plan=None, replay=False, frozen_versions=None, prepare=None):
     m = NormalizedMessage.model_validate(message).model_dump()
     m['timestamp'] = m['timestamp'] or now()
     scope = m['source']+':'+m['conversation_id']
@@ -24,8 +24,12 @@ def ingest(message, db=store, explicit_plan=None, replay=False):
     versions = {kind+'s':[r['id'] for r in db.list(kind,status='published')] for kind in ['skill','parser']}
     versions['policy'] = 1
     versions['trust'] = [r['id'] for r in db.list('trust',status='published')]
+    if frozen_versions:
+        versions={**versions,**frozen_versions}
     try:
         with db.engine.begin() as c:
+            if prepare is not None:
+                prepare(c,rid)
             mid = db.insert('message',m,scope=scope,dedupe=dedupe,conn=c)
             db.insert('run',{'message':m,'message_record_id':mid,'versions':versions,'explicit_plan':explicit_plan,'outcomes':{},'replay':replay},status='queued',scope=scope,id=rid,conn=c)
             c.execute(text("INSERT INTO jobs(id,run_id,scope,status,created_at) VALUES(:id,:run,:scope,'queued',:at)"),{'id':uid(),'run':rid,'scope':scope,'at':now()})
@@ -52,9 +56,13 @@ def approve(approval_id, payload, db=store):
         if row['status'] != 'pending' or command.version != b['version']:
             raise ValueError('审批已处理或版本过期')
         run = db.get(b['run_id'],c)
+        if run['status']=='migration_review':
+            raise ValueError('请先在迁移复核中确认恢复此运行')
         if run['status'] == 'cancelled':
             raise ValueError('运行已取消')
         if command.decision == 'edit':
+            if b['action']['args'].get('draft_id'):
+                raise ValueError('邮件发送参数请在草稿页编辑并重新申请审批')
             if command.args is None:
                 raise ValueError('修改需要提供完整参数')
             edited = {**b['action'],'args':command.args,'clarification':None,'confidence':1}

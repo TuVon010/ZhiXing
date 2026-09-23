@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 from .db import now
 
 LOW = {'create_todo','create_reminder','create_memory_candidate','draft_email','summarize'}
-MEDIUM = {'update_todo','create_calendar','update_calendar','sync_todo','sync_calendar'}
-HIGH = {'send_email','send_feishu','delete_item','invite_calendar'}
+MEDIUM = {'update_todo','create_calendar','update_calendar'}
+HIGH = {'send_email','delete_item'}
 
 def key(action):
     a = action['args']

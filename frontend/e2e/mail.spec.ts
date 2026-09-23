@@ -1,0 +1,55 @@
+import {test,expect} from '@playwright/test';
+
+test('多邮箱工作台、证据检索、草稿变更与 Trace（离线演示）',async({page},info)=>{
+ test.setTimeout(90000);
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/');
+ await expect(page.getByText('离线演示模式',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'导入演示邮件',exact:true}).click();
+ await expect(page.locator('.mail-row').first()).toBeVisible();
+ await page.locator('.mail-row').first().click();
+ await expect(page.locator('.mail-reader h2')).toContainText('实验报告修改');
+ await page.locator('.mail-reader').getByRole('button',{name:'回复草稿',exact:true}).click();
+ await page.getByLabel('邮件正文',{exact:true}).fill('我将在周五前完成实验对比。');
+ await expect(page.getByRole('button',{name:'申请发送审批'})).toBeDisabled();
+ await page.getByRole('button',{name:'保存草稿',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('草稿已保存');
+ await expect(page.getByRole('button',{name:'申请发送审批'})).toBeEnabled();
+ await page.getByRole('button',{name:'申请发送审批'}).click();
+ await expect(page.getByRole('status')).toContainText('已提交审批');
+ await page.locator('nav').getByRole('button',{name:'审批中心',exact:true}).click();
+ await expect(page.getByText('邮件发送审批')).toBeVisible();
+ await expect(page.getByRole('button',{name:'批准执行',exact:true}).first()).toBeVisible({timeout:15000});
+ await page.getByRole('button',{name:'批准执行',exact:true}).first().click();
+ await expect(page.getByRole('status')).toContainText('已批准');
+ await page.locator('nav').getByRole('button',{name:'待办与跟进',exact:true}).click();
+ await page.getByLabel('任务',{exact:true}).fill('验证新版工作台待办');
+ await page.getByRole('button',{name:'添加待办',exact:true}).click();
+ await expect(page.getByText('验证新版工作台待办',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'申请标记完成',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('提交完成申请');
+ await page.locator('nav').getByRole('button',{name:'审批中心',exact:true}).click();
+ await expect(page.getByRole('heading',{name:/更新待办/})).toBeVisible({timeout:15000});
+ await page.screenshot({path:info.outputPath('draft-review.png'),fullPage:true});
+ await page.locator('nav').getByRole('button',{name:'邮箱账号',exact:true}).click();
+ for(const [name,address] of [['研究邮箱','research@163.com'],['个人邮箱','personal@qq.com']]){
+   await page.getByRole('button',{name:'添加邮箱',exact:true}).click();
+   await page.getByLabel('邮箱名称',{exact:true}).fill(name);
+   await page.getByLabel('邮箱地址',{exact:true}).fill(address);
+   await page.getByRole('button',{name:'保存邮箱',exact:true}).click();
+   await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
+ }
+ await expect(page.getByLabel('当前邮箱').locator('option')).toHaveCount(4);
+ await page.getByLabel('当前邮箱').selectOption({label:'演示邮箱 · demo@example.com'});
+ await page.locator('nav').getByRole('button',{name:'邮件 Agent',exact:true}).click();
+ await page.getByLabel('邮件问题').fill('实验报告');
+ await page.getByRole('button',{name:'交给 Agent',exact:true}).click();
+ await expect(page.locator('.mail-answer')).toContainText('离线演示',{timeout:20000});
+ await page.getByRole('button',{name:'关闭',exact:true}).click();
+ await page.getByRole('button',{name:'查看 Agent Trace'}).click();
+ await expect(page.getByRole('heading',{name:'Agent Trace / 迁移记录'})).toBeVisible();
+ const pending=page.waitForEvent('download');await page.getByRole('button',{name:'导出邮件 Trace JSON'}).click();
+ await (await pending).saveAs(info.outputPath('mail-trace.json'));
+ await page.screenshot({path:info.outputPath('mail-trace.png'),fullPage:true});
+ expect(errors).toEqual([]);
+});

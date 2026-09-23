@@ -40,8 +40,8 @@ def demo_plan(message):
     if '发送邮件' in text:
         address = re.search(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}',text)
         add('send_email', {'recipient':address.group() if address else '', 'subject':'回复','content':text}, None if address else '请填写准确的收件邮箱')
-    if '发给导师' in text:
-        add('send_feishu', {'recipient':'','content':text}, '请确认导师的飞书 open_id 和实际发送内容')
+    elif '发给导师' in text:
+        add('draft_email', {'subject':'待确认的邮件草稿','content':text}, '请确认导师邮箱地址；知行只生成草稿，不会自动发送')
     if not actions:
         add('summarize', {'content':text})
     return ActionPlan(summary='离线演示：规则提取，不代表真实模型效果',actions=actions)

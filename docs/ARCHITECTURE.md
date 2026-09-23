@@ -1,54 +1,45 @@
-# 实现说明
+# 知行邮件架构
+
+重构前架构见 archive/pre-mail-20260922/ARCHITECTURE.md。
 
 ## 数据流
 
 ```mermaid
 flowchart LR
- F[飞书长连接] --> I[NormalizedMessage]
- M[QQ IMAP] --> I
- W[Web] --> I
- I --> Q[SQLite 持久队列]
- Q --> U[理解 / Parser / 模型]
- U --> P[结构化动作计划]
- P --> R[风险和权限]
- R --> A[人工审批 interrupt]
- A --> E[恢复 / 执行账本 / 工具]
- R --> E
- E --> D[任务 / 日程 / 外部渠道]
- E --> L[审计 / 决策记忆]
- L --> T[信任候选 / 演进证据]
- T --> V[评测和人工发布]
+ A[多个 IMAP 账号] --> B[独立游标与持久收取任务]
+ B --> C[去重、原文、线程、过滤]
+ C --> D[本地索引任务]
+ D --> E[FTS5 + Qdrant 本地向量检索 + E5 + 重排序]
+ E --> F[按账号约束的 Agent 工具循环]
+ F --> G[待办、提醒、草稿]
+ G --> H[LangGraph 审批与执行账本]
+ H --> I[指定账号 SMTP]
+ F --> J[待确认记忆候选]
+ H --> K[决策记录与审计]
 ```
 
-## 运行边界
+FastAPI 校验契约、会话和来源并入队；Worker 加载模型、执行网络收取和后台任务。浏览器不能读取凭证，也不能自行替换已批准的发送字段。
 
-- API 进程负责本地会话、查询和接收命令；Worker 进程负责两个执行线程、渠道和定时任务。
-- SQLite 业务库包含统一 records 表、jobs、ledger 和 migrations。records 的 kind 区分消息、动作运行、审批、业务对象、版本与审计，body 为结构化 JSON；这是单机版本的存储选择。字段边界通过 Pydantic 输入、动作白名单和服务校验约束。
-- LangGraph 使用独立 SQLite checkpointer。启动迁移版本为 1；当前没有旧项目数据库导入，也不共享开源 Pulse 的数据库。
-- 入站事件唯一键是 source + message_id；邮件 ID 包含账号、UIDVALIDITY、UID。业务对象保留 run_id，run 保留原始消息记录。
-- Run 固定 Skill、Parser、风险代码版本和信任规则 ID。暂停/撤销权限会即时限制执行，新发布规则不会扩大已开始 Run 的授权。
-- 本地写入与 ledger 原子提交；外部 API 和本地 SQLite 之间没有分布式事务，因此不声称外部系统严格 exactly-once。保留 executing 记录并要求人工核对，优先防止重复发送。
-- 用户修改审批参数后版本递增，不把“修改”等同“批准”。多个入口的决定通过 BEGIN IMMEDIATE 串行竞争。
-- 队列支持进程崩溃后租约恢复；审批正好发生在暂停与 Worker 释放之间时保留新的 resume，已有回归测试。
+## 存储与身份
 
-## 模型与渠道
+records 保存新账号、邮件、线程、游标、导入批次、草稿、Agent 会话及旧任务/审批/运行。mail_jobs 是独立持久队列，按账号或会话串行；交互优先于后台索引。任务与 IMAP 租约 120 秒并续租，过期可回收。一个账号认证失败不阻止其他账号。
 
-兼容模型接口使用 `/chat/completions` 的 JSON 输出，加 Pydantic schema 校验。工具执行不由模型直接触发。每日请求预算在事务内先预留，模型失败也计入预算。
+去重使用账号、文件夹、UIDVALIDITY、UID。Message-ID 用于线程关系，不能作为跨账号唯一键。mail_refs 处理 References / In-Reply-To；相同主题不能直接合并。声明日期、服务端收件日期、本地抓取日期分别保存。
 
-飞书使用官方 Python SDK 消费长连接；HTTP 工具调用按飞书 REST 契约执行。任务应用身份需有权限并给绑定用户指派任务，日历需要配置已授权的 calendar_id。邮件采用 Python 标准库 IMAP、MIME 和 SMTP。
+SQLite WAL 支持并发读取，BEGIN IMMEDIATE 保护领取、版本校验和账本。SQLite 保留邮件正文、FTS5、业务记录和可重建的向量缓存；Qdrant local 持久化存储向量并执行近邻查询，索引目录位于 `data/qdrant`。Qdrant local 使用进程级文件锁，在线向量读写由单一 Worker 串行承担，API 只通过持久队列请求检索。备份前停止服务，备份数据库与 Qdrant 索引；索引可由 SQLite 缓存重建。
 
-默认服务仅绑定 127.0.0.1。Host 白名单防止 DNS rebinding；会话 cookie 为 HttpOnly / SameSite Strict，写操作要求标记头并检查 Origin。不提供跨源 CORS。该边界针对本机浏览器访问，不替代多用户登录或操作系统权限隔离。
+选择 Qdrant local 是为了在 Windows + 本地 Anaconda 环境免 Docker运行。Milvus Lite 官方支持的平台目前不含 Windows；Milvus standalone 在 Windows 需要 Docker Desktop 和 WSL2，因而不符合当前的本地免 Docker部署约束。切换 Milvus 需要先引入并验证 WSL2/Docker 运行与备份方案。
 
-## 评测与发布
+## 恢复和审批
 
-Skill 的真实评测需要模型；Parser 评测可独立本地运行。评测结果包含内容摘要哈希、样本量、候选/基线分数和安全结果，发布时重新校验哈希，避免评测后换内容。独立 shadow 样本不允许复用 train / holdout 的同一文本。回滚只允许曾发布版本。
+Agent 决策、待执行工具请求及结果持久化在 assistant_turn；动作进入原有 LangGraph checkpoint。审批 interrupt 释放 Worker。运行冻结记忆、Skill、Parser、策略和模型版本。
 
-LLM 影子输出不是人工标注，不能直接转成评测通过证据。基于模板的120条离线样本用于工程回归，不用于证明模型可靠性。
+本地工具与账本同事务。外部写入先保留账本，崩溃后无法证明未执行就进入待核对。重放先读取已完成账本，再检查草稿状态。
 
-## Trace 关联
+草稿发送字段、版本哈希和动作入队同事务冻结；修改草稿取消旧运行与审批并提升版本。正在发送、结果不明或已接受的草稿不可修改。高风险发信不受信任提升放行。
 
-每条 Run 的 ID 就是 trace_id；审计、模型调用记录写入 run_id 和 trace_id，工具额外关联 action_id，审批额外关联 approval_id。ContextVar 只传递当前执行线程的运行 ID，进入理解节点时设置，退出时恢复，避免并发运行混用。
+## 可观测性和边界
 
-`GET /api/runs/{id}` 聚合完整事件和关联模型调用，不沿用旧详情接口的 1000 条截断。模型请求发出前持久化，HTTP/JSON 解析失败时保留关联、耗时、已返回的 usage 和原始模型正文；不保存 Authorization 请求头。旧失败记录可通过 MODEL_FAILED 的 call_id 找回。
+turn、run、model_call 和 audit 具有稳定关联。检索记录关键词、向量、融合和最终排名。Trace 保存工具参数、结果、错误、用量和价格快照；记录显式工具决策，不记录隐藏思维链。缓存命中使用服务商 usage，缺失时显示未知。
 
-运行耗时包括排队与人工等待，模型耗时只累计模型请求时间，两者在 UI 中区分。未返回 usage 或未配置价格时，不把未知值当成零。Trace JSON 导出只在用户本地浏览器下载，不发送给外部遥测系统。
+本地过滤和归档不操作远端文件夹。浏览全部邮箱不代表授权全账号检索。第三方邮件陈述不能直接成为已生效用户偏好。历史迁移不自动分析或发送。

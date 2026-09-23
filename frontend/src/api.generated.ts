@@ -4,6 +4,590 @@
  */
 
 export interface paths {
+    "/api/mail/followups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Followups */
+        get: operations["followups_api_mail_followups_get"];
+        put?: never;
+        /** Create Followup */
+        post: operations["create_followup_api_mail_followups_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mail Approvals */
+        get: operations["mail_approvals_api_mail_approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Accounts */
+        get: operations["accounts_api_mail_accounts_get"];
+        put?: never;
+        /** Create Account */
+        post: operations["create_account_api_mail_accounts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/accounts/{ident}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Account */
+        post: operations["update_account_api_mail_accounts__ident__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/accounts/{ident}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connection Test */
+        post: operations["connection_test_api_mail_accounts__ident__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/accounts/{ident}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync */
+        post: operations["sync_api_mail_accounts__ident__sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/accounts/{ident}/enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable */
+        post: operations["enable_api_mail_accounts__ident__enabled_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/accounts/{ident}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Account Status */
+        get: operations["account_status_api_mail_accounts__ident__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/accounts/{ident}/backlog/{choice}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Backlog */
+        post: operations["backlog_api_mail_accounts__ident__backlog__choice__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/imports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview */
+        post: operations["preview_api_mail_imports_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Imports */
+        get: operations["imports_api_mail_imports_get"];
+        put?: never;
+        /** Create Import */
+        post: operations["create_import_api_mail_imports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/imports/{ident}/{operation}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Action */
+        post: operations["import_action_api_mail_imports__ident___operation__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/jobs/{ident}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Status */
+        get: operations["job_status_api_mail_jobs__ident__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/jobs/{ident}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Job */
+        post: operations["retry_job_api_mail_jobs__ident__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Messages */
+        get: operations["messages_api_mail_messages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/messages/{ident}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Message */
+        get: operations["message_api_mail_messages__ident__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/messages/{ident}/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Message State */
+        post: operations["message_state_api_mail_messages__ident__state_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/threads/{ident}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thread */
+        get: operations["thread_api_mail_threads__ident__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/messages/{ident}/thread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link Thread */
+        post: operations["link_thread_api_mail_messages__ident__thread_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search */
+        post: operations["search_api_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/accounts/{ident}/reindex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reindex */
+        post: operations["reindex_api_mail_accounts__ident__reindex_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Drafts */
+        get: operations["drafts_api_mail_drafts_get"];
+        put?: never;
+        /** Create Draft */
+        post: operations["create_draft_api_mail_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/drafts/{ident}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Draft */
+        post: operations["update_draft_api_mail_drafts__ident__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/drafts/{ident}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit */
+        post: operations["submit_api_mail_drafts__ident__submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sessions */
+        get: operations["sessions_api_assistant_sessions_get"];
+        put?: never;
+        /** Session */
+        post: operations["session_api_assistant_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/sessions/{ident}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn */
+        post: operations["turn_api_assistant_sessions__ident__turns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/sessions/{ident}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Session Detail */
+        get: operations["session_detail_api_assistant_sessions__ident__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/turns/{ident}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Turn Detail */
+        get: operations["turn_detail_api_assistant_turns__ident__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/turns/{ident}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Turn */
+        post: operations["cancel_turn_api_assistant_turns__ident__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/accounts/{ident}/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Filters */
+        get: operations["get_filters_api_mail_accounts__ident__filters_get"];
+        put?: never;
+        /** Filters */
+        post: operations["filters_api_mail_accounts__ident__filters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/memory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Candidate Memory */
+        post: operations["candidate_memory_api_mail_memory_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/migration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Migration Status */
+        get: operations["migration_status_api_mail_migration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/legacy/{ident}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume Legacy */
+        post: operations["resume_legacy_api_mail_legacy__ident__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Demo */
+        post: operations["demo_api_mail_demo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/session": {
         parameters: {
             query?: never;
@@ -294,24 +878,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/sync-resolution/{id}": {
+    "/api/filter/rules": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Filter Rules */
+        get: operations["get_filter_rules_api_filter_rules_get"];
         put?: never;
-        /** Resolve Sync */
-        post: operations["resolve_sync_api_sync_resolution__id__post"];
+        /** Save Filter Rules */
+        post: operations["save_filter_rules_api_filter_rules_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/mail/import": {
+    "/api/filter/box": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Filter Box */
+        get: operations["list_filter_box_api_filter_box_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/filter/box/{filter_id}/release": {
         parameters: {
             query?: never;
             header?: never;
@@ -320,8 +922,94 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Import Mail */
-        post: operations["import_mail_api_mail_import_post"];
+        /** Release Filter Item */
+        post: operations["release_filter_item_api_filter_box__filter_id__release_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/filter/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Filter Stats */
+        get: operations["filter_stats_api_filter_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/filter/classify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Classify Message Api */
+        post: operations["classify_message_api_api_filter_classify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/filter/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Labeled Samples */
+        get: operations["list_labeled_samples_api_filter_labels_get"];
+        put?: never;
+        /** Add Labeled Sample */
+        post: operations["add_labeled_sample_api_filter_labels_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/filter/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evaluate Classifier */
+        get: operations["evaluate_classifier_api_filter_evaluate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/filter/shadow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Shadow Classify Api */
+        post: operations["shadow_classify_api_api_filter_shadow_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -457,10 +1145,117 @@ export interface components {
             /** Evidence */
             evidence?: string[];
         };
+        /** ClassifyInput */
+        ClassifyInput: {
+            /** Text */
+            text: string;
+            /**
+             * Sender Id
+             * @default
+             */
+            sender_id: string;
+            /**
+             * Source
+             * @default manual
+             */
+            source: string;
+        };
+        /** DraftInput */
+        DraftInput: {
+            /** Account Id */
+            account_id: string;
+            /** Message Id */
+            message_id?: string | null;
+            /**
+             * Mode
+             * @default new
+             * @enum {string}
+             */
+            mode: "new" | "reply" | "reply_all";
+            /** To */
+            to?: string[];
+            /** Cc */
+            cc?: string[];
+            /**
+             * Subject
+             * @default
+             */
+            subject: string;
+            /**
+             * Content
+             * @default
+             */
+            content: string;
+            /**
+             * Version
+             * @default 0
+             */
+            version: number;
+        };
+        /** FilterRules */
+        FilterRules: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Whitelist Senders */
+            whitelist_senders?: string[];
+            /** Blacklist Senders */
+            blacklist_senders?: string[];
+            /** Blacklist Domains */
+            blacklist_domains?: string[];
+            /** Subject Keywords */
+            subject_keywords?: string[];
+            /** Content Keywords */
+            content_keywords?: string[];
+            /** Auto Filter Categories */
+            auto_filter_categories?: string[];
+        };
+        /** FilterRulesInput */
+        FilterRulesInput: {
+            /** Whitelist Senders */
+            whitelist_senders?: string[];
+            /** Blacklist Senders */
+            blacklist_senders?: string[];
+            /** Blacklist Domains */
+            blacklist_domains?: string[];
+            /** Subject Keywords */
+            subject_keywords?: string[];
+            /** Content Keywords */
+            content_keywords?: string[];
+            /** Auto Filter Categories */
+            auto_filter_categories?: string[];
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ImportRequest */
+        ImportRequest: {
+            /** Account Id */
+            account_id: string;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Limit
+             * @default 100
+             */
+            limit: number;
         };
         /** ItemInput */
         ItemInput: {
@@ -471,6 +1266,28 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** LabeledSampleInput */
+        LabeledSampleInput: {
+            /** Text */
+            text: string;
+            /**
+             * Sender Id
+             * @default
+             */
+            sender_id: string;
+            /** Expected Category */
+            expected_category: string;
+            /**
+             * Source
+             * @default manual
+             */
+            source: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
         /** LocalSettings */
         LocalSettings: {
             /**
@@ -478,8 +1295,90 @@ export interface components {
              * @default false
              */
             evolution_enabled: boolean;
-            /** Feishu Groups */
-            feishu_groups?: string[];
+        };
+        /** MailAccount */
+        MailAccount: {
+            /** Name */
+            name: string;
+            /** Address */
+            address: string;
+            /**
+             * Provider
+             * @default qq
+             * @enum {string}
+             */
+            provider: "qq" | "163" | "custom";
+            /**
+             * Imap Host
+             * @default
+             */
+            imap_host: string;
+            /**
+             * Imap Port
+             * @default 993
+             */
+            imap_port: number;
+            /**
+             * Imap Tls
+             * @default ssl
+             * @enum {string}
+             */
+            imap_tls: "ssl" | "starttls";
+            /**
+             * Smtp Host
+             * @default
+             */
+            smtp_host: string;
+            /**
+             * Smtp Port
+             * @default 465
+             */
+            smtp_port: number;
+            /**
+             * Smtp Tls
+             * @default ssl
+             * @enum {string}
+             */
+            smtp_tls: "ssl" | "starttls";
+            /**
+             * Username
+             * @default
+             */
+            username: string;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Auto Analyze
+             * @default false
+             */
+            auto_analyze: boolean;
+            /**
+             * Scan Limit
+             * @default 20
+             */
+            scan_limit: number;
+            /**
+             * Hourly Analysis Limit
+             * @default 20
+             */
+            hourly_analysis_limit: number;
+            /** Password */
+            password?: string | null;
+        };
+        /** MemoryCandidate */
+        MemoryCandidate: {
+            /** Content */
+            content: string;
+            /** Account Id */
+            account_id: string;
+            /**
+             * Memory Type
+             * @default preference
+             */
+            memory_type: string;
         };
         /** MemoryInput */
         MemoryInput: {
@@ -491,6 +1390,11 @@ export interface components {
              */
             scope: string;
         };
+        /** MessageState */
+        MessageState: {
+            /** Status */
+            status: string;
+        };
         /** NormalizedMessage */
         NormalizedMessage: {
             /** Message Id */
@@ -500,7 +1404,7 @@ export interface components {
              * @default web
              * @enum {string}
              */
-            source: "web" | "feishu" | "email" | "demo";
+            source: "web" | "email" | "demo";
             /**
              * Sender Id
              * @default owner
@@ -531,7 +1435,7 @@ export interface components {
              * Tool
              * @enum {string}
              */
-            tool: "create_todo" | "update_todo" | "create_calendar" | "update_calendar" | "create_reminder" | "create_memory_candidate" | "draft_email" | "summarize" | "send_email" | "send_feishu" | "sync_todo" | "sync_calendar" | "invite_calendar" | "delete_item";
+            tool: "create_todo" | "update_todo" | "create_calendar" | "update_calendar" | "create_reminder" | "create_memory_candidate" | "draft_email" | "summarize" | "send_email" | "delete_item";
             /** Args */
             args: {
                 [key: string]: unknown;
@@ -662,10 +1566,41 @@ export interface components {
              */
             safety: boolean;
         };
-        /** SyncResolution */
-        SyncResolution: {
-            /** Use Local */
-            use_local: boolean;
+        /** SearchRequest */
+        SearchRequest: {
+            /** Account Ids */
+            account_ids: string[];
+            /** Query */
+            query: string;
+            /** Start */
+            start?: string | null;
+            /** End */
+            end?: string | null;
+            /** Sender */
+            sender?: string | null;
+            /**
+             * Mode
+             * @default hybrid
+             * @enum {string}
+             */
+            mode: "hybrid" | "keyword" | "vector" | "fusion";
+        };
+        /** SessionInput */
+        SessionInput: {
+            /** Account Ids */
+            account_ids: string[];
+            /** Thread Id */
+            thread_id?: string | null;
+        };
+        /** ThreadLink */
+        ThreadLink: {
+            /** Target Thread Id */
+            target_thread_id: string;
+        };
+        /** Toggle */
+        Toggle: {
+            /** Enabled */
+            enabled: boolean;
         };
         /** TraceSummary */
         TraceSummary: {
@@ -703,6 +1638,11 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** TurnInput */
+        TurnInput: {
+            /** Text */
+            text: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -716,6 +1656,11 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** Version */
+        Version: {
+            /** Version */
+            version: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -725,6 +1670,1257 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    followups_api_mail_followups_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_followup_api_mail_followups_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mail_approvals_api_mail_approvals_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accounts_api_mail_accounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    create_account_api_mail_accounts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailAccount"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_account_api_mail_accounts__ident__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailAccount"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connection_test_api_mail_accounts__ident__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_api_mail_accounts__ident__sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_api_mail_accounts__ident__enabled_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Toggle"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    account_status_api_mail_accounts__ident__status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    backlog_api_mail_accounts__ident__backlog__choice__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+                choice: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_mail_imports_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    imports_api_mail_imports_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_import_api_mail_imports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_action_api_mail_imports__ident___operation__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+                operation: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_status_api_mail_jobs__ident__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_job_api_mail_jobs__ident__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    messages_api_mail_messages_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    message_api_mail_messages__ident__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    message_state_api_mail_messages__ident__state_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageState"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    thread_api_mail_threads__ident__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_thread_api_mail_messages__ident__thread_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThreadLink"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_api_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reindex_api_mail_accounts__ident__reindex_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    drafts_api_mail_drafts_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_draft_api_mail_drafts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_draft_api_mail_drafts__ident__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_api_mail_drafts__ident__submit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Version"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sessions_api_assistant_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    session_api_assistant_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    turn_api_assistant_sessions__ident__turns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TurnInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_detail_api_assistant_sessions__ident__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    turn_detail_api_assistant_turns__ident__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_turn_api_assistant_turns__ident__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_filters_api_mail_accounts__ident__filters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    filters_api_mail_accounts__ident__filters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FilterRules"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    candidate_memory_api_mail_memory_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryCandidate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    migration_status_api_mail_migration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    resume_legacy_api_mail_legacy__ident__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_api_mail_demo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     session_api_session_get: {
         parameters: {
             query?: never;
@@ -1257,18 +3453,36 @@ export interface operations {
             };
         };
     };
-    resolve_sync_api_sync_resolution__id__post: {
+    get_filter_rules_api_filter_rules_get: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                id: string;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
             };
+        };
+    };
+    save_filter_rules_api_filter_rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SyncResolution"];
+                "application/json": components["schemas"]["FilterRulesInput"];
             };
         };
         responses: {
@@ -1292,7 +3506,71 @@ export interface operations {
             };
         };
     };
-    import_mail_api_mail_import_post: {
+    list_filter_box_api_filter_box_get: {
+        parameters: {
+            query?: {
+                status?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    release_filter_item_api_filter_box__filter_id__release_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    filter_stats_api_filter_stats_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1308,6 +3586,158 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    classify_message_api_api_filter_classify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassifyInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_labeled_samples_api_filter_labels_get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_labeled_sample_api_filter_labels_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabeledSampleInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evaluate_classifier_api_filter_evaluate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    shadow_classify_api_api_filter_shadow_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassifyInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

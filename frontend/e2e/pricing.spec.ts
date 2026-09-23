@@ -3,7 +3,7 @@ import {test,expect} from '@playwright/test';
 test('自定义计价：逐项覆盖、零价、持久化、恢复默认',async({page},testInfo)=>{
  await page.goto('/');
  await expect(page.getByText('离线演示模式')).toBeVisible();
- await page.locator('nav').getByRole('button',{name:'设置',exact:false}).click();
+ await page.locator('nav').getByRole('button',{name:'设置与计价',exact:true}).click();
  const panel=page.locator('.pricing-settings');
  await expect(panel.getByRole('heading',{name:'模型计价'})).toBeVisible();
  await panel.getByLabel('计价模型',{exact:true}).selectOption('deepseek-flash');
@@ -14,7 +14,7 @@ test('自定义计价：逐项覆盖、零价、持久化、恢复默认',async(
  await expect(panel.getByTestId('effective-cached_input')).toHaveText('生效：0 · 自定义');
  await expect(panel.getByTestId('effective-input')).toHaveText('生效：1 · 默认');
  await page.reload();
- await page.locator('nav').getByRole('button',{name:'设置',exact:false}).click();
+ await page.locator('nav').getByRole('button',{name:'设置与计价',exact:true}).click();
  await panel.getByLabel('计价模型',{exact:true}).selectOption('deepseek-flash');
  await expect(panel.getByLabel('缓存命中输入单价',{exact:true})).toHaveValue('0');
  await panel.getByLabel('缓存命中输入单价',{exact:true}).fill('');

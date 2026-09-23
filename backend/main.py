@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import secrets
 import mimetypes
 from pathlib import Path
@@ -16,6 +17,7 @@ from .runtime import ingest, approve
 from . import evolution
 from .tracing import RunDetail, detail as trace_detail
 from . import billing
+from .mail_api import router as mail_router
 
 SESSION = secrets.token_urlsafe(32)
 
@@ -24,7 +26,8 @@ async def lifespan(app):
     evolution.seed(store)
     yield
 
-app=FastAPI(title='知性 ZhiXing Personal Agent',version='1.0.0',lifespan=lifespan)
+app=FastAPI(title='知行 ZhiXing Personal Agent',version='1.0.0',lifespan=lifespan)
+app.include_router(mail_router)
 
 @app.middleware('http')
 async def guard(request:Request,call_next):
@@ -36,7 +39,9 @@ async def guard(request:Request,call_next):
             return Response('请刷新本地页面建立会话',401)
         if request.method not in {'GET','HEAD','OPTIONS'}:
             origin=request.headers.get('origin')
-            if origin and origin not in {'http://127.0.0.1:8000','http://localhost:8000','http://127.0.0.1:5173','http://localhost:5173'}:
+            allowed={'http://127.0.0.1:8000','http://localhost:8000','http://127.0.0.1:5173','http://localhost:5173'}
+            if os.environ.get('ZHIXING_E2E_ORIGIN'):allowed.add(os.environ['ZHIXING_E2E_ORIGIN'])
+            if origin and origin not in allowed:
                 return Response('Forbidden origin',403)
             if request.headers.get('x-zhixing-local')!='1':
                 return Response('Missing local request marker',403)
@@ -74,7 +79,7 @@ def message(body:NormalizedMessage):
         raise ValueError('外部渠道仅允许经适配器接入')
     return {'id':ingest(body.model_dump())}
 
-COLLECTIONS={'messages':'message','runs':'run','approvals':'approval','todos':'todo','calendar':'calendar','reminders':'reminder','audit':'audit','memory':'memory','trust':'trust','skills':'skill','parsers':'parser','evaluations':'evaluation','samples':'sample','notifications':'notification','pairings':'pairing','drafts':'draft','model-calls':'model_call','parser-shadow':'parser_shadow'}
+COLLECTIONS={'messages':'message','runs':'run','approvals':'approval','todos':'todo','calendar':'calendar','reminders':'reminder','audit':'audit','memory':'memory','trust':'trust','skills':'skill','parsers':'parser','evaluations':'evaluation','samples':'sample','notifications':'notification','drafts':'draft','model-calls':'model_call','parser-shadow':'parser_shadow'}
 
 @app.get('/api/stream')
 async def stream(request:Request):
@@ -92,24 +97,21 @@ async def stream(request:Request):
 
 @app.get('/api/settings')
 def get_settings():
-    from .channels import refresh_channel_settings
-    refresh_channel_settings(store)
     try:
         local=store.get('runtime-settings')['body']
     except KeyError:
         local={}
-    return {'mode':settings.mode,'model_name':settings.model_name,'model_base_url':settings.model_base_url,'model_configured':bool(settings.model_api_key and settings.model_name),'feishu_configured':bool(settings.feishu_app_id and settings.feishu_app_secret),'feishu_owner':settings.feishu_owner,'feishu_groups':settings.feishu_groups,'mail_configured':bool(settings.mail_address and settings.mail_password),'notifications':settings.notifications,'daily_call_limit':settings.model_daily_calls,'evolution_enabled':local.get('evolution_enabled',False),'data_dir':str(store.path.parent),'jev_mode':settings.jev_mode,'jev_configured':bool(settings.jev_api_key),'jev_model':settings.jev_model,'jev_daily_calls':settings.jev_daily_calls}
+    return {'mode':settings.mode,'model_name':settings.model_name,'model_base_url':settings.model_base_url,'model_configured':bool(settings.model_api_key and settings.model_name),'mail_configured':bool(settings.mail_address and settings.mail_password),'daily_call_limit':settings.model_daily_calls,'evolution_enabled':local.get('evolution_enabled',False),'data_dir':str(store.path.parent),'jev_mode':settings.jev_mode,'jev_configured':bool(settings.jev_api_key),'jev_model':settings.jev_model,'jev_daily_calls':settings.jev_daily_calls}
 
 class LocalSettings(BaseModel):
     evolution_enabled: bool = False
-    feishu_groups: list[str] = Field(default_factory=list)
 
 @app.post('/api/settings')
 def save_settings(body:LocalSettings):
     if body.evolution_enabled and not (settings.model_api_key and settings.model_name):
         raise ValueError('启用自动演进前请配置模型和调用预算')
     try:
-        store.get('runtime-settings');store.update('runtime-settings',body.model_dump())
+        current=store.get('runtime-settings')['body'];store.update('runtime-settings',{**current,**body.model_dump(exclude_unset=True)})
     except KeyError:
         store.insert('setting',body.model_dump(),id='runtime-settings')
     return {'saved':True}
@@ -165,12 +167,16 @@ def action(body:ItemInput):
     p=ActionPlan(summary='用户在控制台发起',actions=[PlannedAction(tool=body.tool,args=body.args,confidence=1)])
     args=body.args
     source,conversation='web','inbox'
+    target=None
     if args.get('id'):
         target=store.get(args['id'])
         if target['kind'] not in {'todo','calendar','reminder','draft'}:
             raise ValueError('目标不允许修改')
         source,conversation=target['scope'].split(':',1)
-    return {'id':ingest({'message_id':uid(),'source':source,'conversation_id':conversation,'text':'控制台操作：'+body.tool},explicit_plan=p.model_dump())}
+    metadata={}
+    if target is not None and target['scope'].startswith('web:mail:'):
+        metadata['mail_accounts']=[target['scope'][len('web:mail:'):]]
+    return {'id':ingest({'message_id':uid(),'source':source,'conversation_id':conversation,'text':'控制台操作：'+body.tool,'metadata':metadata},explicit_plan=p.model_dump())}
 
 class CandidateInput(BaseModel):
     name:str=Field(min_length=1,max_length=80)
@@ -218,15 +224,8 @@ def memory(body:MemoryInput):
 @app.post('/api/review/{id}/{decision}')
 def review(id:str,decision:str):
     row=store.get(id)
-    if row['kind'] not in {'memory','trust','pairing'} or decision not in {'publish','reject','suspend'}:
+    if row['kind'] not in {'memory','trust'} or decision not in {'publish','reject','suspend'}:
         raise ValueError('无效审核')
-    if row['kind']=='pairing':
-        if decision=='publish':
-            try:
-                store.get('feishu-binding');store.update('feishu-binding',{'open_id':row['body']['open_id']})
-            except KeyError:
-                store.insert('setting',{'open_id':row['body']['open_id']},id='feishu-binding')
-            settings.feishu_owner=row['body']['open_id']
     store.update(id,status={'publish':'published','reject':'rejected','suspend':'suspended'}[decision])
     return {'ok':True}
 
@@ -277,27 +276,96 @@ def reconcile(id:str,body:Reconciliation):
         return {'retry_run_id':ingest(m,explicit_plan={'summary':'人工核对后重新申请','actions':[fresh]})}
     return {'ok':True}
 
-class SyncResolution(BaseModel):
-    use_local:bool
+# ========== 过滤箱与规则引擎 ==========
 
-@app.post('/api/sync-resolution/{id}')
-def resolve_sync(id:str,body:SyncResolution):
-    from .channels import Feishu
-    row=store.get(id);b=row['body']
-    if row['kind'] not in {'todo','calendar'} or b.get('sync_status') not in {'conflict','unknown'}:
-        raise ValueError('没有可处理的同步冲突')
-    if not body.use_local:
-        raise ValueError('首版不反向覆盖本地数据；请先手工修改本地内容，再确认重试同步')
-    endpoint='/task/v2/tasks/'+b['external_id'] if row['kind']=='todo' else '/calendar/v4/calendars/'+settings.feishu_calendar_id+'/events/'+b['external_id']
-    snapshot=Feishu().request('GET',endpoint).get('task' if row['kind']=='todo' else 'event',{})
-    store.update(id,{**b,'external_snapshot':snapshot,'sync_status':'local'})
-    return action(ItemInput(tool='sync_todo' if row['kind']=='todo' else 'sync_calendar',args={'id':id}))
+class FilterRulesInput(BaseModel):
+    whitelist_senders: list[str] = Field(default_factory=list)
+    blacklist_senders: list[str] = Field(default_factory=list)
+    blacklist_domains: list[str] = Field(default_factory=list)
+    subject_keywords: list[str] = Field(default_factory=list)
+    content_keywords: list[str] = Field(default_factory=list)
+    auto_filter_categories: list[str] = Field(default_factory=lambda: ['ad','subscription'])
+    enabled: bool = True
 
-@app.post('/api/mail/import')
-def import_mail():
-    from .channels import poll_mail
-    poll_mail(store,ingest,historical=True)
-    return {'ok':True}
+@app.get('/api/filter/rules')
+def get_filter_rules():
+    from . import filtering
+    return filtering.get_rules(store)
+
+@app.post('/api/filter/rules')
+def save_filter_rules(body: FilterRulesInput):
+    from . import filtering
+    rules = filtering.save_rules(store, body.model_dump())
+    return {'saved': True, 'version': rules['version']}
+
+@app.get('/api/filter/box')
+def list_filter_box(status: str = 'filtered', limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
+    from . import filtering
+    items = filtering.list_filter_box(store, status=status, limit=limit, offset=offset)
+    return {'items': [{'id':r['id'],'status':r['status'],'reason':r['body'].get('reason'),'category':r['body'].get('category'),'category_label':r['body'].get('category_label'),'sender':r['body']['message'].get('sender_id'),'text_preview':r['body']['message'].get('text','')[:200],'filtered_at':r['body'].get('filtered_at'),'evidence':r['body'].get('evidence',[])} for r in items], 'limit': limit, 'offset': offset}
+
+@app.post('/api/filter/box/{filter_id}/release')
+def release_filter_item(filter_id: str):
+    from . import filtering
+    result = filtering.release_from_filter_box(store, filter_id, ingest_func=ingest)
+    return result
+
+@app.get('/api/filter/stats')
+def filter_stats():
+    from . import filtering
+    return filtering.get_filter_stats(store)
+
+# ========== 模型辅助分类与标注集 ==========
+
+class ClassifyInput(BaseModel):
+    text: str = Field(min_length=1, max_length=30000)
+    sender_id: str = ''
+    source: str = 'manual'
+
+@app.post('/api/filter/classify')
+def classify_message_api(body: ClassifyInput):
+    from . import filtering
+    message = {'text': body.text, 'sender_id': body.sender_id, 'source': body.source}
+    rule_cat, rule_conf, rule_ev = filtering.classify_message(message)
+    model_cat, model_conf, model_reason, raw = filtering.classify_with_model(message)
+    return {
+        'rule': {'category': rule_cat, 'label': filtering.CATEGORY_LABELS.get(rule_cat), 'confidence': rule_conf, 'evidence': rule_ev},
+        'model': {'category': model_cat, 'label': filtering.CATEGORY_LABELS.get(model_cat) if model_cat else None, 'confidence': model_conf, 'reason': model_reason},
+        'agreement': (rule_cat == model_cat) if model_cat else None,
+    }
+
+class LabeledSampleInput(BaseModel):
+    text: str = Field(min_length=1, max_length=30000)
+    sender_id: str = ''
+    expected_category: str
+    source: str = 'manual'
+    notes: str = ''
+
+@app.post('/api/filter/labels')
+def add_labeled_sample(body: LabeledSampleInput):
+    from . import filtering
+    if body.expected_category not in filtering.CATEGORY_LABELS:
+        raise ValueError(f'无效分类，可选: {list(filtering.CATEGORY_LABELS.keys())}')
+    message = {'text': body.text, 'sender_id': body.sender_id, 'source': 'manual'}
+    sample_id = filtering.add_labeled_sample(store, message, body.expected_category, source=body.source, notes=body.notes)
+    return {'id': sample_id}
+
+@app.get('/api/filter/labels')
+def list_labeled_samples(category: str | None = None, limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0)):
+    from . import filtering
+    samples = filtering.list_labeled_samples(store, category=category, limit=limit, offset=offset)
+    return {'items': [{'id':s['id'],'expected_category':s['body'].get('expected_category'),'expected_label':s['body'].get('expected_label'),'text_preview':s['body'].get('text_preview','')[:200],'source':s['body'].get('source'),'created_at':s['body'].get('created_at')} for s in samples], 'limit': limit, 'offset': offset}
+
+@app.get('/api/filter/evaluate')
+def evaluate_classifier():
+    from . import filtering
+    return filtering.evaluate_classifier(store)
+
+@app.post('/api/filter/shadow')
+def shadow_classify_api(body: ClassifyInput):
+    from . import filtering
+    message = {'text': body.text, 'sender_id': body.sender_id, 'source': body.source, 'message_id': uid()}
+    return filtering.shadow_classify(store, message)
 
 @app.get('/api/pricing',response_model=list[billing.PricingProfile])
 def pricing():

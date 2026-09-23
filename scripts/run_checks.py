@@ -27,8 +27,17 @@ def main():
                 'python': sys.executable, 'steps': [],
                 'storage_paths': {key: os.environ.get(key) for key in ['CONDA_PKGS_DIRS', 'PIP_CACHE_DIR', 'npm_config_cache', 'PLAYWRIGHT_BROWSERS_PATH', 'TEMP', 'TMP']}}
     write_json(archive / 'manifest.json', manifest)
+    cache=ROOT.parent/'.cache';temporary=ROOT/'.tmp';temporary.mkdir(parents=True,exist_ok=True)
+    for folder in ['conda','pip','npm','pnpm','playwright','huggingface','torch','xdg']:(cache/folder).mkdir(parents=True,exist_ok=True)
+    test_port=str(18000+(os.getpid()%10000))
     env = dict(os.environ, ZHIXING_MODE='demo', ZHIXING_DATA_DIR=str(archive / 'backend-data'),
-               ZHIXING_TEST_OUTPUT=str(archive / 'browser'))
+               ZHIXING_TEST_OUTPUT=str(archive / 'browser'),ZHIXING_E2E_BASE_URL='http://127.0.0.1:'+test_port,
+               CONDA_PKGS_DIRS=str(cache/'conda'),PIP_CACHE_DIR=str(cache/'pip'),npm_config_cache=str(cache/'npm'),
+               PNPM_HOME=str(cache/'pnpm'),PLAYWRIGHT_BROWSERS_PATH=str(cache/'playwright'),
+               HF_HOME=str(cache/'huggingface'),TORCH_HOME=str(cache/'torch'),XDG_CACHE_HOME=str(cache/'xdg'),
+               TEMP=str(temporary),TMP=str(temporary),PYTHONUTF8='1')
+    manifest['storage_paths']={key:env.get(key) for key in ['CONDA_PKGS_DIRS','PIP_CACHE_DIR','npm_config_cache','PLAYWRIGHT_BROWSERS_PATH','TEMP','TMP']}
+    write_json(archive/'manifest.json',manifest)
 
     def run(name, command, cwd=ROOT):
         entry = {'name': name, 'command': command, 'cwd': str(cwd), 'started_at': datetime.now(timezone.utc).isoformat()}
@@ -53,7 +62,7 @@ def main():
     run('dependencies', [sys.executable, '-m', 'pip', 'freeze'])
     run('node-version', ['node', '--version'])
     # Snapshot tracked source only: never read .env or user runtime databases.
-    tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode('utf-8').split('\0')
+    tracked = subprocess.check_output(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], cwd=ROOT).decode('utf-8').split('\0')
     with zipfile.ZipFile(archive / 'source.zip', 'w', zipfile.ZIP_DEFLATED) as bundle:
         for relative in tracked:
             source = ROOT / relative

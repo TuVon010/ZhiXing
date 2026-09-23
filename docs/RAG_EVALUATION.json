@@ -1,0 +1,982 @@
+{
+  "keyword": {
+    "metrics": {
+      "overall": {
+        "total": 20,
+        "errors": 0,
+        "avg_recall": 0.95,
+        "avg_precision": 0.411,
+        "avg_latency_ms": 2.8,
+        "recall_at_1": 0.95,
+        "degraded_count": 20
+      },
+      "by_category": {
+        "exact": {
+          "count": 3,
+          "avg_recall": 1.0,
+          "avg_precision": 0.556,
+          "avg_latency_ms": 5.5
+        },
+        "semantic": {
+          "count": 3,
+          "avg_recall": 0.667,
+          "avg_precision": 0.444,
+          "avg_latency_ms": 1.7
+        },
+        "multi": {
+          "count": 2,
+          "avg_recall": 1.0,
+          "avg_precision": 0.367,
+          "avg_latency_ms": 2.2
+        },
+        "negation": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.286,
+          "avg_latency_ms": 2.0
+        },
+        "temporal": {
+          "count": 2,
+          "avg_recall": 1.0,
+          "avg_precision": 0.155,
+          "avg_latency_ms": 2.5
+        },
+        "sender": {
+          "count": 2,
+          "avg_recall": 1.0,
+          "avg_precision": 0.143,
+          "avg_latency_ms": 2.8
+        },
+        "attachment": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.143,
+          "avg_latency_ms": 3.0
+        },
+        "todo": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.4,
+          "avg_latency_ms": 2.1
+        },
+        "vague": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.286,
+          "avg_latency_ms": 3.0
+        },
+        "technical": {
+          "count": 2,
+          "avg_recall": 1.0,
+          "avg_precision": 0.75,
+          "avg_latency_ms": 2.2
+        },
+        "thread": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.286,
+          "avg_latency_ms": 2.0
+        },
+        "numeric": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 1.0,
+          "avg_latency_ms": 3.0
+        }
+      }
+    },
+    "details": [
+      {
+        "query": "实验报告截止时间",
+        "category": "exact",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 3,
+        "recall": 1.0,
+        "precision": 0.5,
+        "latency_ms": 12.0,
+        "hit_senders": [
+          "colleague@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "导师要求修改的内容",
+        "category": "exact",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.16666666666666666,
+        "latency_ms": 3.5,
+        "hit_senders": [
+          "noreply@bank.com",
+          "hr@example.com",
+          "lab@example.com",
+          "colleague@example.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "仪器参数设置",
+        "category": "exact",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 1,
+        "recall": 1.0,
+        "precision": 1.0,
+        "latency_ms": 1.0,
+        "hit_senders": [
+          "lab@example.com"
+        ],
+        "expected_senders": [
+          "lab@example.com"
+        ]
+      },
+      {
+        "query": "什么时候交作业",
+        "category": "semantic",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 0,
+        "recall": 0.0,
+        "precision": 0,
+        "latency_ms": 2.0,
+        "hit_senders": [],
+        "expected_senders": [
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "项目进度安排",
+        "category": "semantic",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 5,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "latency_ms": 1.0,
+        "hit_senders": [
+          "boss@example.com",
+          "teacher@example.com",
+          "lab@example.com"
+        ],
+        "expected_senders": [
+          "boss@example.com"
+        ]
+      },
+      {
+        "query": "报销流程",
+        "category": "semantic",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 1,
+        "recall": 1.0,
+        "precision": 1.0,
+        "latency_ms": 2.0,
+        "hit_senders": [
+          "hr@example.com"
+        ],
+        "expected_senders": [
+          "hr@example.com"
+        ]
+      },
+      {
+        "query": "实验和会议都有哪些截止日期",
+        "category": "multi",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.4,
+        "latency_ms": 2.5,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "lab@example.com",
+          "colleague@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "boss@example.com",
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "需要我回复确认的事项",
+        "category": "multi",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "latency_ms": 2.0,
+        "hit_senders": [
+          "noreply@bank.com",
+          "hr@example.com",
+          "lab@example.com",
+          "teacher@example.com",
+          "colleague@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "colleague@example.com",
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "不是广告的重要通知",
+        "category": "negation",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2857142857142857,
+        "latency_ms": 2.0,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "lab@example.com",
+          "noreply@bank.com",
+          "teacher@example.com",
+          "colleague@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "boss@example.com",
+          "hr@example.com"
+        ]
+      },
+      {
+        "query": "下周的安排",
+        "category": "temporal",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.16666666666666666,
+        "latency_ms": 3.0,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "colleague@example.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "boss@example.com"
+        ]
+      },
+      {
+        "query": "上个月的报销",
+        "category": "temporal",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.14285714285714285,
+        "latency_ms": 2.0,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "hr@example.com",
+          "lab@example.com",
+          "colleague@example.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "hr@example.com"
+        ]
+      },
+      {
+        "query": "导师发来的所有要求",
+        "category": "sender",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.14285714285714285,
+        "latency_ms": 2.5,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "hr@example.com",
+          "colleague@example.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "同事的协作请求",
+        "category": "sender",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.14285714285714285,
+        "latency_ms": 3.0,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "hr@example.com",
+          "teacher@example.com",
+          "colleague@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "colleague@example.com"
+        ]
+      },
+      {
+        "query": "PDF 文档里的内容",
+        "category": "attachment",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.14285714285714285,
+        "latency_ms": 3.0,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "hr@example.com",
+          "lab@example.com",
+          "teacher@example.com",
+          "colleague@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "lab@example.com"
+        ]
+      },
+      {
+        "query": "谁承诺了什么时间完成",
+        "category": "todo",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.4,
+        "latency_ms": 2.1,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "lab@example.com",
+          "teacher@example.com",
+          "colleague@example.com"
+        ],
+        "expected_senders": [
+          "boss@example.com",
+          "colleague@example.com"
+        ]
+      },
+      {
+        "query": "重要的事",
+        "category": "vague",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2857142857142857,
+        "latency_ms": 3.0,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "hr@example.com",
+          "colleague@example.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "boss@example.com",
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "GPU 显存不足怎么解决",
+        "category": "technical",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 2,
+        "recall": 1.0,
+        "precision": 1.0,
+        "latency_ms": 3.0,
+        "hit_senders": [
+          "lab@example.com"
+        ],
+        "expected_senders": [
+          "lab@example.com"
+        ]
+      },
+      {
+        "query": "数据预处理步骤",
+        "category": "technical",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 3,
+        "recall": 1.0,
+        "precision": 0.5,
+        "latency_ms": 1.5,
+        "hit_senders": [
+          "colleague@example.com",
+          "lab@example.com"
+        ],
+        "expected_senders": [
+          "lab@example.com"
+        ]
+      },
+      {
+        "query": "关于论文修改的所有讨论",
+        "category": "thread",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2857142857142857,
+        "latency_ms": 2.0,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "hr@example.com",
+          "teacher@example.com",
+          "colleague@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "colleague@example.com",
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "经费预算金额",
+        "category": "numeric",
+        "mode": "keyword",
+        "degraded": true,
+        "evidence_count": 2,
+        "recall": 1.0,
+        "precision": 1.0,
+        "latency_ms": 3.0,
+        "hit_senders": [
+          "boss@example.com"
+        ],
+        "expected_senders": [
+          "boss@example.com"
+        ]
+      }
+    ]
+  },
+  "hybrid": {
+    "metrics": {
+      "overall": {
+        "total": 20,
+        "errors": 0,
+        "avg_recall": 0.95,
+        "avg_precision": 0.235,
+        "avg_latency_ms": 409.0,
+        "recall_at_1": 0.9,
+        "degraded_count": 0
+      },
+      "by_category": {
+        "exact": {
+          "count": 3,
+          "avg_recall": 1.0,
+          "avg_precision": 0.189,
+          "avg_latency_ms": 423.5
+        },
+        "semantic": {
+          "count": 3,
+          "avg_recall": 1.0,
+          "avg_precision": 0.217,
+          "avg_latency_ms": 396.7
+        },
+        "multi": {
+          "count": 2,
+          "avg_recall": 0.75,
+          "avg_precision": 0.283,
+          "avg_latency_ms": 427.5
+        },
+        "negation": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.333,
+          "avg_latency_ms": 390.8
+        },
+        "temporal": {
+          "count": 2,
+          "avg_recall": 1.0,
+          "avg_precision": 0.2,
+          "avg_latency_ms": 414.8
+        },
+        "sender": {
+          "count": 2,
+          "avg_recall": 1.0,
+          "avg_precision": 0.225,
+          "avg_latency_ms": 405.9
+        },
+        "attachment": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.167,
+          "avg_latency_ms": 425.7
+        },
+        "todo": {
+          "count": 1,
+          "avg_recall": 0.5,
+          "avg_precision": 0.2,
+          "avg_latency_ms": 448.5
+        },
+        "vague": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.4,
+          "avg_latency_ms": 363.9
+        },
+        "technical": {
+          "count": 2,
+          "avg_recall": 1.0,
+          "avg_precision": 0.183,
+          "avg_latency_ms": 402.4
+        },
+        "thread": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.4,
+          "avg_latency_ms": 403.5
+        },
+        "numeric": {
+          "count": 1,
+          "avg_recall": 1.0,
+          "avg_precision": 0.2,
+          "avg_latency_ms": 386.8
+        }
+      }
+    },
+    "details": [
+      {
+        "query": "实验报告截止时间",
+        "category": "exact",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2,
+        "latency_ms": 449.5,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "导师要求修改的内容",
+        "category": "exact",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2,
+        "latency_ms": 412.7,
+        "hit_senders": [
+          "hr@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "colleague@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "仪器参数设置",
+        "category": "exact",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.16666666666666666,
+        "latency_ms": 408.2,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "colleague@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "lab@example.com"
+        ]
+      },
+      {
+        "query": "什么时候交作业",
+        "category": "semantic",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2,
+        "latency_ms": 390.4,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "lab@example.com",
+          "noreply@bank.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "项目进度安排",
+        "category": "semantic",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.25,
+        "latency_ms": 433.8,
+        "hit_senders": [
+          "boss@example.com",
+          "teacher@example.com",
+          "hr@example.com",
+          "noreply@bank.com"
+        ],
+        "expected_senders": [
+          "boss@example.com"
+        ]
+      },
+      {
+        "query": "报销流程",
+        "category": "semantic",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2,
+        "latency_ms": 366.0,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "hr@example.com"
+        ]
+      },
+      {
+        "query": "实验和会议都有哪些截止日期",
+        "category": "multi",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.4,
+        "latency_ms": 426.5,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "boss@example.com",
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "需要我回复确认的事项",
+        "category": "multi",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 0.5,
+        "precision": 0.16666666666666666,
+        "latency_ms": 428.5,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "colleague@example.com",
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "不是广告的重要通知",
+        "category": "negation",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.3333333333333333,
+        "latency_ms": 390.8,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "teacher@example.com",
+          "colleague@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "boss@example.com",
+          "hr@example.com"
+        ]
+      },
+      {
+        "query": "下周的安排",
+        "category": "temporal",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2,
+        "latency_ms": 417.5,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "lab@example.com",
+          "colleague@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "boss@example.com"
+        ]
+      },
+      {
+        "query": "上个月的报销",
+        "category": "temporal",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2,
+        "latency_ms": 412.1,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "hr@example.com"
+        ]
+      },
+      {
+        "query": "导师发来的所有要求",
+        "category": "sender",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.25,
+        "latency_ms": 411.3,
+        "hit_senders": [
+          "hr@example.com",
+          "teacher@example.com",
+          "noreply@bank.com",
+          "boss@example.com"
+        ],
+        "expected_senders": [
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "同事的协作请求",
+        "category": "sender",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2,
+        "latency_ms": 400.4,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "hr@example.com",
+          "teacher@example.com",
+          "colleague@example.com"
+        ],
+        "expected_senders": [
+          "colleague@example.com"
+        ]
+      },
+      {
+        "query": "PDF 文档里的内容",
+        "category": "attachment",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.16666666666666666,
+        "latency_ms": 425.7,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "hr@example.com",
+          "colleague@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "lab@example.com"
+        ]
+      },
+      {
+        "query": "谁承诺了什么时间完成",
+        "category": "todo",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 0.5,
+        "precision": 0.2,
+        "latency_ms": 448.5,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "boss@example.com",
+          "colleague@example.com"
+        ]
+      },
+      {
+        "query": "重要的事",
+        "category": "vague",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.4,
+        "latency_ms": 363.9,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "lab@example.com",
+          "noreply@bank.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "boss@example.com",
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "GPU 显存不足怎么解决",
+        "category": "technical",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.16666666666666666,
+        "latency_ms": 394.7,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "lab@example.com",
+          "noreply@bank.com",
+          "teacher@example.com",
+          "colleague@example.com"
+        ],
+        "expected_senders": [
+          "lab@example.com"
+        ]
+      },
+      {
+        "query": "数据预处理步骤",
+        "category": "technical",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2,
+        "latency_ms": 410.0,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "lab@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "lab@example.com"
+        ]
+      },
+      {
+        "query": "关于论文修改的所有讨论",
+        "category": "thread",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.4,
+        "latency_ms": 403.5,
+        "hit_senders": [
+          "boss@example.com",
+          "noreply@bank.com",
+          "hr@example.com",
+          "colleague@example.com",
+          "teacher@example.com"
+        ],
+        "expected_senders": [
+          "colleague@example.com",
+          "teacher@example.com"
+        ]
+      },
+      {
+        "query": "经费预算金额",
+        "category": "numeric",
+        "mode": "hybrid",
+        "degraded": false,
+        "evidence_count": 8,
+        "recall": 1.0,
+        "precision": 0.2,
+        "latency_ms": 386.8,
+        "hit_senders": [
+          "boss@example.com",
+          "hr@example.com",
+          "noreply@bank.com",
+          "teacher@example.com",
+          "service@shop.com"
+        ],
+        "expected_senders": [
+          "boss@example.com"
+        ]
+      }
+    ]
+  }
+}

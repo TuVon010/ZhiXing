@@ -1,4 +1,5 @@
 import sqlite3
+import shutil
 from datetime import datetime
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
@@ -9,4 +10,6 @@ for name in ['zhixing.db','checkpoints.db']:
     if source.exists():
         with sqlite3.connect(source) as src,sqlite3.connect(target/name) as dst:
             src.backup(dst)
+vectors=root/'data'/'qdrant'
+if vectors.exists():shutil.copytree(vectors,target/'qdrant')
 print(target)

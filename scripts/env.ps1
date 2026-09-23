@@ -16,3 +16,8 @@ foreach ($ZhiXingDir in @($env:CONDA_PKGS_DIRS,$env:PIP_CACHE_DIR,$env:npm_confi
     New-Item -ItemType Directory -Force -Path $ZhiXingDir | Out-Null
 }
 Set-Location $ZhiXingRoot
+
+$env:HF_HOME = Join-Path $ZhiXingCache 'huggingface'
+$env:TORCH_HOME = Join-Path $ZhiXingCache 'torch'
+$env:XDG_CACHE_HOME = Join-Path $ZhiXingCache 'xdg'
+$env:HF_HUB_DISABLE_XET = '1'

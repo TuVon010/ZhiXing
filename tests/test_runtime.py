@@ -11,7 +11,7 @@ def input_message(text='待办：整理实验',id='m1'):
     return {'message_id':id,'text':text,'source':'web','conversation_id':'inbox','timestamp':'2026-09-21T10:00:00+08:00'}
 
 def test_dedupe_and_restart_approval(db):
-    m=input_message('明天下午三点组会，今晚整理实验结果发给导师')
+    m=input_message('明天下午三点组会，今晚整理实验结果；发送邮件给 teacher@example.com')
     rid=ingest(m,db)
     assert ingest(m,db)==rid
     assert work_once(db)
@@ -25,8 +25,8 @@ def test_dedupe_and_restart_approval(db):
     assert work_once(db)
     assert len(db.list('calendar'))==1
     b=db.list('approval',status='pending')[0]
-    assert b['body']['action']['tool']=='send_feishu'
-    approve(b['id'],{'decision':'edit','args':{'recipient':'ou_teacher','content':'收到，今晚发给您。'}},db)
+    assert b['body']['action']['tool']=='send_email'
+    approve(b['id'],{'decision':'edit','args':{'recipient':'teacher@example.com','subject':'回复','content':'收到，今晚发给您。'}},db)
     with pytest.raises(ValueError):
         approve(b['id'],{'decision':'approve','version':1},db)
     approve(b['id'],{'decision':'approve','version':2},db)
@@ -74,7 +74,7 @@ def test_trust_requires_success_and_manual_publish(db):
     assert decide(db,a)=='ALLOW'
 
 def test_cross_scope_write_denied(db):
-    item=db.insert('todo',{'title':'private'},scope='feishu:private')
+    item=db.insert('todo',{'title':'private'},scope='web:mail:private-account')
     with pytest.raises(ValueError):
         execute(db,{'id':'x','tool':'update_todo','args':{'id':item,'status':'completed'}},'run','email:other')
 
@@ -94,7 +94,7 @@ def test_same_session_concurrency(db):
     assert db.get(second)['status']=='queued'
 
 def test_multi_action_result_reference(db):
-    p={'summary':'create then sync','actions':[{'id':'a','tool':'create_todo','args':{'title':'task'}},{'id':'b','tool':'sync_todo','args':{'id':'@a'},'depends_on':['a']}]}
+    p={'summary':'create then update','actions':[{'id':'a','tool':'create_todo','args':{'title':'task'}},{'id':'b','tool':'update_todo','args':{'id':'@a','title':'updated'},'depends_on':['a']}]}
     rid=ingest(input_message(),db,p)
     work_once(db)
     a=db.list('approval')[0]
