@@ -220,6 +220,10 @@ class PerceptionResult(BaseModel):
     # 优先级
     priority: Literal['high', 'normal', 'low'] = 'normal'
 
+    # 可解释理由：为什么给出这个分类/优先级/判断
+    # 比如 ["发件人是你的经理", "包含明确截止日期", "要求你采取行动"]
+    reasons: list[str] = Field(default_factory=list)
+
     # 模型置信度（整体判断的可信度）
     confidence: float = Field(default=0.5, ge=0, le=1)
 

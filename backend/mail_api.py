@@ -409,5 +409,65 @@ def dismiss_perception_todo(ident:str,db=Depends(database)):
     return db.get(ident)
 
 
+@router.get('/mail/perception/calendars')
+def list_perception_calendars(account_id:str='',db=Depends(database)):
+    """列出感知生成的日程候选（等待用户确认），包含冲突检测信息。"""
+    from .mail_schedule import list_calendar_candidates
+    if not account_id:
+        accounts = rows(db,'mail_account',limit=100)
+        result = []
+        for a in accounts:
+            result.extend(list_calendar_candidates(db, a['id']))
+        return result
+    return list_calendar_candidates(db, account_id)
+
+
+@router.post('/mail/perception/calendars/{ident}/confirm')
+def confirm_perception_calendar(ident:str,db=Depends(database)):
+    """确认感知生成的日程候选，将其从 candidate 变为 active。确认时再次检测冲突。"""
+    from .mail_schedule import confirm_calendar
+    row = require(db,ident,'calendar')
+    return confirm_calendar(db, ident, row['scope'])
+
+
+@router.post('/mail/perception/calendars/{ident}/dismiss')
+def dismiss_perception_calendar(ident:str,db=Depends(database)):
+    """忽略感知生成的日程候选。"""
+    row = require(db,ident,'calendar')
+    if row['status'] != 'candidate':
+        raise ValueError('该日程不是候选状态')
+    db.update(ident, row['body'], 'dismissed')
+    return db.get(ident)
+
+
+@router.get('/mail/digest')
+def get_digest(account_id:str='', date:str='', db=Depends(database)):
+    """获取每日邮件摘要。date 格式 YYYY-MM-DD，默认昨天。"""
+    from .mail_digest import get_digest, get_latest_digest
+    if account_id:
+        return get_digest(db, account_id, date or None) or {'message': '该日期暂无摘要'}
+    # 没有指定账号时，返回所有账号的最新摘要
+    accounts = rows(db,'mail_account',limit=100)
+    result = []
+    for a in accounts:
+        d = get_latest_digest(db, a['id'])
+        if d:
+            result.append(d)
+    return result
+
+
+@router.post('/mail/digest/generate')
+def generate_digest_now(account_id:str='', date:str='', db=Depends(database)):
+    """立即生成指定日期的邮件摘要（手动触发）。"""
+    from .mail_digest import generate_and_save_digest
+    if not account_id:
+        accounts = rows(db,'mail_account',limit=100)
+        result = []
+        for a in accounts:
+            result.append(generate_and_save_digest(db, a['id'], date or None))
+        return result
+    return generate_and_save_digest(db, account_id, date or None)
+
+
 from .mail_observability import router as observability_router
 router.include_router(observability_router)

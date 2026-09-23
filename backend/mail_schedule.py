@@ -1,0 +1,223 @@
+"""
+日程管理模块（Schedule Manager）。
+
+提供日程冲突检测和幂等创建功能。
+- 冲突检测：创建日程前检查该时间段是否已有日程
+- 幂等创建：同一封邮件的同一事件不会重复创建
+
+设计原则：
+1. 只检测，不自动解决冲突——把冲突信息告诉用户，由用户决定
+2. 幂等键 = message_id + event_title + start_time，确保重复收取不重复创建
+3. 候选状态为 'candidate'，需要用户确认后才变为 'active'
+"""
+import hashlib
+from datetime import datetime, timedelta
+from sqlalchemy import text
+from .db import now, uid
+from .mail_store import require, initialize
+
+
+def _parse_iso(time_str: str) -> datetime | None:
+    """安全解析 ISO 8601 时间字符串，失败返回 None。"""
+    if not time_str:
+        return None
+    try:
+        return datetime.fromisoformat(time_str)
+    except (ValueError, TypeError):
+        return None
+
+
+def detect_conflicts(db, account_id: str, start: str, end: str | None = None,
+                     exclude_id: str | None = None) -> list[dict]:
+    """
+    检测指定时间段内的日程冲突。
+
+    Args:
+        db: 数据库连接
+        account_id: 账号 ID
+        start: 开始时间（ISO 8601）
+        end: 结束时间（ISO 8601），为 None 时默认开始时间后 1 小时
+        exclude_id: 排除的日程 ID（用于更新时排除自身）
+
+    Returns:
+        冲突的日程列表，每个包含 id、title、start、end
+    """
+    initialize(db)
+    start_dt = _parse_iso(start)
+    if not start_dt:
+        return []
+
+    # 默认时长 1 小时
+    end_dt = _parse_iso(end) if end else start_dt + timedelta(hours=1)
+    if not end_dt or end_dt <= start_dt:
+        end_dt = start_dt + timedelta(hours=1)
+
+    with db.engine.connect() as c:
+        rows = c.execute(
+            text("""
+                SELECT id, body FROM records
+                WHERE kind='calendar'
+                  AND scope=:account_id
+                  AND status IN ('active', 'candidate')
+                  AND json_extract(body, '$.start') IS NOT NULL
+            """),
+            {'account_id': account_id}
+        ).mappings().all()
+
+    conflicts = []
+    for row in rows:
+        if exclude_id and row['id'] == exclude_id:
+            continue
+        body = row['body'] if isinstance(row['body'], dict) else __import__('json').loads(row['body'])
+        event_start = _parse_iso(body.get('start'))
+        event_end = _parse_iso(body.get('end'))
+        if not event_start:
+            continue
+        if not event_end:
+            event_end = event_start + timedelta(hours=1)
+
+        # 时间段重叠检测：A.start < B.end AND B.start < A.end
+        if start_dt < event_end and event_start < end_dt:
+            conflicts.append({
+                'id': row['id'],
+                'title': body.get('title', '（无标题）'),
+                'start': body.get('start', ''),
+                'end': body.get('end', ''),
+            })
+
+    return conflicts
+
+
+def _idempotency_key(message_id: str, title: str, start: str) -> str:
+    """
+    生成幂等键。
+
+    同一封邮件、同一标题、同一开始时间的事件，生成相同的键，
+    确保重复收取邮件时不会重复创建日程。
+    """
+    raw = f"{message_id}:{title.strip().lower()}:{start}"
+    return 'perception-cal:' + hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def create_calendar_candidate(db, account_id: str, message_id: str,
+                              event: dict) -> dict:
+    """
+    从感知结果创建日程候选。
+
+    流程：
+    1. 幂等检查：如果已存在相同键的日程，直接返回
+    2. 冲突检测：检查该时间段是否已有日程
+    3. 创建候选（状态为 candidate，需要用户确认）
+
+    Args:
+        db: 数据库连接
+        account_id: 账号 ID
+        message_id: 来源邮件 ID
+        event: 事件信息，包含 title、start、end、location、source_quote
+
+    Returns:
+        创建结果，包含 id、status、conflicts（如果有冲突）
+    """
+    initialize(db)
+    title = (event.get('title') or '未命名事件').strip()[:200]
+    start = event.get('start', '')
+    end = event.get('end') or None
+    location = (event.get('location') or '').strip()[:200]
+    source_quote = (event.get('source_quote') or '').strip()[:500]
+
+    if not start:
+        return {'status': 'skipped', 'reason': '缺少开始时间'}
+
+    # 1. 幂等检查
+    idem_key = _idempotency_key(message_id, title, start)
+    try:
+        existing = require(db, idem_key, 'calendar')
+        return {
+            'id': idem_key,
+            'status': 'duplicate',
+            'message': '该日程已存在（幂等键命中）',
+        }
+    except KeyError:
+        pass
+
+    # 2. 冲突检测
+    conflicts = detect_conflicts(db, account_id, start, end)
+
+    # 3. 创建候选
+    calendar_body = {
+        'title': title,
+        'start': start,
+        'end': end,
+        'location': location,
+        'source': 'perception',
+        'source_message': message_id,
+        'source_quote': source_quote,
+        'has_conflict': len(conflicts) > 0,
+        'conflicts': conflicts,
+        'created_at': now(),
+    }
+
+    db.insert('calendar', calendar_body, id=idem_key, scope=account_id, status='candidate')
+
+    result = {
+        'id': idem_key,
+        'status': 'candidate',
+        'title': title,
+        'start': start,
+        'end': end,
+    }
+    if conflicts:
+        result['conflicts'] = conflicts
+        result['warning'] = f'检测到 {len(conflicts)} 个时间冲突，请确认后再加入日程'
+
+    return result
+
+
+def list_calendar_candidates(db, account_id: str) -> list[dict]:
+    """列出感知生成的日程候选（等待用户确认）。"""
+    initialize(db)
+    with db.engine.connect() as c:
+        rows = c.execute(
+            text("""
+                SELECT id, body, created_at FROM records
+                WHERE kind='calendar'
+                  AND status='candidate'
+                  AND scope=:account_id
+                  AND json_extract(body, '$.source')='perception'
+                ORDER BY json_extract(body, '$.start') ASC
+                LIMIT 50
+            """),
+            {'account_id': account_id}
+        ).mappings().all()
+    return [dict(r) for r in rows]
+
+
+def confirm_calendar(db, calendar_id: str, account_id: str) -> dict:
+    """
+    用户确认日程候选，将状态从 candidate 变为 active。
+
+    确认时再次检查冲突（因为候选创建后可能又有新日程）。
+    """
+    item = require(db, calendar_id, 'calendar', [account_id])
+    if item['status'] != 'candidate':
+        return {'status': 'error', 'message': '该日程不是候选状态'}
+
+    body = item['body']
+    conflicts = detect_conflicts(
+        db, account_id,
+        body.get('start', ''),
+        body.get('end'),
+        exclude_id=calendar_id
+    )
+
+    body['has_conflict'] = len(conflicts) > 0
+    body['conflicts'] = conflicts
+    body['confirmed_at'] = now()
+
+    db.update(calendar_id, body, 'active')
+
+    result = {'id': calendar_id, 'status': 'active'}
+    if conflicts:
+        result['conflicts'] = conflicts
+        result['warning'] = f'已加入日程，但存在 {len(conflicts)} 个时间冲突'
+    return result

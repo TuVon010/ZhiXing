@@ -19,6 +19,37 @@ def schedule(db):
             with db.engine.connect() as c:
                 pending=c.execute(text("SELECT 1 FROM mail_jobs WHERE account_id=:a AND kind='sync' AND status IN ('queued','running')"),{'a':account['id']}).first()
             if not pending:enqueue(db,'sync',{},account['id'],priority=20,dedupe='sync:'+account['id']+':'+str(int(time.time()//30)))
+    # 每天生成一次前一天的邮件摘要（Digest）
+    _schedule_daily_digest(db)
+
+
+def _schedule_daily_digest(db):
+    """每天为每个启用的账号生成前一天的邮件摘要。
+
+    使用 digest:last_date marker 记录上次生成的日期，
+    确保每天只生成一次，避免重复。
+    """
+    shanghai_tz = timezone(timedelta(hours=8))
+    yesterday = (datetime.now(shanghai_tz) - timedelta(days=1)).strftime('%Y-%m-%d')
+    marker_id = 'digest:last_date'
+    try:
+        marker = require(db, marker_id, 'schedule')
+        if marker['body'].get('date') == yesterday:
+            return  # 今天已经生成过了
+    except KeyError:
+        pass
+    # 为每个启用的账号生成摘要
+    for account in rows(db, 'mail_account', limit=1000):
+        if not account['body'].get('enabled'):
+            continue
+        enqueue(db, 'digest', {'date': yesterday}, account['id'],
+                priority=10, dedupe='digest:' + account['id'] + ':' + yesterday)
+    # 记录今天已生成
+    try:
+        require(db, marker_id, 'schedule')
+        db.update(marker_id, {'date': yesterday}, 'completed')
+    except KeyError:
+        db.insert('schedule', {'date': yesterday}, id=marker_id, status='completed')
 
 
 def execute_job(db,job):
@@ -83,6 +114,9 @@ def execute_job(db,job):
     if kind=='perception':
         from .mail_perception import perceive
         return perceive(db,payload['message_id'])
+    if kind=='digest':
+        from .mail_digest import generate_and_save_digest
+        return generate_and_save_digest(db, aid, payload.get('date'))
     if kind=='connection_test':
         from .mail_ingest import connection
         from .mail_send import smtp_connection

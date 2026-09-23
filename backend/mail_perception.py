@@ -39,7 +39,8 @@ _SYSTEM_PROMPT = """你是一个邮件感知助手。你的任务是对一封邮
 5. calendar_events: 从邮件中提取的日程事件。每个事件包含 title（事件标题）、start（开始时间，ISO 8601 带时区）、end（结束时间，没有则为 null）、location（地点，没有则为空字符串）、source_quote（原文引用）。只有明确的会议/约会/截止日期才算日程。
 6. needs_reply: 是否需要回复。true 表示邮件明确要求回复或提问，false 表示纯通知或不需要回复。
 7. priority: 优先级，high（紧急/重要）、normal（普通）、low（不重要）。
-8. confidence: 你对整体判断的置信度，0.0 到 1.0。
+8. reasons: 可解释理由列表，说明你为什么给出这个分类和优先级。每条不超过30字。比如：["发件人是你的上级", "包含明确截止日期", "要求你采取行动", "纯通知不需要回复"]。至少给出1条理由。
+9. confidence: 你对整体判断的置信度，0.0 到 1.0。
 
 严格输出 JSON，不要输出任何其他文字。所有时间必须是 ISO 8601 格式并带时区（如 2026-09-25T15:00:00+08:00）。如果邮件中没有明确时间，deadline/start/end 设为 null。"""
 
@@ -157,6 +158,10 @@ def perceive(db, message_id: str) -> dict:
     if result.todos:
         _create_todo_candidates(db, account_id, message_id, result.todos)
 
+    # 自动创建日程候选（带冲突检测和幂等，不自动发布）
+    if result.calendar_events:
+        _create_calendar_candidates(db, account_id, message_id, result.calendar_events)
+
     return result.model_dump()
 
 
@@ -210,6 +215,23 @@ def _demo_perceive(db, message_id: str, body: dict) -> dict:
         if todos:
             break
 
+    # 生成可解释理由
+    reasons = []
+    if category == 'work':
+        reasons.append('包含工作相关关键词')
+    if category == 'ad':
+        reasons.append('包含广告/营销关键词')
+    if category == 'notification':
+        reasons.append('系统通知类邮件')
+    if needs_reply:
+        reasons.append('邮件要求回复或确认')
+    if priority == 'high':
+        reasons.append('需要及时处理')
+    if todos:
+        reasons.append('包含待办事项')
+    if not reasons:
+        reasons.append('普通邮件')
+
     result = PerceptionResult(
         spam_score=spam_score,
         category=category,
@@ -218,6 +240,7 @@ def _demo_perceive(db, message_id: str, body: dict) -> dict:
         calendar_events=[],
         needs_reply=needs_reply,
         priority=priority,
+        reasons=reasons,
         confidence=0.3,  # 演示模式置信度低
         model_version='demo',
         perceived_at=now(),
@@ -260,6 +283,25 @@ def _create_todo_candidates(db, account_id: str, message_id: str, todos: list):
             'source_message': message_id,
             'source_quote': todo.get('source_quote', ''),
         }, id=key, scope=account_id, status='candidate')
+
+
+def _create_calendar_candidates(db, account_id: str, message_id: str, events: list):
+    """
+    从感知结果中创建日程候选。
+
+    使用 mail_schedule 模块，包含：
+    - 冲突检测：检查该时间段是否已有日程
+    - 幂等创建：同一邮件同一事件不重复创建
+
+    候选状态为 'candidate'，需要用户确认后才变为 'active'。
+    """
+    from .mail_schedule import create_calendar_candidate
+    for event in events:
+        try:
+            create_calendar_candidate(db, account_id, message_id, event)
+        except Exception:
+            # 日程候选创建失败不影响感知主流程
+            pass
 
 
 # ============================================================

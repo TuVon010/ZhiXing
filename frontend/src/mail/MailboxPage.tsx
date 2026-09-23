@@ -200,6 +200,16 @@ export function MailboxPage() {
                           </ul>
                         </div>
                       )}
+                      {opened.body.perception.reasons?.length > 0 && (
+                        <div className="mail-perception-reasons">
+                          <strong>判断理由</strong>
+                          <ul>
+                            {opened.body.perception.reasons.map((r: string, i: number) => (
+                              <li key={i}>{r}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       <details>
                         <summary>纠正感知结果</summary>
                         <div className="mail-perception-feedback">
