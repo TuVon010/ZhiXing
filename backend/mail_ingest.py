@@ -145,7 +145,11 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
                'declared_at':date_header(str(message.get('Date',''))),'fetched_at':now(),
                'attachments':attachments,'index_status':'pending','filter':{'reason':reason,'category':category,'evidence':evidence,'rules_version':rules.get('version',1)}}
         db.insert('mail_message',value,id=ident,scope=account_id,status=status,conn=c);c.commit()
-    if status=='active':enqueue(db,'index',{'message_id':ident},account_id,priority=50,dedupe='index:'+ident)
+    if status in ('active','review'):
+        enqueue(db,'index',{'message_id':ident},account_id,priority=50,dedupe='index:'+ident)
+        # 主动感知：新邮件进来后自动触发 AI 分析（摘要、分类、待办、日程）
+        # 只要不是被过滤掉的邮件都触发感知，包括需人工复核的邮件
+        enqueue(db,'perception',{'message_id':ident},account_id,priority=40,dedupe='perception:'+ident)
     return ident
 
 

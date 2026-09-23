@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | 应用入口 | main、config、db | HTTP 会话与 API、配置、SQLite 事务与记录 |
 | 邮件业务 | mail_models/store/ingest/api | 账号、凭证、收取游标、线程、过滤和接口 |
-| 邮件 Agent | mail_assistant、mail_rag、mail_attachments | 有界工具决策、证据检索、记忆快照、附件文本 |
+| 邮件 Agent | mail_assistant、mail_rag、mail_attachments、mail_perception | 有界工具决策、证据检索、记忆快照、附件文本、新邮件主动感知（摘要/分类/待办/日程） |
 | 后台任务 | worker、mail_worker | 邮件/动作队列轮转、租约、提醒和日程 |
 | 安全执行核心 | runtime、policy、tools、schemas | LangGraph、审批、参数校验、执行账本 |
 | 模型与费用核心 | planner、billing | 模型请求、预算、用量、缓存命中和价格快照 |

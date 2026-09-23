@@ -154,3 +154,99 @@ class MemorySnapshot(BaseModel):
     user_md: str
     memory_md: str
     version_ids: list[str]
+
+
+# ============================================================
+# 主动感知 Agent（Mail Perception Agent）数据模型
+# ============================================================
+
+class PerceivedTodo(BaseModel):
+    """从邮件中提取的待办事项。"""
+    action: str = Field(min_length=1, max_length=500)
+    deadline: datetime | None = None
+    source_quote: str = Field(default='', max_length=300)
+
+    @field_validator('deadline')
+    @classmethod
+    def deadline_tz(cls, v):
+        if v and not v.tzinfo:
+            raise ValueError('截止时间必须带时区')
+        return v
+
+
+class PerceivedEvent(BaseModel):
+    """从邮件中提取的日程事件。"""
+    title: str = Field(min_length=1, max_length=300)
+    start: datetime | None = None
+    end: datetime | None = None
+    location: str = Field(default='', max_length=200)
+    source_quote: str = Field(default='', max_length=300)
+
+    @field_validator('start', 'end')
+    @classmethod
+    def event_tz(cls, v):
+        if v and not v.tzinfo:
+            raise ValueError('日程时间必须带时区')
+        return v
+
+
+class PerceptionResult(BaseModel):
+    """
+    主动感知 Agent 对一封邮件的分析结果。
+
+    一次模型调用同时输出多个维度判断，避免多次调用。
+    所有字段都有默认值，模型输出不完整时也能安全使用。
+    """
+    model_config = ConfigDict(extra='forbid')
+
+    # 垃圾邮件评分：0=正常，1=确定垃圾
+    spam_score: float = Field(default=0.0, ge=0, le=1)
+
+    # 邮件分类
+    category: Literal['work', 'personal', 'ad', 'notification', 'other'] = 'other'
+
+    # 一句话摘要（不超过 100 字）
+    summary: str = Field(default='', max_length=200)
+
+    # 提取的待办事项
+    todos: list[PerceivedTodo] = Field(default_factory=list)
+
+    # 提取的日程事件
+    calendar_events: list[PerceivedEvent] = Field(default_factory=list)
+
+    # 是否需要回复
+    needs_reply: bool = False
+
+    # 优先级
+    priority: Literal['high', 'normal', 'low'] = 'normal'
+
+    # 模型置信度（整体判断的可信度）
+    confidence: float = Field(default=0.5, ge=0, le=1)
+
+    # 模型版本（用于追溯）
+    model_version: str = ''
+
+    # 感知时间
+    perceived_at: str = ''
+
+
+class PerceptionFeedback(BaseModel):
+    """
+    用户对感知结果的纠偏反馈。
+
+    用户可以纠正分类、优先级、垃圾评分等。
+    反馈会写入记忆层，下次感知时参考。
+    """
+    model_config = ConfigDict(extra='forbid')
+
+    message_id: str
+    # 用户纠正后的分类（None 表示不纠正）
+    category: Literal['work', 'personal', 'ad', 'notification', 'other'] | None = None
+    # 用户纠正后的垃圾评分
+    spam_score: float | None = Field(default=None, ge=0, le=1)
+    # 用户纠正后的优先级
+    priority: Literal['high', 'normal', 'low'] | None = None
+    # 用户是否认为需要回复
+    needs_reply: bool | None = None
+    # 用户备注（可选，用于学习偏好）
+    note: str = Field(default='', max_length=500)

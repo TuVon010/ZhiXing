@@ -80,6 +80,9 @@ def execute_job(db,job):
         session=create_session(db,SessionInput(account_ids=[aid],thread_id=mail['body']['thread_id']),new_id='session-'+mail['id'])
         turn=create_turn(db,session['id'],TurnInput(text='检查本线程是否有尚未记录的明确待办、会议和承诺，先查现有任务避免重复；仅在证据明确时提出本地动作。不要自动发送邮件。'),new_id='turn-'+mail['id'])
         db.update(key,{'message_id':mail['id'],'turn_id':turn['id']});return {'turn_id':turn['id']}
+    if kind=='perception':
+        from .mail_perception import perceive
+        return perceive(db,payload['message_id'])
     if kind=='connection_test':
         from .mail_ingest import connection
         from .mail_send import smtp_connection

@@ -49,7 +49,18 @@ export function MailboxPage() {
                     <small>{label[m.status] || m.status}</small>
                   </span>
                   <strong>{m.body.subject || "无主题"}</strong>
-                  <span>{m.body.text?.slice(0, 90)}</span>
+                  <span>
+                    {m.body.perception?.summary || m.body.text?.slice(0, 90)}
+                    {m.body.perception?.priority === "high" && (
+                      <span className="mail-tag mail-tag-high">高优先</span>
+                    )}
+                    {m.body.perception?.category === "ad" && (
+                      <span className="mail-tag mail-tag-ad">广告</span>
+                    )}
+                    {m.body.perception?.needs_reply && (
+                      <span className="mail-tag mail-tag-reply">待回复</span>
+                    )}
+                  </span>
                   <small>
                     {new Date(m.body.received_at).toLocaleString("zh-CN", {
                       timeZone: "Asia/Shanghai",
@@ -133,6 +144,77 @@ export function MailboxPage() {
                       </button>
                     )}
                   </div>
+                  {opened.body.perception && (
+                    <div className="mail-perception">
+                      <h3>AI 感知结果</h3>
+                      <div className="mail-perception-grid">
+                        <div>
+                          <strong>摘要</strong>
+                          <p>{opened.body.perception.summary || "（无）"}</p>
+                        </div>
+                        <div>
+                          <strong>分类</strong>
+                          <p>{categoryLabel(opened.body.perception.category)}</p>
+                        </div>
+                        <div>
+                          <strong>优先级</strong>
+                          <p>{priorityLabel(opened.body.perception.priority)}</p>
+                        </div>
+                        <div>
+                          <strong>垃圾评分</strong>
+                          <p>{(opened.body.perception.spam_score * 100).toFixed(0)}%</p>
+                        </div>
+                        <div>
+                          <strong>需要回复</strong>
+                          <p>{opened.body.perception.needs_reply ? "是" : "否"}</p>
+                        </div>
+                        <div>
+                          <strong>置信度</strong>
+                          <p>{(opened.body.perception.confidence * 100).toFixed(0)}%</p>
+                        </div>
+                      </div>
+                      {opened.body.perception.todos?.length > 0 && (
+                        <div>
+                          <strong>提取的待办</strong>
+                          <ul>
+                            {opened.body.perception.todos.map((t: any, i: number) => (
+                              <li key={i}>
+                                {t.action}
+                                {t.deadline && ` · 截止: ${new Date(t.deadline).toLocaleString("zh-CN")}`}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {opened.body.perception.calendar_events?.length > 0 && (
+                        <div>
+                          <strong>提取的日程</strong>
+                          <ul>
+                            {opened.body.perception.calendar_events.map((e: any, i: number) => (
+                              <li key={i}>
+                                {e.title}
+                                {e.start && ` · ${new Date(e.start).toLocaleString("zh-CN")}`}
+                                {e.location && ` · ${e.location}`}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <details>
+                        <summary>纠正感知结果</summary>
+                        <div className="mail-perception-feedback">
+                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { category: "work" }), "已标记为工作邮件")}>标记为工作</button>
+                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { category: "personal" }), "已标记为个人邮件")}>标记为个人</button>
+                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { category: "ad" }), "已标记为广告")}>标记为广告</button>
+                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { spam_score: 0.9 }), "已标记为垃圾邮件")}>标记垃圾</button>
+                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { spam_score: 0.0 }), "已标记为正常邮件")}>标记正常</button>
+                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { priority: "high" }), "已标记为高优先")}>高优先</button>
+                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { priority: "low" }), "已标记为低优先")}>低优先</button>
+                        </div>
+                        <small>纠正会写入记忆，下次感知时参考你的偏好。</small>
+                      </details>
+                    </div>
+                  )}
                   <pre className="mail-body">
                     {opened.body.raw_text || opened.body.text}
                   </pre>
@@ -196,4 +278,24 @@ export function MailboxPage() {
       )}
     </>
   );
+}
+
+function categoryLabel(c: string): string {
+  const map: Record<string, string> = {
+    work: "工作",
+    personal: "个人",
+    ad: "广告/营销",
+    notification: "系统通知",
+    other: "其他",
+  };
+  return map[c] || c;
+}
+
+function priorityLabel(p: string): string {
+  const map: Record<string, string> = {
+    high: "高",
+    normal: "普通",
+    low: "低",
+  };
+  return map[p] || p;
 }

@@ -2,7 +2,7 @@ from fastapi import APIRouter,Depends,Query
 from pydantic import BaseModel,Field,field_validator,ConfigDict
 from sqlalchemy import text
 import json
-from .mail_models import MailAccount,ImportRequest,SearchRequest,DraftInput,SessionInput,TurnInput
+from .mail_models import MailAccount,ImportRequest,SearchRequest,DraftInput,SessionInput,TurnInput,PerceptionFeedback
 from .mail_store import initialize,rows,require,public_account,save_account,enqueue,job,validate_accounts
 from .db import now
 
@@ -350,6 +350,63 @@ def demo(db=Depends(database)):
     msg=EmailMessage();msg['From']='teacher@example.com';msg['To']='demo@example.com';msg['Subject']='实验报告修改';msg['Message-ID']='<demo-experiment@example.com>';msg.set_content('请在周五前补充实验对比，并回复最终报告。')
     mid=store_message(db,account['id'],'demo',1,msg.as_bytes(),now())
     return {'account_id':account['id'],'message_id':mid}
+
+
+
+# ============================================================
+# 主动感知 Agent API
+# ============================================================
+
+@router.get('/mail/messages/{ident}/perception')
+def get_perception(ident:str,db=Depends(database)):
+    """获取一封邮件的感知结果。"""
+    from .mail_perception import get_perception as gp
+    result = gp(db, ident)
+    if result is None:
+        return {'perception': None, 'status': 'pending'}
+    return {'perception': result, 'status': 'ready'}
+
+
+@router.post('/mail/messages/{ident}/perception/feedback')
+def perception_feedback(ident:str,body:PerceptionFeedback,db=Depends(database)):
+    """用户对感知结果的纠偏反馈，会写入记忆供下次感知参考。"""
+    from .mail_perception import apply_feedback
+    body.message_id = ident
+    return apply_feedback(db, body)
+
+
+@router.get('/mail/perception/todos')
+def list_perception_todos(account_id:str='',db=Depends(database)):
+    """列出感知生成的待办候选（等待用户确认）。"""
+    from .mail_perception import list_pending_todos
+    if not account_id:
+        accounts = rows(db,'mail_account',limit=100)
+        result = []
+        for a in accounts:
+            result.extend(list_pending_todos(db, a['id']))
+        return result
+    require(db,account_id,'mail_account')
+    return list_pending_todos(db, account_id)
+
+
+@router.post('/mail/perception/todos/{ident}/confirm')
+def confirm_perception_todo(ident:str,db=Depends(database)):
+    """确认感知生成的待办，将其从 candidate 变为 active。"""
+    row = require(db,ident,'todo')
+    if row['status'] != 'candidate':
+        raise ValueError('该待办不是候选状态')
+    db.update(ident, row['body'], 'active')
+    return db.get(ident)
+
+
+@router.post('/mail/perception/todos/{ident}/dismiss')
+def dismiss_perception_todo(ident:str,db=Depends(database)):
+    """忽略感知生成的待办。"""
+    row = require(db,ident,'todo')
+    if row['status'] != 'candidate':
+        raise ValueError('该待办不是候选状态')
+    db.update(ident, row['body'], 'dismissed')
+    return db.get(ident)
 
 
 from .mail_observability import router as observability_router
