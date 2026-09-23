@@ -114,8 +114,6 @@ class Runtime:
             p = ActionPlan.model_validate(run['body']['explicit_plan']) if run['body'].get('explicit_plan') else plan(self.db,s['message'],s['versions'])
         finally:
             trace_run.reset(token)
-        from .jev import review_plan
-        review_plan(self.db,s['run_id'],s['message'],p)
         mapping = {a.id:s['run_id']+'-'+a.id for a in p.actions}
         actions = [{**a.model_dump(),'id':mapping[a.id],'depends_on':[mapping[d] for d in a.depends_on]} for a in p.actions]
         for a in actions:

@@ -6,13 +6,13 @@
 
 - 每一项独立覆盖；不填或清空后保存，回退该项默认值。填 `0` 表示零价。
 - “恢复默认计价”清除这个模型的全部覆盖，包括高级时段设置；其他模型不受影响。
-- 内置 DeepSeek Flash、V4 Pro 与 Jev 1.13 的价格快照，核对日期 2026-09-22，不在线自动更新。价格来源链接在界面与每次调用快照里。
+- 内置 DeepSeek Flash 与 V4 Pro 的价格快照，核对日期 2026-09-22，不在线自动更新。价格来源链接在界面与每次调用快照里。
 - 只有官方 DeepSeek HTTPS 地址与已知模型/别名匹配才自动采用官方价。未知模型、第三方中转按接口地址＋模型隔离配置，没有默认价格时显示未知，必须自行填写币种和单价。
-- Jev 单独使用 USD；DeepSeek 使用 CNY。修改币种必须填写全部生效单价，不隐式换汇；汇总分币种列出。
+- DeepSeek 默认使用 CNY；自定义模型可配置自己的币种。修改币种必须填写全部生效单价，不隐式换汇；汇总分币种列出。
 - 保存后 API 和 Worker 的后续调用读取数据库新配置，不需要重启。已开始调用的价格快照、历史费用不回填或改写。
 - 多页面同时编辑使用版本校验，过期编辑会被拒绝；点击“重新加载计价”再修改。
 
-旧 `.env` 中的 MODEL_INPUT_PRICE / MODEL_OUTPUT_PRICE / JEV_INPUT_PRICE 在从未保存该配置时继续作为覆盖值。第一次在设置页保存或恢复默认后，该模型以数据库配置为准，防止恢复默认后旧环境价格悄悄生效。未知模型的旧价格缺少币种时依然显示费用未知。
+旧 `.env` 中的 MODEL_INPUT_PRICE / MODEL_OUTPUT_PRICE 在从未保存该配置时继续作为覆盖值。第一次在设置页保存或恢复默认后，该模型以数据库配置为准，防止恢复默认后旧环境价格悄悄生效。未知模型的旧价格缺少币种时依然显示费用未知。
 
 ## 分时计价
 
@@ -40,11 +40,11 @@
 
 费用 =（缓存命中 Token × 命中价 + 未命中 Token × 未命中价 + 输出 Token × 输出价）/ 1,000,000。
 
-DeepSeek 顶层缓存字段与 `prompt_tokens_details.cached_tokens` 是同一计数的不同表示，不相加；推理 Token 已包含在输出时不重复计费。缓存数据缺失或矛盾不当成 0；能给出上下界时显示区间。Jev 输出免费，因此输入 usage 已知时可以估算，缓存命中率仍未知。
+DeepSeek 顶层缓存字段与 `prompt_tokens_details.cached_tokens` 是同一计数的不同表示，不相加；推理 Token 已包含在输出时不重复计费。缓存数据缺失或矛盾不当成 0；能给出上下界时显示区间。
 
 首页及 Trace 显示分币种已知小计、未知调用数、区间调用数。缓存命中率按有缓存数据的输入 Token 加权，同时显示覆盖的输入量。旧记录没有币种/快照，不按新配置追溯定价。
 
-存储沿用业务 SQLite：`setting` 当前配置、`pricing_revision` 每次保存版本、`model_call` / `jev_call` 调用快照；正常备份包含这些记录。导出 Trace JSON 包含费用明细。
+存储沿用业务 SQLite：`setting` 当前配置、`pricing_revision` 每次保存版本、`model_call` 调用快照；正常备份包含这些记录。导出 Trace JSON 包含费用明细。
 
 接口：GET `/api/pricing`，POST `/api/pricing/{profile_id}`（version＋overrides），GET `/api/billing-summary`。沿用本地会话保护。配置类型纳入 OpenAPI 前端生成类型。
 
@@ -52,4 +52,6 @@ DeepSeek 顶层缓存字段与 `prompt_tokens_details.cached_tokens` 是同一�
 
 测试通过模拟 HTTP 和独立测试数据库验证，不调用真实计费服务。完整测试脚本保存源码、命令、日志、JUnit、配置与业务数据库、浏览器截图/录像/Trace。当前没有供应商账单核对、自动抓取最新价格、按上下文长度/累计用量阶梯定价、汇率换算或缓存写入独立计价；这些仍属于后续设计。
 
-来源：[DeepSeek 价格](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)、[TypeSafe Jev](https://docs.typesafe.ai/models)、[2026 放假安排](https://www.beijing.gov.cn/fuwu/bmfw/sy/jrts/202511/t20251104_4258838.html)。
+来源：[DeepSeek 价格](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)、[2026 放假安排](https://www.beijing.gov.cn/fuwu/bmfw/sy/jrts/202511/t20251104_4258838.html)。
+
+退役的扩展评审记录仍留在原业务库和历史测试归档中；当前计价和 Trace 仅汇总主模型 `model_call`，不再展示独立评审服务的配置或指标。

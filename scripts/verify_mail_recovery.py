@@ -9,7 +9,7 @@ from datetime import datetime
 from email.message import EmailMessage
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 folder=ROOT/'artifacts'/'mail-recovery'/datetime.now().strftime('%Y%m%d-%H%M%S');folder.mkdir(parents=True)
-os.environ.update(ZHIXING_MODE='demo',ZHIXING_JEV_MODE='off',ZHIXING_MAIL_ADDRESS='',ZHIXING_MAIL_WORKER='1',ZHIXING_DATA_DIR=str(folder/'source'))
+os.environ.update(ZHIXING_MODE='demo',ZHIXING_MAIL_ADDRESS='',ZHIXING_MAIL_WORKER='1',ZHIXING_DATA_DIR=str(folder/'source'))
 os.environ.pop('ZHIXING_DISABLE_LOCAL_MODELS',None)
 from backend.db import Store
 from backend.mail_store import initialize,save_account,migrate

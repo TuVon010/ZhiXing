@@ -19,7 +19,6 @@ def configured(db, monkeypatch):
     monkeypatch.setattr(settings, 'model_name', 'deepseek-flash')
     monkeypatch.setattr(settings, 'model_input_price', None)
     monkeypatch.setattr(settings, 'model_output_price', None)
-    monkeypatch.setattr(settings, 'jev_input_price', None)
     return db
 
 

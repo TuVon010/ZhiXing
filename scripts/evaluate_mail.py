@@ -19,7 +19,6 @@ sys.path.insert(0,str(ROOT))
 os.environ['ZHIXING_MAIL_WORKER']='1'
 os.environ.pop('ZHIXING_DISABLE_LOCAL_MODELS',None)
 os.environ['ZHIXING_MODE']='demo'
-os.environ['ZHIXING_JEV_MODE']='off'
 
 
 def cases():

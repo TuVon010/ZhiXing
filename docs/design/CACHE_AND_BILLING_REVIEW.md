@@ -4,7 +4,7 @@
 
 ## 已完成检查
 
-- 阅读当前 planner、tracing、stats、Jev 及配置代码，确认原始 usage 已保留，现有主模型 cost 只采用平坦输入/输出价。
+- 阅读当前 planner、tracing、stats 及配置代码，确认原始 usage 已保留，现有主模型 cost 只采用平坦输入/输出价。
 - 查阅 DeepSeek 官方价格、缓存指南和 Chat Completions usage 说明。来源链接随设计稿保存。
 - PowerShell `ConvertFrom-Json` 成功解析配套 fixtures。
 - 用 PowerShell `[decimal]` 按分项公式计算，并对预期结果执行相等断言；不是浮点近似比较。

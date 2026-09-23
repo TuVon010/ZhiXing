@@ -49,7 +49,7 @@ def trace(db, ident):
     else:
         runs=[detail(db,root['id']).model_dump()];audit=[];calls=[]
     for run in runs:
-        audit.extend(run['audit']);calls.extend(run['model_calls']);calls.extend(run['jev_calls'])
+        audit.extend(run['audit']);calls.extend(run['model_calls'])
     audit=sorted({r['id']:r for r in audit}.values(),key=lambda r:(r['created_at'],r['id']))
     calls=list({r['id']:r for r in calls}.values())
     return {'id':root['id'],'requested_id':ident,'root':root,'runs':runs,'audit':audit,

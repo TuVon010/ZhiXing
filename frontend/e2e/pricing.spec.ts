@@ -26,7 +26,7 @@ test('自定义计价：逐项覆盖、零价、持久化、恢复默认',async(
  await panel.getByRole('button',{name:'恢复默认计价',exact:true}).click();
  await expect(panel.getByRole('status')).toHaveText('已恢复默认计价');
  await expect(panel.getByTestId('effective-output')).toHaveText('生效：4 · 默认');
- await panel.getByLabel('计价模型',{exact:true}).selectOption('jev');
- await expect(panel.getByTestId('effective-input')).toHaveText('生效：.042 · 默认');
+ await panel.getByLabel('计价模型',{exact:true}).selectOption('deepseek-v4-pro');
+ await expect(panel.getByTestId('effective-input')).toHaveText('生效：4.5 · 默认');
  await testInfo.attach('pricing-configs.json',{body:await (await page.request.get('/api/pricing')).body(),contentType:'application/json'});
 });

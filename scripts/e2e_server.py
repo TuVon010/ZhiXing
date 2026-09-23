@@ -6,7 +6,6 @@ from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(root))
 os.environ['ZHIXING_MODE']='demo'
-os.environ['ZHIXING_JEV_MODE']='off'
 os.environ['ZHIXING_MAIL_WORKER']='1'
 os.environ['ZHIXING_DISABLE_LOCAL_MODELS']='1'
 os.environ['ZHIXING_DISABLE_MAIL_NETWORK']='1'

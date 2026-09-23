@@ -101,7 +101,7 @@ def get_settings():
         local=store.get('runtime-settings')['body']
     except KeyError:
         local={}
-    return {'mode':settings.mode,'model_name':settings.model_name,'model_base_url':settings.model_base_url,'model_configured':bool(settings.model_api_key and settings.model_name),'mail_configured':bool(settings.mail_address and settings.mail_password),'daily_call_limit':settings.model_daily_calls,'evolution_enabled':local.get('evolution_enabled',False),'data_dir':str(store.path.parent),'jev_mode':settings.jev_mode,'jev_configured':bool(settings.jev_api_key),'jev_model':settings.jev_model,'jev_daily_calls':settings.jev_daily_calls}
+    return {'mode':settings.mode,'model_name':settings.model_name,'model_base_url':settings.model_base_url,'model_configured':bool(settings.model_api_key and settings.model_name),'mail_configured':bool(settings.mail_address and settings.mail_password),'daily_call_limit':settings.model_daily_calls,'evolution_enabled':local.get('evolution_enabled',False),'data_dir':str(store.path.parent)}
 
 class LocalSettings(BaseModel):
     evolution_enabled: bool = False
@@ -378,7 +378,7 @@ def update_pricing(profile_id:str,body:billing.PricingUpdate):
 @app.get('/api/billing-summary')
 def billing_summary():
     with store.engine.connect() as conn:
-        rows=conn.execute(text("SELECT body,status FROM records WHERE kind IN ('model_call','jev_call')")).mappings()
+        rows=conn.execute(text("SELECT body,status FROM records WHERE kind='model_call'")).mappings()
         return billing.summarize({'body':json.loads(row['body']),'status':row['status']} for row in rows)
 
 @app.get('/api/{collection}')

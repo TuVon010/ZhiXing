@@ -18,7 +18,7 @@ test('多邮箱工作台、证据检索、草稿变更与 Trace（离线演示�
  await page.getByRole('button',{name:'申请发送审批'}).click();
  await expect(page.getByRole('status')).toContainText('已提交审批');
  await page.locator('nav').getByRole('button',{name:'审批中心',exact:true}).click();
- await expect(page.getByText('待审批动作')).toBeVisible();
+ await expect(page.getByRole('heading',{name:'待审批动作',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'批准执行',exact:true}).first()).toBeVisible({timeout:15000});
  await page.getByRole('button',{name:'批准执行',exact:true}).first().click();
  await expect(page.getByRole('status')).toContainText('已批准');

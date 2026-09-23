@@ -4098,14 +4098,6 @@
             "type": "array",
             "title": "Model Calls"
           },
-          "jev_calls": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Jev Calls"
-          },
           "trace": {
             "$ref": "#/components/schemas/TraceSummary"
           }
@@ -4352,33 +4344,6 @@
               }
             ],
             "title": "Cost"
-          },
-          "jev_call_count": {
-            "type": "integer",
-            "title": "Jev Call Count",
-            "default": 0
-          },
-          "jev_latency_ms": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Jev Latency Ms"
-          },
-          "jev_cost": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Jev Cost"
           },
           "billing": {
             "additionalProperties": true,

@@ -12,4 +12,4 @@
 | 代码整理 | 独立页面/状态协调；复用审批和审计；停用旧版直发 | 类型检查、构建及回归通过 |
 | 学习资料 | 业务路径、代码地图、接口和实战调试 | docs/WORKSPACE_GUIDE.md；私人面试补充在 docs/interview |
 
-最新结果：229 项后端测试、120 条规则回归、3 条浏览器流程通过。详细证据和局限见 [测试报告](TESTING_MAIL_AGENT.md) 与 [产品评估](PRODUCT_REVIEW.md)。
+最新结果：216 项后端测试、120 条规则回归、3 条浏览器流程通过。详细证据和局限见 [测试报告](TESTING_MAIL_AGENT.md) 与 [产品评估](PRODUCT_REVIEW.md)。

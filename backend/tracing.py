@@ -15,16 +15,12 @@ class TraceSummary(BaseModel):
     output_tokens: int | None
     total_tokens: int | None
     cost: float | None
-    jev_call_count: int = 0
-    jev_latency_ms: float | None = None
-    jev_cost: float | None = None
     billing: dict[str, Any] = Field(default_factory=dict)
 
 class RunDetail(BaseModel):
     run: dict[str, Any]
     audit: list[dict[str, Any]]
     model_calls: list[dict[str, Any]]
-    jev_calls: list[dict[str, Any]] = Field(default_factory=list)
     trace: TraceSummary
 
 def detail(db, run_id):
@@ -32,7 +28,6 @@ def detail(db, run_id):
     if run['kind']!='run':
         raise ValueError('不是运行记录')
     audit=db.for_run('audit',run_id)
-    reviews=db.for_run('jev_call',run_id)
     calls=db.for_run('model_call',run_id)
     # Older failed records lost run_id but still have linked MODEL_FAILED audit events.
     linked={r['body'].get('call_id') for r in audit if r['body'].get('call_id')}
@@ -54,16 +49,9 @@ def detail(db, run_id):
         elapsed=max(0,(end-datetime.fromisoformat(run['created_at'])).total_seconds()*1000)
     summary=TraceSummary(trace_id=run_id,status=run['status'],event_count=len(audit),model_call_count=len(calls),duration_ms=elapsed,model_latency_ms=total('latency_ms'),input_tokens=total('prompt_tokens','usage'),output_tokens=total('completion_tokens','usage'),total_tokens=total('total_tokens','usage'),cost=total('cost') if calls else None)
     # Keep the prior newest-first audit response contract. The UI renders chronological order.
-    attempted=[r for r in reviews if r['status']!='skipped']
-    summary.jev_call_count=len(attempted)
-    latencies=[r['body'].get('latency_ms') for r in attempted]
-    costs=[r['body'].get('cost') for r in attempted]
-    summary.jev_latency_ms=sum(latencies) if latencies and all(v is not None for v in latencies) else None
-    summary.jev_cost=sum(costs) if costs and all(v is not None for v in costs) else None
-    summary.billing=summarize(calls+attempted)
-    # Compatibility fields never add unlike or unidentified currencies.
-    for records, key in [(calls,'cost'),(attempted,'jev_cost')]:
-        currencies={(r['body'].get('billing') or {}).get('currency') for r in records}
-        if None in currencies or len(currencies)!=1:
-            setattr(summary,key,None)
-    return RunDetail(run=run,audit=list(reversed(audit)),model_calls=calls,jev_calls=reviews,trace=summary)
+    summary.billing=summarize(calls)
+    # Compatibility cost never adds unlike or unidentified currencies.
+    currencies={(r['body'].get('billing') or {}).get('currency') for r in calls}
+    if None in currencies or len(currencies)!=1:
+        summary.cost=None
+    return RunDetail(run=run,audit=list(reversed(audit)),model_calls=calls,trace=summary)

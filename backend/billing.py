@@ -107,40 +107,34 @@ class PricingProfile(BaseModel):
     field_sources: dict[str, str]
 
 
-def profile_id(channel='model'):
-    if channel == 'jev':
-        if settings.jev_model in {'jev-1.13.0', 'jev-latest', 'jev-preview'}:
-            return 'jev'
-        identity = 'typesafe:' + settings.jev_model
-    else:
-        url = urlsplit(settings.model_base_url)
-        if url.scheme == 'https' and url.netloc == 'api.deepseek.com' and url.path.rstrip('/') in {'', '/v1'} and not url.query and not url.fragment:
-            if settings.model_name in {'deepseek-flash','deepseek-v4-flash','deepseek-v4-flash-vision-exp'}:
-                return 'deepseek-flash'
-            if settings.model_name == 'deepseek-v4-pro':
-                return 'deepseek-v4-pro'
-        identity = settings.model_base_url.rstrip('/') + ':' + settings.model_name
-    return channel + '-' + hashlib.sha256(identity.encode()).hexdigest()[:16]
+def profile_id():
+    url = urlsplit(settings.model_base_url)
+    if url.scheme == 'https' and url.netloc == 'api.deepseek.com' and url.path.rstrip('/') in {'', '/v1'} and not url.query and not url.fragment:
+        if settings.model_name in {'deepseek-flash','deepseek-v4-flash','deepseek-v4-flash-vision-exp'}:
+            return 'deepseek-flash'
+        if settings.model_name == 'deepseek-v4-pro':
+            return 'deepseek-v4-pro'
+    identity = settings.model_base_url.rstrip('/') + ':' + settings.model_name
+    return 'model-' + hashlib.sha256(identity.encode()).hexdigest()[:16]
 
 
 def defaults(ident):
     rates = {
         'deepseek-flash': ('1', '.02', '4', '2', '.04', '8'),
         'deepseek-v4-pro': ('4.5', '.15', '13.5', '9', '.30', '27'),
-        'jev': ('.042', '.042', '0', '.042', '.042', '0'),
     }
     known = ident in rates
     deepseek = ident.startswith('deepseek-') and known
     return {**dict(zip(RATE_KEYS, rates.get(ident, (None,) * 6))),
-            'currency': 'CNY' if deepseek else 'USD' if ident == 'jev' else None,
+            'currency': 'CNY' if deepseek else None,
             'peak_enabled': deepseek, 'timezone': 'Asia/Shanghai',
             'peak_windows': ['09:00-12:00','14:00-18:00'], 'peak_weekdays': [0,1,2,3,4],
             'holiday_dates': list(HOLIDAYS) if deepseek else [], 'calendar_years': [2026] if deepseek else []}
 
 
 def get_profile(db, ident, conn=None):
-    active = {profile_id(), profile_id('jev')}
-    if ident not in {'deepseek-flash','deepseek-v4-pro','jev'} | active:
+    active = {profile_id()}
+    if ident not in {'deepseek-flash','deepseek-v4-pro'} | active:
         raise ValueError('未知计价配置；自定义配置按当前接口和模型隔离')
     base = defaults(ident)
     try:
@@ -156,19 +150,17 @@ def get_profile(db, ident, conn=None):
             overrides.update({key: str(settings.model_input_price) for key in ('input','cached_input','peak_input','peak_cached_input')})
         if ident == profile_id() and settings.model_output_price is not None:
             overrides.update({key: str(settings.model_output_price) for key in ('output','peak_output')})
-        if ident == profile_id('jev') and settings.jev_input_price is not None:
-            overrides.update({key: str(settings.jev_input_price) for key in ('input','cached_input','peak_input','peak_cached_input')})
     effective = {**base, **overrides}
-    return PricingProfile(id=ident, label={'deepseek-flash':'DeepSeek Flash','deepseek-v4-pro':'DeepSeek V4 Pro','jev':'Jev 1.13'}.get(ident, '当前主模型（自定义）' if ident.startswith('model-') else '当前 Jev（自定义）'),
+    return PricingProfile(id=ident, label={'deepseek-flash':'DeepSeek Flash','deepseek-v4-pro':'DeepSeek V4 Pro'}.get(ident, '当前主模型（自定义）'),
         active=ident in active, version=row['version'] if row else 0, default_version=DEFAULT_VERSION,
-        source='https://api-docs.deepseek.com/zh-cn/quick_start/pricing/' if ident.startswith('deepseek-') else 'https://docs.typesafe.ai/models' if ident == 'jev' else None,
+        source='https://api-docs.deepseek.com/zh-cn/quick_start/pricing/' if ident.startswith('deepseek-') else None,
         calendar_source=CALENDAR_SOURCE if ident.startswith('deepseek-') else None,
         defaults=base, overrides=overrides, effective=effective,
         field_sources={key:origin if key in overrides else 'default' if val is not None else 'unknown' for key,val in base.items()})
 
 
 def profiles(db):
-    return [get_profile(db, ident) for ident in dict.fromkeys([profile_id(), 'deepseek-flash','deepseek-v4-pro',profile_id('jev'),'jev'])]
+    return [get_profile(db, ident) for ident in dict.fromkeys([profile_id(), 'deepseek-flash','deepseek-v4-pro'])]
 
 
 def save_profile(db, ident, update):
@@ -193,8 +185,8 @@ def save_profile(db, ident, update):
     return get_profile(db, ident)
 
 
-def snapshot(db, channel='model'):
-    return {**get_profile(db, profile_id(channel)).model_dump(mode='json'), 'captured_at':now(), 'channel':channel}
+def snapshot(db):
+    return {**get_profile(db, profile_id()).model_dump(mode='json'), 'captured_at':now(), 'channel':'model'}
 
 
 def period(at, config):
@@ -209,13 +201,13 @@ def period(at, config):
     return 'peak' if local.year in config['calendar_years'] else 'unknown'
 
 
-def normalize_usage(raw, channel):
+def normalize_usage(raw):
     raw = raw if isinstance(raw, dict) else {}
     def token(key, source=raw):
         value = source.get(key)
         return value if type(value) is int and value >= 0 else None
-    inp = token('input_tokens' if channel == 'jev' else 'prompt_tokens')
-    out = token('output_tokens' if channel == 'jev' else 'completion_tokens')
+    inp = token('prompt_tokens')
+    out = token('completion_tokens')
     hit, miss = token('prompt_cache_hit_tokens'), token('prompt_cache_miss_tokens')
     details = raw.get('prompt_tokens_details')
     alias = token('cached_tokens', details) if isinstance(details, dict) else None
@@ -239,7 +231,7 @@ def normalize_usage(raw, channel):
 
 def estimate(price_snapshot, raw_usage, ended_at=None):
     config = price_snapshot['effective']
-    usage = normalize_usage(raw_usage, price_snapshot['channel'])
+    usage = normalize_usage(raw_usage)
     selected = period(price_snapshot['captured_at'], config)
     periods = {'peak','offpeak'} if selected == 'unknown' else {selected}
     # A boundary inside the request gives a range; never prorate by duration.

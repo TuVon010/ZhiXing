@@ -8,16 +8,15 @@
 
 让知行能回答：这次调用输入了多少 Token，其中多少命中供应商缓存；为什么按这个价格估算；一天花了多少，缓存优惠节省多少；哪些数据未知；模型涨价后原来的账是否还解释得清楚。
 
-首版覆盖 DeepSeek 官方直连接口的输入命中/未命中、输出、人民币高峰/空闲价格，以及 Jev 已有的独立调用成本。第三方中转商价格必须独立配置，不能因为模型名叫 deepseek 就套用官方费用。
+首版覆盖 DeepSeek 官方直连接口的输入命中/未命中、输出、人民币高峰/空闲价格。第三方中转商价格必须独立配置，不能因为模型名叫 deepseek 就套用官方费用。
 
 ## 2. 当前已经有什么，还缺什么
 
 | 代码位置 | 已有能力 | 本设计补充 |
 | --- | --- | --- |
 | `backend/planner.py::model_json` | 保存完整 usage，按输入价和输出价计算 cost | 规范化缓存字段、供应商信息、价格快照和费用明细 |
-| `backend/tracing.py::detail` | 按 run 汇总主模型用量，单独汇总 Jev | 缓存命中率、已知/未知费用、分币种汇总 |
+| `backend/tracing.py::detail` | 按 run 汇总主模型用量 | 缓存命中率、已知/未知费用、分币种汇总 |
 | `backend/main.py::stats` | 全局用量和费用、Parser 命中率 | 时间过滤、缓存统计覆盖率、取消最近 10000 条截断式财务统计 |
-| `backend/jev.py` | 独立用量与输入费用 | 适配同一计费明细格式；无缓存证据时保持不适用或未知 |
 | `eval/run.py` | 离线/真实规划评测及平均费用 | 输出缓存用量、计费覆盖率、单任务完整模型开销 |
 | 前端 Trace / 设置 | 模型调用、usage、简单价格配置 | 价格规则、缓存与费用解释、规则版本和估算标签 |
 
@@ -65,7 +64,7 @@ DeepSeek usage 提供 `prompt_cache_hit_tokens` 和 `prompt_cache_miss_tokens`�
 
 ### 4.3 Parser 命中率——继续单列
 
-Parser 是本地确定性解析成功而跳过主规划模型，与供应商缓存不同；它不产生“输入 Token 全命中”的模型请求。Jev 影子评审仍可能发生，要独立计入总成本。
+Parser 是本地确定性解析成功而跳过主规划模型，与供应商缓存不同；它不产生“输入 Token 全命中”的模型请求。
 
 ### 4.4 缺失数据的覆盖率
 
@@ -73,7 +72,7 @@ Parser 是本地确定性解析成功而跳过主规划模型，与供应商缓�
 
 另给 `observed_input_token_coverage`：缓存拆分已知的输入量 / 所有输入总量已知的适用调用输入量。若存在连输入量都未知的调用，明确标注“此覆盖率仅限输入已知部分”，不要误称全量 Token 覆盖率。
 
-不支持公开缓存统计的 Jev 不混入 DeepSeek 分母。演示和 mock 数据单独分组，不混入真实使用看板。
+不同服务商的缓存统计不混用分母。演示和 mock 数据单独分组，不混入真实使用看板。
 
 ## 5. 用量规范化规则
 
@@ -115,7 +114,7 @@ provider_id + account_profile + endpoint_family + model_selector
             + currency + effective_interval + price_version
 ```
 
-provider_id 区分 deepseek_official、typesafe_official、custom_gateway。account_profile 是本地无密钥标识，允许账号合同价不同；不要存 API key 或把 key 放进价格匹配规则。网关只支持兼容协议，并不说明它采用官方价格。
+provider_id 区分 deepseek_official、custom_gateway。account_profile 是本地无密钥标识，允许账号合同价不同；不要存 API key 或把 key 放进价格匹配规则。网关只支持兼容协议，并不说明它采用官方价格。
 
 每张价格表保留：source_url、source_checked_at、verified_effective_from/to、observed_at、currency、计费单位、模型别名映射、calendar_version、规则正文与摘要哈希、draft/active/retired 状态。
 
@@ -188,7 +187,7 @@ provider_id 区分 deepseek_official、typesafe_official、custom_gateway。acco
 
 ## 8. 数据结构和持久化
 
-先沿用 records，不新建财务系统。模型调用继续保留 `model_call` / `jev_call`；增加 `price_profile`、`billing_record`，必要时 `billing_reconciliation`。
+先沿用 records，不新建财务系统。模型调用继续保留 `model_call`；增加 `price_profile`、`billing_record`，必要时 `billing_reconciliation`。
 
 一次网络尝试对应稳定 `call_id + attempt_id`。断线重试是新尝试，不能因为 payload 相同就把可能计费的重复尝试抹掉；重复上报同一次响应通过唯一键去重。审批恢复未发出新调用时不得生成新账单。
 
@@ -226,13 +225,12 @@ provider_id 区分 deepseek_official、typesafe_official、custom_gateway。acco
 
 价格修正和历史补算追加新 revision，保留旧版费用及 supersedes_id。汇总通过显式选定的当前核算版本去重，不把所有 revisions 相加。支持“当时估算”和“按后来证据校正”的两种视图。
 
-Jev 使用相同明细结构但自己的 provider/usage 适配，缓存不适用，输出即使记录也不能任意套 DeepSeek 输出价；当前 Jev 价格未知则它的费用继续未知。
 
 ## 9. 汇总不能悄悄丢记录
 
 按明确时间范围从数据库聚合全部适用记录，不沿用最近 10000 条截断。分页只影响明细列表，不影响总计。按 provider、model、purpose、currency、模拟/真实分组；模型名别名解析保留原始值。
 
-返回 `known_amount_by_currency`、unknown/range/reconciled 调用数量和覆盖率。例如“已知估算 ¥0.80，另有 2 次费用未知”，不是“总费用 ¥0.80”。主模型、Jev、规则演进、评测调用都纳入可筛选统计，避免只看 planning 少算研发消耗。
+返回 `known_amount_by_currency`、unknown/range/reconciled 调用数量和覆盖率。例如“已知估算 ¥0.80，另有 2 次费用未知”，不是“总费用 ¥0.80”。主模型、规则演进、评测调用都纳入可筛选统计，避免只看 planning 少算研发消耗。
 
 无 run_id 的系统调用仍有 call_id、purpose 和 system scope，可出现在全局账单；每次网络尝试只能归入一处汇总，不能同时从 model_call 和 billing_record 重复累加。
 
@@ -299,7 +297,7 @@ DeepSeek Flash · CNY · 高峰（依据请求发出时间）
 | 模型别名变化、同名中转商 | 供应商和版本匹配正确 |
 | 请求百分比平均与 Token 加权对比 | 100+9900 示例得 1% |
 | 更新价表与历史补算 | 历史不覆盖，新 revision 不重复汇总 |
-| 主模型 CNY、Jev USD、部分未知 | 分币种已知小计与未知次数 |
+| 不同模型 CNY/USD、部分未知 | 分币种已知小计与未知次数 |
 | 超过 10000 条调用 | 全量聚合准确，分页不丢总额 |
 | 重复事件、恢复、网络重试 | 同一次响应不重复记账，新网络尝试单列 |
 | mock 与真实数据并存 | 看板默认仅真实，演示明确标记 |
@@ -309,7 +307,7 @@ DeepSeek Flash · CNY · 高峰（依据请求发出时间）
 ## 14. 实施顺序和兼容
 
 1. **采集与规范化**：保存 provider/request/response 身份、UTC 时间及原始 usage；只增加字段，保持原业务流程。
-2. **缓存指标**：Trace 展示命中 Token 和加权命中率；缺失数据与 Parser/Jev 分开。
+2. **缓存指标**：Trace 展示命中 Token 和加权命中率；缺失数据与 本地 Parser 分开。
 3. **价格快照与计费**：DeepSeek 分时/缓存价表、日历、Decimal 明细、估算范围、分币种汇总。
 4. **设置与回算**：规则预览、新版本发布、追加历史核算；再更新 OpenAPI 和前端类型。
 5. **测试归档与真实验证**：模拟覆盖边界，独立标明供应商实测，最后才评估缓存前缀优化。

@@ -77,7 +77,6 @@ class Store:
     def audit(self, run_id, event_type, **payload):
         node = {'MESSAGE_RECEIVED':'gateway','UNDERSTAND_STARTED':'understand','ACTION_PLANNED':'plan',
                 'MODEL_REQUEST':'model','MODEL_RESPONSE':'model','MODEL_FAILED':'model',
-                'JEV_REQUEST':'jev','JEV_RESPONSE':'jev','JEV_FAILED':'jev','JEV_SKIPPED':'jev',
                 'RISK_CHECKED':'risk','APPROVAL_REQUESTED':'approval','APPROVAL_EDITED':'approval',
                 'APPROVAL_DECIDED':'approval','TOOL_CALLED':'execute','TOOL_RESULT':'execute'}.get(event_type,'runtime')
         return self.insert('audit', dict(run_id=run_id, trace_id=run_id, event_type=event_type, node=node, **payload), scope=run_id)
