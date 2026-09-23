@@ -20,9 +20,14 @@ def followups(account_id:str|None=None,db=Depends(database)):
     accounts=[account_id] if account_id else [r['id'] for r in rows(db,'mail_account',limit=1000)]
     items=[]
     for aid in accounts:
+        require(db,aid,'mail_account')
         items.extend(db.list('todo',limit=200,scope='web:mail:'+aid))
         items.extend(db.list('reminder',limit=200,scope='web:mail:'+aid))
         items.extend(db.list('calendar',limit=200,scope='web:mail:'+aid))
+        # 感知候选保留邮箱作用域；确认后仍在同一工作台可见。
+        for kind in ('todo','calendar'):
+            items.extend(r for r in rows(db,kind,[aid],limit=200)
+                         if r['body'].get('source')=='perception')
     return {'items':sorted(items,key=lambda r:r['updated_at'],reverse=True)}
 
 
@@ -155,7 +160,18 @@ def retry_job(ident:str,db=Depends(database)):
 
 @router.get('/mail/messages')
 def messages(account_id:str|None=None,status:str|None=None,limit:int=Query(50,ge=1,le=200),offset:int=Query(0,ge=0),db=Depends(database)):
-    items=rows(db,'mail_message',[account_id] if account_id else None,status,limit,offset)
+    if status == 'inbox':
+        query = "SELECT * FROM records WHERE kind='mail_message' AND status IN ('active','review','archived')"
+        args = {'limit': limit, 'offset': offset}
+        if account_id:
+            require(db,account_id,'mail_account')
+            query += ' AND scope=:account_id'
+            args['account_id'] = account_id
+        with db.engine.connect() as c:
+            found = c.execute(text(query + ' ORDER BY created_at DESC,id LIMIT :limit OFFSET :offset'),args).mappings().all()
+        items = [{**dict(r),'body':json.loads(r['body'])} for r in found]
+    else:
+        items=rows(db,'mail_message',[account_id] if account_id else None,status,limit,offset)
     # The list is a summary; full sources are loaded only on opening a message.
     return {'items':[{**r,'body':{k:v for k,v in r['body'].items() if k not in {'raw_text','headers','attachments'}}} for r in items],'limit':limit,'offset':offset}
 
@@ -367,6 +383,14 @@ def get_perception(ident:str,db=Depends(database)):
     return {'perception': result, 'status': 'ready'}
 
 
+@router.post('/mail/messages/{ident}/perception')
+def request_perception(ident:str,db=Depends(database)):
+    """用户显式分析或重试；仍受全局模型调用预算限制。"""
+    mail=require(db,ident,'mail_message')
+    require(db,mail['scope'],'mail_account')
+    return {'job_id':enqueue(db,'perception',{'message_id':ident,'manual':True},mail['scope'],priority=5)}
+
+
 @router.post('/mail/messages/{ident}/perception/feedback')
 def perception_feedback(ident:str,body:PerceptionFeedback,db=Depends(database)):
     """用户对感知结果的纠偏反馈，会写入记忆供下次感知参考。"""
@@ -393,9 +417,17 @@ def list_perception_todos(account_id:str='',db=Depends(database)):
 def confirm_perception_todo(ident:str,db=Depends(database)):
     """确认感知生成的待办，将其从 candidate 变为 active。"""
     row = require(db,ident,'todo')
+    if row['status'] == 'active' and row['body'].get('source') == 'perception':
+        return row
     if row['status'] != 'candidate':
         raise ValueError('该待办不是候选状态')
     db.update(ident, row['body'], 'active')
+    if not row['scope'].startswith('web:mail:'):
+        # 迁移旧候选，保证后续完成动作使用现有工作区作用域。
+        require(db,row['scope'],'mail_account')
+        with db.engine.begin() as c:
+            c.execute(text('UPDATE records SET scope=:scope WHERE id=:id'),
+                      {'scope': 'web:mail:' + row['scope'], 'id': ident})
     return db.get(ident)
 
 
@@ -427,7 +459,9 @@ def confirm_perception_calendar(ident:str,db=Depends(database)):
     """确认感知生成的日程候选，将其从 candidate 变为 active。确认时再次检测冲突。"""
     from .mail_schedule import confirm_calendar
     row = require(db,ident,'calendar')
-    return confirm_calendar(db, ident, row['scope'])
+    account_id = row['scope'].removeprefix('web:mail:')
+    require(db,account_id,'mail_account')
+    return confirm_calendar(db, ident, account_id)
 
 
 @router.post('/mail/perception/calendars/{ident}/dismiss')

@@ -11,7 +11,8 @@
 3. 候选状态为 'candidate'，需要用户确认后才变为 'active'
 """
 import hashlib
-from datetime import datetime, timedelta
+import json
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import text
 from .db import now, uid
 from .mail_store import require, initialize
@@ -57,11 +58,11 @@ def detect_conflicts(db, account_id: str, start: str, end: str | None = None,
             text("""
                 SELECT id, body FROM records
                 WHERE kind='calendar'
-                  AND scope=:account_id
+                  AND scope IN (:account_id,:workspace)
                   AND status IN ('active', 'candidate')
                   AND json_extract(body, '$.start') IS NOT NULL
             """),
-            {'account_id': account_id}
+            {'account_id': account_id, 'workspace': 'web:mail:' + account_id}
         ).mappings().all()
 
     conflicts = []
@@ -157,7 +158,7 @@ def create_calendar_candidate(db, account_id: str, message_id: str,
         'created_at': now(),
     }
 
-    db.insert('calendar', calendar_body, id=idem_key, scope=account_id, status='candidate')
+    db.insert('calendar', calendar_body, id=idem_key, scope='web:mail:' + account_id, status='candidate')
 
     result = {
         'id': idem_key,
@@ -182,14 +183,15 @@ def list_calendar_candidates(db, account_id: str) -> list[dict]:
                 SELECT id, body, created_at FROM records
                 WHERE kind='calendar'
                   AND status='candidate'
-                  AND scope=:account_id
+                  AND scope IN (:account_id,:workspace)
                   AND json_extract(body, '$.source')='perception'
                 ORDER BY json_extract(body, '$.start') ASC
                 LIMIT 50
             """),
-            {'account_id': account_id}
+            {'account_id': account_id, 'workspace': 'web:mail:' + account_id}
         ).mappings().all()
-    return [dict(r) for r in rows]
+    return [{**dict(r), 'body': json.loads(r['body']) if isinstance(r['body'], str) else r['body']}
+            for r in rows]
 
 
 def confirm_calendar(db, calendar_id: str, account_id: str) -> dict:
@@ -198,7 +200,9 @@ def confirm_calendar(db, calendar_id: str, account_id: str) -> dict:
 
     确认时再次检查冲突（因为候选创建后可能又有新日程）。
     """
-    item = require(db, calendar_id, 'calendar', [account_id])
+    item = require(db, calendar_id, 'calendar', [account_id, 'web:mail:' + account_id])
+    if item['status'] == 'active':
+        return {'id': calendar_id, 'status': 'active', 'already_confirmed': True}
     if item['status'] != 'candidate':
         return {'status': 'error', 'message': '该日程不是候选状态'}
 
@@ -215,6 +219,21 @@ def confirm_calendar(db, calendar_id: str, account_id: str) -> dict:
     body['confirmed_at'] = now()
 
     db.update(calendar_id, body, 'active')
+    if item['scope'] == account_id:
+        with db.engine.begin() as c:
+            c.execute(text('UPDATE records SET scope=:scope WHERE id=:id'),
+                      {'scope': 'web:mail:' + account_id, 'id': calendar_id})
+    start = _parse_iso(body.get('start'))
+    if start and start.tzinfo and start > datetime.now(timezone.utc):
+        reminder_id = 'perception-reminder:' + calendar_id
+        try:
+            require(db, reminder_id, 'reminder')
+        except KeyError:
+            due = max(start - timedelta(minutes=30), datetime.now(timezone.utc))
+            db.insert('reminder', {'title': body.get('title', '日程即将开始'),
+                                   'due_at': due.isoformat(), 'source_calendar': calendar_id,
+                                   'source_message': body.get('source_message')},
+                      id=reminder_id, scope='web:mail:' + account_id)
 
     result = {'id': calendar_id, 'status': 'active'}
     if conflicts:

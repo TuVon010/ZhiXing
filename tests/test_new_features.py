@@ -43,7 +43,7 @@ def db(tmp_path, monkeypatch):
 def account(db):
     initialize(db)
     aid = save_account(db, MailAccount(
-        name='测试邮箱', address='owner@qq.com', enabled=True
+        name='测试邮箱', address='owner@qq.com', enabled=True, auto_analyze=True
     ))['id']
     from backend.filtering import DEFAULT_RULES
     db.insert('setting', {**DEFAULT_RULES}, id='mail-filter:' + aid)
@@ -227,7 +227,7 @@ class TestDigest:
 
     def test_digest_includes_high_priority(self, db, account):
         """高优先级邮件出现在摘要中。"""
-        make_message(db, account, subject='紧急：项目上线', body='请今晚12点前完成', number=1)
+        make_message(db, account, subject='紧急：项目上线', body='请回复确认今晚12点前完成', number=1)
         from backend.mail_worker import execute_job
         with db.engine.connect() as c:
             jobs = c.execute(text("SELECT * FROM mail_jobs WHERE kind='perception'")).mappings().all()
@@ -235,7 +235,7 @@ class TestDigest:
             execute_job(db, dict(job))
 
         digest = generate_digest(db, account, '2026-09-22')
-        assert digest['stats']['high_priority_count'] >= 0  # demo 模式可能不标记 high
+        assert digest['stats']['high_priority_count'] == 1
 
     def test_digest_idempotent_save(self, db, account):
         """重复保存同一天的摘要不创建重复记录。"""

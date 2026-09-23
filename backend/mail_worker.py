@@ -31,25 +31,12 @@ def _schedule_daily_digest(db):
     """
     shanghai_tz = timezone(timedelta(hours=8))
     yesterday = (datetime.now(shanghai_tz) - timedelta(days=1)).strftime('%Y-%m-%d')
-    marker_id = 'digest:last_date'
-    try:
-        marker = require(db, marker_id, 'schedule')
-        if marker['body'].get('date') == yesterday:
-            return  # 今天已经生成过了
-    except KeyError:
-        pass
-    # 为每个启用的账号生成摘要
+    # 每账号使用持久队列去重；新启用的账号也能在当天得到摘要。
     for account in rows(db, 'mail_account', limit=1000):
         if not account['body'].get('enabled'):
             continue
         enqueue(db, 'digest', {'date': yesterday}, account['id'],
                 priority=10, dedupe='digest:' + account['id'] + ':' + yesterday)
-    # 记录今天已生成
-    try:
-        require(db, marker_id, 'schedule')
-        db.update(marker_id, {'date': yesterday}, 'completed')
-    except KeyError:
-        db.insert('schedule', {'date': yesterday}, id=marker_id, status='completed')
 
 
 def execute_job(db,job):
@@ -78,11 +65,7 @@ def execute_job(db,job):
         return result
     if kind=='index':
         from .mail_rag import index_message
-        result=index_message(db,payload['message_id'])
-        account=require(db,aid,'mail_account')['body']
-        if account.get('auto_analyze'):
-            enqueue(db,'analyze',payload,aid,priority=30,dedupe='analyze:'+payload['message_id'])
-        return result
+        return index_message(db,payload['message_id'])
     if kind=='search':
         from .mail_rag import search
         return search(db,payload)
@@ -113,7 +96,25 @@ def execute_job(db,job):
         db.update(key,{'message_id':mail['id'],'turn_id':turn['id']});return {'turn_id':turn['id']}
     if kind=='perception':
         from .mail_perception import perceive
-        return perceive(db,payload['message_id'])
+        mail=require(db,payload['message_id'],'mail_message',[aid])
+        account=require(db,aid,'mail_account')['body']
+        manual=payload.get('manual',False)
+        if not manual and (mail['status'] not in {'active','review'} or not account.get('enabled') or not account.get('auto_analyze')):
+            return {'skipped':'account_disabled_or_message_filtered'}
+        if not manual:
+            cutoff=(datetime.now(timezone.utc)-timedelta(hours=1)).isoformat()
+            slot='perception-slot:'+mail['id']
+            with db.engine.connect() as c:
+                c.exec_driver_sql('BEGIN IMMEDIATE')
+                existing=c.execute(text('SELECT 1 FROM records WHERE id=:id'),{'id':slot}).first()
+                if not existing:
+                    count=c.execute(text("SELECT COUNT(*) FROM records WHERE kind='analysis_slot' AND scope=:a AND created_at>=:cutoff"),{'a':aid,'cutoff':cutoff}).scalar_one()
+                    if count>=account['hourly_analysis_limit']:
+                        c.rollback()
+                        return {'skipped':'hourly_analysis_limit'}
+                    db.insert('analysis_slot',{'message_id':mail['id'],'kind':'perception'},id=slot,scope=aid,conn=c)
+                c.commit()
+        return perceive(db,mail['id'])
     if kind=='digest':
         from .mail_digest import generate_and_save_digest
         return generate_and_save_digest(db, aid, payload.get('date'))

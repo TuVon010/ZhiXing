@@ -1,11 +1,30 @@
+import { useEffect, useState } from "react";
 import { useWorkspace } from "./context";
 import { pretty, label } from "./shared";
 export function FollowupsPage() {
   const { page, account, list, busy, setTrace, act, api } = useWorkspace();
+  const [digest, setDigest] = useState<any>(null);
+  useEffect(() => {
+    if (page !== "followups" || !account) return;
+    let active = true;
+    void api("mail/digest?account_id=" + encodeURIComponent(account))
+      .then((value) => { if (active) setDigest(value); })
+      .catch(() => { if (active) setDigest(null); });
+    return () => { active = false; };
+  }, [page, account, api]);
   return (
     <>
       {page === "followups" && (
         <>
+          {account && <section className="panel">
+            <h3>昨日邮件摘要</h3>
+            <p>{digest?.summary || digest?.message || "尚未生成，可手动生成。"}</p>
+            <button disabled={busy} onClick={() => void act(async () => {
+              const value = await api("mail/digest/generate?account_id=" + encodeURIComponent(account), {});
+              setDigest(value);
+            }, "摘要已更新")}>重新生成摘要</button>
+            {digest?.needs_reply?.length > 0 && <p>待回复：{digest.needs_reply.map((m: any) => m.subject).join("、")}</p>}
+          </section>}
           <section className="panel">
             <h3>待办与跟进</h3>
             <p>待办按邮箱隔离。这里只保存本地任务，不会修改邮箱服务器。</p>
@@ -61,6 +80,12 @@ export function FollowupsPage() {
                 · {label[t.status] || t.status} · {t.scope}
               </p>
               <div className="actions">
+                {t.status === "candidate" && t.body.source === "perception" && (
+                  <>
+                    <button disabled={busy} onClick={() => void act(() => api(`mail/perception/${t.kind === "calendar" ? "calendars" : "todos"}/${t.id}/confirm`, {}), "候选已确认")}>确认加入</button>
+                    <button disabled={busy} onClick={() => void act(() => api(`mail/perception/${t.kind === "calendar" ? "calendars" : "todos"}/${t.id}/dismiss`, {}), "候选已忽略")}>忽略</button>
+                  </>
+                )}
                 {t.body.run_id && (
                   <button
                     onClick={() =>
@@ -92,6 +117,7 @@ export function FollowupsPage() {
                   </button>
                 )}
               </div>
+              {t.body.has_conflict && <p role="alert">与 {t.body.conflicts?.length || 1} 项日程时间冲突，请核对后确认。</p>}
               <details>
                 <summary>来源与记录</summary>
                 <pre>{pretty(t.body)}</pre>

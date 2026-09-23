@@ -10,6 +10,8 @@ export const label: Record<string, string> = {
   active: "待处理",
   filtered: "已过滤",
   review: "待复核",
+  candidate: "待确认",
+  dismissed: "已忽略",
   archived: "本地归档",
   legacy: "历史资料",
   draft: "草稿",

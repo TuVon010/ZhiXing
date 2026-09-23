@@ -65,15 +65,15 @@ def generate_digest(db, account_id: str, date: str | None = None) -> dict:
                 SELECT id, body, status, created_at FROM records
                 WHERE kind='mail_message'
                   AND scope=:account_id
-                  AND status IN ('active', 'archived', 'review')
-                  AND json_extract(body, '$.received_at') >= :start
-                  AND json_extract(body, '$.received_at') < :end
+                  AND status IN ('active', 'archived', 'review', 'filtered')
+                  AND datetime(json_extract(body, '$.received_at')) >= :start
+                  AND datetime(json_extract(body, '$.received_at')) < :end
                 ORDER BY json_extract(body, '$.received_at') DESC
             """),
             {
                 'account_id': account_id,
-                'start': day_start.isoformat(),
-                'end': day_end.isoformat(),
+                'start': day_start.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                'end': day_end.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
             }
         ).mappings().all()
 
@@ -89,6 +89,7 @@ def generate_digest(db, account_id: str, date: str | None = None) -> dict:
 
     # 统计
     total = len(messages)
+    filtered_count = sum(msg['status'] == 'filtered' for msg in messages)
     by_category = {}
     needs_reply = []
     high_priority = []
@@ -96,6 +97,8 @@ def generate_digest(db, account_id: str, date: str | None = None) -> dict:
     calendar_events = []
 
     for msg in messages:
+        if msg['status'] == 'filtered':
+            continue
         p = msg['perception']
         if not p:
             continue
@@ -151,6 +154,8 @@ def generate_digest(db, account_id: str, date: str | None = None) -> dict:
         summary_parts.append('昨天没有新邮件。')
     else:
         summary_parts.append(f'昨天共收到 {total} 封邮件。')
+        if filtered_count:
+            summary_parts.append(f'{filtered_count} 封在本地过滤箱。')
         if needs_reply:
             summary_parts.append(f'{len(needs_reply)} 封需要回复。')
         if high_priority:
@@ -166,6 +171,7 @@ def generate_digest(db, account_id: str, date: str | None = None) -> dict:
         'summary': ' '.join(summary_parts),
         'stats': {
             'total': total,
+            'filtered_count': filtered_count,
             'by_category': by_category,
             'needs_reply_count': len(needs_reply),
             'high_priority_count': len(high_priority),

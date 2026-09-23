@@ -243,7 +243,7 @@ class PerceptionFeedback(BaseModel):
     """
     model_config = ConfigDict(extra='forbid')
 
-    message_id: str
+    message_id: str | None = None
     # 用户纠正后的分类（None 表示不纠正）
     category: Literal['work', 'personal', 'ad', 'notification', 'other'] | None = None
     # 用户纠正后的垃圾评分

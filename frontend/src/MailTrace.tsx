@@ -14,6 +14,7 @@ export type TraceData = {
   audit: RecordRow[];
   model_calls: RecordRow[];
   billing: any;
+  jobs?: { id: string; kind: string; status: string; result: unknown; attempts: number }[];
 };
 export const statusName = (value: string) =>
   ({
@@ -77,7 +78,7 @@ export function MailTrace({
     <div className="modal" role="dialog" aria-label="运行 Trace">
       <section className="panel mail-trace">
         <div className="mail-sectionbar">
-          <h2>运行 Trace</h2>
+          <h2>{data.root.kind === "mail_message" ? "邮件感知 Trace" : "运行 Trace"}</h2>
           <div className="actions">
             <button onClick={onRefresh}>刷新执行结果</button>
             <button onClick={onClose}>关闭</button>
@@ -89,15 +90,22 @@ export function MailTrace({
             data.root.body.message?.text}
         </p>
         <p>
-          Agent / 主运行：{statusName(data.root.status)} ·{" "}
+          {data.root.kind === "mail_message" ? "邮件状态" : "Agent / 主运行"}：{statusName(data.root.status)} ·{" "}
           {date(data.root.created_at)}
         </p>
         <small>
           Trace ID：{data.id}。对话完成与动作执行分别展示；批准不等于执行成功。
         </small>
         <BillingSummary value={data.billing} />
+        {data.jobs && <>
+          <h3>后台任务</h3>
+          {data.jobs.map((job) => <details key={job.id}>
+            <summary>{job.kind} · {statusName(job.status)} · 尝试 {job.attempts} 次</summary>
+            <pre>{pretty(job.result)}</pre>
+          </details>)}
+        </>}
         <h3>动作执行结果</h3>
-        {!data.runs.length && <p>本轮尚未提交动作运行。</p>}
+        {!data.runs.length && data.root.kind !== "mail_message" && <p>本轮尚未提交动作运行。</p>}
         {data.runs.map(({ run }) => (
           <article className="mail-evidence" key={run.id}>
             <strong>

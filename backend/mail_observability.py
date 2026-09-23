@@ -37,7 +37,15 @@ def activity(db, account_id=None, limit=30, offset=0):
 
 def trace(db, ident):
     root=db.get(ident)
-    if root['kind'] not in {'run','assistant_turn'}:raise ValueError('不是 Agent 或动作运行')
+    if root['kind']=='mail_message':
+        calls=db.for_run('model_call',ident)
+        audit=db.for_run('audit',ident)
+        with db.engine.connect() as c:
+            jobs=c.execute(text("SELECT id,kind,status,result,attempts,created_at,updated_at FROM mail_jobs WHERE json_extract(payload,'$.message_id')=:id ORDER BY created_at,id"),{'id':ident}).mappings().all()
+        return {'id':ident,'requested_id':ident,'root':root,'runs':[],
+                'audit':audit,'model_calls':calls,'billing':summarize(calls),
+                'jobs':[{**dict(j),'result':json.loads(j['result']) if j['result'] else None} for j in jobs]}
+    if root['kind'] not in {'run','assistant_turn'}:raise ValueError('不是 Agent、邮件或动作运行')
     parent=root['body'].get('message',{}).get('metadata',{}).get('assistant_turn')
     if parent: root=require(db,parent,'assistant_turn')
     if root['kind']=='assistant_turn':

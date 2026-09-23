@@ -76,7 +76,7 @@ export function useMailWorkspace(api: Api) {
   }
   async function refresh(target = page) {
     if (["inbox", "filter"].includes(target)) {
-      const suffix = target === "filter" ? "&status=filtered" : "";
+      const suffix = target === "filter" ? "&status=filtered" : "&status=inbox";
       setList(
         (
           await api(

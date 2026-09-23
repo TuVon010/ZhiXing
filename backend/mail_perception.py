@@ -18,6 +18,7 @@
 """
 import json
 import re
+import hashlib
 from datetime import datetime, timezone
 from sqlalchemy import text
 from .db import now, uid
@@ -135,8 +136,12 @@ def perceive(db, message_id: str) -> dict:
     ]
 
     # 调用模型（使用统一入口，自动计费和预算控制）
-    from .planner import model_json
-    raw = model_json(db, messages, schema=PerceptionResult.model_json_schema(), purpose='mail_perception')
+    from .planner import model_json, trace_run
+    trace_token = trace_run.set(message_id)
+    try:
+        raw = model_json(db, messages, schema=PerceptionResult.model_json_schema(), purpose='mail_perception')
+    finally:
+        trace_run.reset(trace_token)
 
     # 解析并验证结果
     try:
@@ -155,12 +160,13 @@ def perceive(db, message_id: str) -> dict:
     _store_result(db, message_id, result.model_dump())
 
     # 自动创建待办候选（不自动发布，需要用户确认）
+    serial = result.model_dump(mode='json')
     if result.todos:
-        _create_todo_candidates(db, account_id, message_id, result.todos)
+        _create_todo_candidates(db, account_id, message_id, serial['todos'])
 
     # 自动创建日程候选（带冲突检测和幂等，不自动发布）
     if result.calendar_events:
-        _create_calendar_candidates(db, account_id, message_id, result.calendar_events)
+        _create_calendar_candidates(db, account_id, message_id, serial['calendar_events'])
 
     return result.model_dump()
 
@@ -247,6 +253,8 @@ def _demo_perceive(db, message_id: str, body: dict) -> dict:
     )
 
     _store_result(db, message_id, result.model_dump())
+    if result.todos:
+        _create_todo_candidates(db, body['account_id'], message_id, result.model_dump(mode='json')['todos'])
     return result.model_dump()
 
 
@@ -255,8 +263,18 @@ def _store_result(db, message_id: str, result: dict):
     message = require(db, message_id, 'mail_message')
     body = message['body']
     body['perception'] = result
-    # 如果垃圾评分高，自动标记为 filtered（但不删除，用户可恢复）
-    if result.get('spam_score', 0) >= 0.8 and message['status'] == 'active':
+    # 白名单及明确待办/日程优先保护；模型自报分数不是校准概率。
+    from .filtering import _match_sender, DEFAULT_RULES
+    try:
+        rules = db.get('mail-filter:' + message['scope'])['body']
+    except KeyError:
+        rules = DEFAULT_RULES
+    protected = (_match_sender(body.get('sender', ''), rules.get('whitelist_senders', []))
+                 or result.get('needs_reply') or result.get('todos') or result.get('calendar_events'))
+    if (result.get('spam_score', 0) >= 0.9 and result.get('confidence', 0) >= 0.85
+            and not protected and message['status'] == 'active'):
+        body['filter'] = {**body.get('filter', {}), 'reason': 'AI 高分疑似垃圾',
+                          'ai_spam_score': result['spam_score'], 'ai_confidence': result['confidence']}
         db.update(message_id, body, 'filtered')
     else:
         db.update(message_id, body, message['status'])
@@ -270,7 +288,9 @@ def _create_todo_candidates(db, account_id: str, message_id: str, todos: list):
     这样不会自动创建一堆待办打扰用户。
     """
     for todo in todos:
-        key = 'perception-todo:' + message_id + ':' + uid()[:8]
+        signature = json.dumps({'action': todo['action'], 'deadline': str(todo.get('deadline'))},
+                               ensure_ascii=False, sort_keys=True)
+        key = 'perception-todo:' + hashlib.sha256((message_id + signature).encode()).hexdigest()[:24]
         try:
             require(db, key, 'todo')
             continue  # 已存在
@@ -282,7 +302,7 @@ def _create_todo_candidates(db, account_id: str, message_id: str, todos: list):
             'source': 'perception',
             'source_message': message_id,
             'source_quote': todo.get('source_quote', ''),
-        }, id=key, scope=account_id, status='candidate')
+        }, id=key, scope='web:mail:' + account_id, status='candidate')
 
 
 def _create_calendar_candidates(db, account_id: str, message_id: str, events: list):
@@ -320,6 +340,7 @@ def apply_feedback(db, feedback: PerceptionFeedback) -> dict:
     message = require(db, feedback.message_id, 'mail_message')
     body = message['body']
     perception = body.get('perception', {})
+    previous = perception.copy()
 
     # 应用纠偏
     if feedback.category is not None:
@@ -337,20 +358,29 @@ def apply_feedback(db, feedback: PerceptionFeedback) -> dict:
     }
     body['perception'] = perception
 
-    # 如果用户标记为非垃圾，恢复为 active
-    if feedback.spam_score is not None and feedback.spam_score < 0.5 and message['status'] == 'filtered':
-        db.update(feedback.message_id, body, 'active')
-    else:
-        db.update(feedback.message_id, body, message['status'])
+    status = message['status']
+    if feedback.spam_score is not None:
+        if feedback.spam_score < 0.5 and status == 'filtered':
+            status = 'active'
+        elif feedback.spam_score >= 0.8 and status in {'active', 'review'}:
+            status = 'filtered'
+            body['filter'] = {**body.get('filter', {}), 'reason': '用户手动标记垃圾'}
+    db.update(feedback.message_id, body, status)
+    if status == 'active' and message['status'] == 'filtered':
+        from .mail_store import enqueue
+        enqueue(db, 'index', {'message_id': feedback.message_id}, message['scope'],
+                priority=30, dedupe='feedback-index:' + feedback.message_id)
 
     # 将纠偏写入记忆候选
-    _learn_from_feedback(db, message['scope'], feedback, perception, body)
+    _learn_from_feedback(db, message['scope'], feedback, previous, body)
+    db.audit('user', 'MAIL_PERCEPTION_FEEDBACK', message_id=feedback.message_id,
+             old=previous, new=perception, status=status)
 
     return perception
 
 
 def _learn_from_feedback(db, account_id: str, feedback: PerceptionFeedback,
-                         perception: dict, message_body: dict):
+                         previous: dict, message_body: dict):
     """
     从用户纠偏中学习偏好，写入记忆候选。
 
@@ -363,18 +393,18 @@ def _learn_from_feedback(db, account_id: str, feedback: PerceptionFeedback,
 
     preferences = []
 
-    if feedback.category is not None and perception.get('category') != feedback.category:
+    if feedback.category is not None and previous.get('category') != feedback.category:
         preferences.append(
             f"主题包含'{subject[:30]}'的邮件应分类为{feedback.category}"
         )
 
     if feedback.spam_score is not None:
-        if feedback.spam_score < 0.3 and perception.get('spam_score', 0) > 0.5:
+        if feedback.spam_score < 0.3 and previous.get('spam_score', 0) > 0.5:
             preferences.append(f"来自 {sender} 的邮件不是垃圾邮件")
-        elif feedback.spam_score > 0.7 and perception.get('spam_score', 0) < 0.3:
+        elif feedback.spam_score > 0.7 and previous.get('spam_score', 0) < 0.3:
             preferences.append(f"来自 {sender} 的邮件是垃圾邮件")
 
-    if feedback.priority is not None and perception.get('priority') != feedback.priority:
+    if feedback.priority is not None and previous.get('priority') != feedback.priority:
         preferences.append(
             f"主题包含'{subject[:30]}'的邮件优先级应为{feedback.priority}"
         )
@@ -384,7 +414,12 @@ def _learn_from_feedback(db, account_id: str, feedback: PerceptionFeedback,
 
     # 写入记忆候选（需要用户确认后才生效）
     for pref in preferences[:3]:  # 最多生成 3 条
-        key = 'perception-memory:' + uid()
+        key = 'perception-memory:' + hashlib.sha256((account_id + ':' + feedback.message_id + ':' + pref).encode()).hexdigest()[:24]
+        try:
+            require(db, key, 'memory')
+            continue
+        except KeyError:
+            pass
         db.insert('memory', {
             'content': pref,
             'memory_type': 'preference',
@@ -412,9 +447,10 @@ def list_pending_todos(db, account_id: str) -> list:
     with db.engine.connect() as c:
         rows = c.execute(
             text("SELECT id, body, created_at FROM records "
-                 "WHERE kind='todo' AND status='candidate' AND scope=:a "
+                 "WHERE kind='todo' AND status='candidate' AND scope IN (:a,:workspace) "
                  "AND json_extract(body,'$.source')='perception' "
                  "ORDER BY created_at DESC LIMIT 50"),
-            {'a': account_id}
+            {'a': account_id, 'workspace': 'web:mail:' + account_id}
         ).mappings().all()
-    return [dict(r) for r in rows]
+    return [{**dict(r), 'body': json.loads(r['body']) if isinstance(r['body'], str) else r['body']}
+            for r in rows]

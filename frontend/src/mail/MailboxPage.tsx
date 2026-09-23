@@ -8,6 +8,8 @@ export function MailboxPage() {
     offset,
     setOffset,
     opened,
+    setOpened,
+    setTrace,
     thread,
     setQuery,
     setSelected,
@@ -19,6 +21,16 @@ export function MailboxPage() {
     makeDraft,
     api,
   } = useWorkspace();
+  async function feedback(change: Record<string, unknown>, message: string) {
+    if (!opened) return;
+    await act(async () => {
+      await api(`mail/messages/${opened.id}/perception/feedback`, {
+        ...change,
+        message_id: opened.id,
+      });
+      setOpened(await api(`mail/messages/${opened.id}`));
+    }, message);
+  }
   return (
     <>
       {["inbox", "filter"].includes(page) && (
@@ -144,9 +156,11 @@ export function MailboxPage() {
                       </button>
                     )}
                   </div>
+                  <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception`, {}), "已加入分析队列；完成后可刷新邮件查看结果")}>分析 / 重新分析</button>
                   {opened.body.perception && (
                     <div className="mail-perception">
                       <h3>AI 感知结果</h3>
+                      <button onClick={() => void act(async () => setTrace(await api(`mail/traces/${opened.id}`)), "")}>查看感知 Trace</button>
                       <div className="mail-perception-grid">
                         <div>
                           <strong>摘要</strong>
@@ -213,15 +227,15 @@ export function MailboxPage() {
                       <details>
                         <summary>纠正感知结果</summary>
                         <div className="mail-perception-feedback">
-                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { category: "work" }), "已标记为工作邮件")}>标记为工作</button>
-                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { category: "personal" }), "已标记为个人邮件")}>标记为个人</button>
-                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { category: "ad" }), "已标记为广告")}>标记为广告</button>
-                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { spam_score: 0.9 }), "已标记为垃圾邮件")}>标记垃圾</button>
-                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { spam_score: 0.0 }), "已标记为正常邮件")}>标记正常</button>
-                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { priority: "high" }), "已标记为高优先")}>高优先</button>
-                          <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception/feedback`, { priority: "low" }), "已标记为低优先")}>低优先</button>
+                          <button onClick={() => void feedback({ category: "work" }, "已标记为工作邮件")}>标记为工作</button>
+                          <button onClick={() => void feedback({ category: "personal" }, "已标记为个人邮件")}>标记为个人</button>
+                          <button onClick={() => void feedback({ category: "ad" }, "已标记为广告")}>标记为广告</button>
+                          <button onClick={() => void feedback({ spam_score: 0.9 }, "已移入本地过滤箱")}>标记垃圾</button>
+                          <button onClick={() => void feedback({ spam_score: 0.0 }, "已恢复为正常邮件")}>标记正常</button>
+                          <button onClick={() => void feedback({ priority: "high" }, "已标记为高优先")}>高优先</button>
+                          <button onClick={() => void feedback({ priority: "low" }, "已标记为低优先")}>低优先</button>
                         </div>
-                        <small>纠正会写入记忆，下次感知时参考你的偏好。</small>
+                        <small>纠正会生成待确认的记忆候选；确认后才用于后续感知。</small>
                       </details>
                     </div>
                   )}

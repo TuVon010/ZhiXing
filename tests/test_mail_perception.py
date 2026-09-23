@@ -26,7 +26,7 @@ from backend.mail_perception import (
 def account(db):
     initialize(db)
     aid = save_account(db, MailAccount(
-        name='测试邮箱', address='owner@qq.com', enabled=True
+        name='测试邮箱', address='owner@qq.com', enabled=True, auto_analyze=True
     ))['id']
     from backend.filtering import DEFAULT_RULES
     db.insert('setting', {**DEFAULT_RULES}, id='mail-filter:' + aid)
@@ -146,10 +146,12 @@ class TestPerceptionStorage:
     def test_high_spam_score_auto_filters(self, db):
         aid = account(db)
         mid = make_message(db, aid, subject='限时优惠免费领取', body='促销折扣退订')
+        initial_status = db.get(mid)['status']
         perceive(db, mid)
         msg = db.get(mid)
-        # spam_score >= 0.8 应该自动标记为 filtered
-        assert msg['status'] == 'filtered' or msg['body']['perception']['spam_score'] < 0.8
+        # 规则可能先过滤，但 Demo 感知不能再次改变邮件状态。
+        assert msg['body']['perception']['spam_score'] == 0.7
+        assert msg['status'] == initial_status
 
 
 # ============================================================
@@ -219,9 +221,8 @@ class TestTodoCandidates:
         mid = make_message(db, aid, body='请在周五前提交项目进度报告')
         perceive(db, mid)
         todos = list_pending_todos(db, aid)
-        # demo 模式可能提取到待办，也可能没有（取决于规则匹配）
-        # 只要不报错就行
-        assert isinstance(todos, list)
+        assert len(todos) == 1
+        assert todos[0]['body']['source_message'] == mid
 
     def test_list_pending_todos_empty(self, db):
         aid = account(db)
