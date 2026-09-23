@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from sqlalchemy import text
-from .channels import send_mail, ExternalUnknown
+from .channels import ExternalUnknown
 from .config import settings
 from .db import encode, now
 
@@ -35,6 +35,8 @@ def execute(db, action, run_id, scope, dry_run=False):
         raise ValueError(issue)
     if dry_run:
         return {'simulated':True,'replay':True,'id':'replay-'+aid,'tool':tool,'args':args}
+    if tool == 'send_email' and settings.mode != 'demo' and not args.get('draft_id'):
+        raise ValueError('旧版直接发送已停用；请在邮箱工作台创建草稿并提交审批')
     with db.engine.connect() as c:
         c.exec_driver_sql('BEGIN IMMEDIATE')
         row = c.execute(text('SELECT * FROM ledger WHERE action_id=:id'),{'id':aid}).mappings().first()
@@ -65,8 +67,6 @@ def execute(db, action, run_id, scope, dry_run=False):
             if args.get('draft_id'):
                 from .mail_send import send
                 result=send(db,args,aid)
-            else:
-                result = send_mail(args,aid)
         with db.engine.begin() as c:
             c.execute(text("UPDATE ledger SET status='completed',result=:result,updated_at=:at WHERE action_id=:id"),{'result':encode(result),'at':now(),'id':aid})
         return result

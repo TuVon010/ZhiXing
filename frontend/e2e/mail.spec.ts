@@ -18,7 +18,7 @@ test('多邮箱工作台、证据检索、草稿变更与 Trace（离线演示�
  await page.getByRole('button',{name:'申请发送审批'}).click();
  await expect(page.getByRole('status')).toContainText('已提交审批');
  await page.locator('nav').getByRole('button',{name:'审批中心',exact:true}).click();
- await expect(page.getByText('邮件发送审批')).toBeVisible();
+ await expect(page.getByText('待审批动作')).toBeVisible();
  await expect(page.getByRole('button',{name:'批准执行',exact:true}).first()).toBeVisible({timeout:15000});
  await page.getByRole('button',{name:'批准执行',exact:true}).first().click();
  await expect(page.getByRole('status')).toContainText('已批准');
@@ -47,7 +47,7 @@ test('多邮箱工作台、证据检索、草稿变更与 Trace（离线演示�
  await expect(page.locator('.mail-answer')).toContainText('离线演示',{timeout:20000});
  await page.getByRole('button',{name:'关闭',exact:true}).click();
  await page.getByRole('button',{name:'查看 Agent Trace'}).click();
- await expect(page.getByRole('heading',{name:'Agent Trace / 迁移记录'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'运行 Trace',exact:true})).toBeVisible();
  const pending=page.waitForEvent('download');await page.getByRole('button',{name:'导出邮件 Trace JSON'}).click();
  await (await pending).saveAs(info.outputPath('mail-trace.json'));
  await page.screenshot({path:info.outputPath('mail-trace.png'),fullPage:true});

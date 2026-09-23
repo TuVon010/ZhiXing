@@ -167,7 +167,16 @@ def scan(db,account_id,request=None,preview=False,import_id=None):
         validity=imap.response('UIDVALIDITY')[1][0].decode()
         try:cursor=db.get(cursor_id)['body']
         except KeyError:cursor=None
-        typ,data=imap.uid('search',None,'ALL')
+        # IMAP dates ignore time zones. Fetch a one-day margin, then enforce
+        # precise UTC INTERNALDATE boundaries below; never download all headers.
+        if spec:
+            months=('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec')
+            def imap_date(value):return f'{value.day:02d}-{months[value.month-1]}-{value.year}'
+            start=spec.start.astimezone(timezone.utc)-timedelta(days=1)
+            end=spec.end.astimezone(timezone.utc)+timedelta(days=1)
+            typ,data=imap.uid('search',None,'SINCE',imap_date(start),'BEFORE',imap_date(end))
+        else:
+            typ,data=imap.uid('search',None,'ALL')
         if typ!='OK':raise ValueError('无法读取邮件索引')
         all_uids=sorted(int(v) for v in (data[0] or b'').split())
         if not spec:
@@ -230,5 +239,11 @@ def scan(db,account_id,request=None,preview=False,import_id=None):
         if not spec:
             cursor['last_poll']=now();put(db,cursor_id,'mail_cursor',cursor,'attention' if cursor.get('paused') else 'active')
         elif import_id:
-            b=db.get(import_id)['body'];db.update(import_id,b,'completed' if done else 'paused')
+            with db.engine.connect() as c:
+                c.exec_driver_sql('BEGIN IMMEDIATE')
+                batch=require(db,import_id,'mail_import',conn=c);b=batch['body']
+                done=done or b.get('imported',0)>=spec.limit
+                # Yield after one scan batch while preserving an explicit user pause.
+                if batch['status']=='running':db.update(import_id,b,'completed' if done else 'running',conn=c)
+                c.commit()
         return {'matched':matched,'imported':imported,'preview':preview,'complete':done}

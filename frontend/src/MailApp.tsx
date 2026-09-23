@@ -1,55 +1,285 @@
-import {useEffect,useState} from 'react';
-import {PricingSettings,BillingSummary} from './PricingSettings';
-import './mail.css';
-type Api=(path:string,body?:unknown)=>Promise<any>;
-type Row={id:string;kind?:string;status:string;scope:string;body:Record<string,any>};
-const label:Record<string,string>={active:'待处理',filtered:'已过滤',review:'待复核',archived:'本地归档',legacy:'历史资料',draft:'草稿',approval:'待审批',approved:'已批准',rejected:'已拒绝',simulated:'演示发送（未发信）',smtp_accepted:'SMTP 已接受',unknown:'发送待核对',running:'处理中',queued:'排队中',completed:'完成',paused:'暂停',failed:'失败',cancelled:'取消',budget_exceeded:'达到预算',clarification:'需要澄清'};
-const actionLabel:Record<string,string>={send_email:'发送邮件',update_todo:'更新待办',create_calendar:'创建日程',update_calendar:'修改日程',delete_item:'删除内容'};
-const blankAccount={name:'',address:'',provider:'qq',username:'',password:'',imap_host:'',imap_port:993,imap_tls:'ssl',smtp_host:'',smtp_port:465,smtp_tls:'ssl',enabled:false,auto_analyze:false,scan_limit:20,hourly_analysis_limit:20};
-const pretty=(x:any)=>JSON.stringify(x,null,2);
-
-export function MailApp({api}:{api:Api}){
- const [page,setPage]=useState('inbox'),[accounts,setAccounts]=useState<Row[]>([]),[account,setAccount]=useState(''),[list,setList]=useState<Row[]>([]),[offset,setOffset]=useState(0),[config,setConfig]=useState<any>({}),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
- const [opened,setOpened]=useState<any>(null),[thread,setThread]=useState<any>(null),[accountForm,setAccountForm]=useState<any>(null),[draftForm,setDraftForm]=useState<any>(null),[query,setQuery]=useState(''),[selected,setSelected]=useState<string[]>([]),[searchResult,setSearchResult]=useState<any>(null),[session,setSession]=useState(''),[turns,setTurns]=useState<Row[]>([]),[trace,setTrace]=useState<any>(null),[rules,setRules]=useState('');
- const [range,setRange]=useState({start:'',end:'',limit:100}),[job,setJob]=useState<any>(null),[imports,setImports]=useState<Row[]>([]),[memories,setMemories]=useState<Row[]>([]),[memory,setMemory]=useState(''),[globalMemory,setGlobalMemory]=useState(false);
- const [ready,setReady]=useState(false),[sessions,setSessions]=useState<Row[]>([]);
- const current=accounts.find(a=>a.id===account);
- async function loadAccounts(){const data=await api('mail/accounts');setAccounts(data.items);return data.items as Row[]}
- async function refresh(target=page){
-  if(['inbox','filter'].includes(target)){const suffix=target==='filter'?'&status=filtered':'';setList((await api(`mail/messages?limit=30&offset=${offset}${account?'&account_id='+account:''}${suffix}`)).items)}
-  if(target==='drafts')setList((await api('mail/drafts'+(account?'?account_id='+account:''))).items);
-  if(target==='assistant')setSessions((await api('assistant/sessions')).items);
-  if(target==='accounts')await loadAccounts();
-  if(target==='imports')setImports((await api('mail/imports'+(account?'?account_id='+account:''))).items);
-  if(target==='memory')setMemories((await api('memory?limit=200')).items.filter((r:Row)=>r.scope==='global'||r.scope===account));
-  if(target==='followups')setList((await api('mail/followups'+(account?'?account_id='+account:''))).items);
-  if(target==='approvals')setList((await api('mail/approvals'+(account?'?account_id='+account:''))).items);
- }
- useEffect(()=>{let cancelled=false;void(async()=>{try{await api('session');const cfg=await api('settings');const rows=await loadAccounts();if(!cancelled){setConfig(cfg);setReady(true);if(rows[0]){setAccount(rows[0].id);setSelected([rows[0].id])}}}catch(e){setError(String(e))}})();return()=>{cancelled=true}},[]);
- useEffect(()=>{if(ready)void refresh().catch(e=>setError(String(e)))},[ready,page,account,offset]);
- useEffect(()=>{if(!ready)return;const source=new EventSource('/api/stream');source.onmessage=()=>void refresh().catch(e=>setError(String(e)));return()=>source.close()},[ready,page,account,offset]);
- async function act(fn:()=>Promise<any>,message='已保存'){setBusy(true);setError('');setNotice('');try{const result=await fn();setNotice(message);await refresh();return result}catch(e){setError(String(e));return null}finally{setBusy(false)}}
- async function waitJob(id:string){for(let i=0;i<240;i++){const j=await api('mail/jobs/'+id);setJob(j);if(['completed','failed'].includes(j.status)){if(j.status==='failed')throw new Error(j.result?.detail||j.result?.error);return j.result}await new Promise(r=>setTimeout(r,500))}throw new Error('任务仍在后台运行，可在任务状态中继续查看')}
- async function openMail(id:string){await act(async()=>{const m=await api('mail/messages/'+id);setOpened(m);setThread(await api('mail/threads/'+m.body.thread_id));},'')}
- function navigate(p:string){setPage(p);setOffset(0);setOpened(null);setThread(null);setError('');setNotice('')}
- async function makeDraft(mode='new'){await act(async()=>{const a=opened?.body.account_id||account;if(!a)throw new Error('请先选择发件邮箱');const result=await api('mail/drafts',{account_id:a,mode,...(mode!=='new'?{message_id:opened.id}:{})});setDraftForm(result);setPage('drafts');setOpened(null);await refresh('drafts')},'已创建草稿')}
- function draftPayload(){const b=draftForm.body;return {account_id:b.account_id,message_id:b.message_id,mode:b.mode,to:b.to.filter(Boolean),cc:b.cc.filter(Boolean),subject:b.subject,content:b.content,version:b.version}}
- function rangePayload(){if(!account||!range.start||!range.end)throw new Error('请先选择邮箱和起止时间');return {account_id:account,start:new Date(range.start).toISOString(),end:new Date(range.end).toISOString(),limit:range.limit}}
- async function ask(){await act(async()=>{if(!selected.length)throw new Error('请选择允许检索的邮箱');let sid=session;if(!sid){const s=await api('assistant/sessions',{account_ids:selected,...(opened?{thread_id:opened.body.thread_id}:{})});sid=s.id;setSession(sid)}const turn=await api(`assistant/sessions/${sid}/turns`,{text:query});setQuery('');setTurns(t=>[turn,...t]);for(let i=0;i<240;i++){const detail=await api('assistant/turns/'+turn.id);setTurns(t=>t.map(r=>r.id===turn.id?detail.turn:r));if(!['queued','running'].includes(detail.turn.status)){setTrace(detail);return}await new Promise(r=>setTimeout(r,500))}setNotice('Agent 仍在后台运行，请刷新会话')},'本轮已记录')}
- const nav=[['inbox','收件箱'],['followups','待办与跟进'],['approvals','审批中心'],['assistant','邮件 Agent'],['search','知识检索'],['drafts','回复草稿'],['filter','过滤箱'],['imports','收取与导入'],['accounts','邮箱账号'],['memory','记忆'],['settings','设置与计价']];
- return <div className="mail-shell"><aside className="mail-sidebar"><div className="brand"><img src="/zhixing-mark.svg" width="38" alt="知行标志"/><div className="brand-name">知行<small>MAIL AGENT</small></div></div><p className="mail-subtitle">从邮件中，找到下一步。</p><nav>{nav.map(([id,name])=><button key={id} className={page===id?'selected':''} onClick={()=>navigate(id)}>{name}</button>)}</nav><div className="mail-local">● 本地索引 · 人工确认发送</div></aside>
- <main className="mail-main"><header><div><span className="eyebrow">ZHIXING / PERSONAL MAIL AGENT</span><h1>{nav.find(([id])=>id===page)?.[1]}</h1></div><div className="mail-toolbar"><span>{config.mode==='demo'?'离线演示模式':'真实模型模式'}</span><select aria-label="当前邮箱" value={account} onChange={e=>{setAccount(e.target.value);setOffset(0);setOpened(null);setSession('');setTurns([]);setSelected(e.target.value?[e.target.value]:[])}}><option value="">全部邮箱（仅浏览）</option>{accounts.map(a=><option value={a.id} key={a.id}>{a.body.name} · {a.body.address}</option>)}</select><button onClick={()=>void act(()=>refresh(),'已刷新')}>刷新</button></div></header>
- {error&&<div role="alert" className="alert">{error}<button onClick={()=>setError('')}>×</button></div>}{notice&&<div role="status" className="notice">{notice}</div>}
- {!accounts.length&&<section className="panel mail-welcome"><h2>让知行成为你的邮件工作助理</h2><p>连接多个邮箱，保留来源、查找证据、整理待办。新账号默认暂停，连接测试不会发送邮件。</p><button onClick={()=>{navigate('accounts');setAccountForm({body:{...blankAccount}})}}>添加邮箱</button>{config.mode==='demo'&&<button onClick={()=>void act(async()=>{const r=await api('mail/demo',{});await loadAccounts();setAccount(r.account_id);setSelected([r.account_id]);await refresh()},'已导入明确标记的演示邮件')}>导入演示邮件</button>}</section>}
- {['inbox','filter'].includes(page)&&<><div className="mail-sectionbar"><p>{page==='filter'?'过滤只影响本地处理；可恢复，不会删除原邮箱邮件。':'邮件收取、索引、Agent 分析相互独立。'} </p><button onClick={()=>void makeDraft()}>新邮件草稿</button></div><div className="mail-columns"><section className="panel mail-list">{!list.length&&<div className="empty">暂无邮件，请添加账号或调整筛选。</div>}{list.map(m=><button className={'mail-row '+(opened?.id===m.id?'current':'')} key={m.id} onClick={()=>void openMail(m.id)}><span className="mail-row-meta">{m.body.sender_display||m.body.sender||'历史来源'} <small>{label[m.status]||m.status}</small></span><strong>{m.body.subject||'无主题'}</strong><span>{m.body.text?.slice(0,90)}</span><small>{new Date(m.body.received_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})} · {m.body.index_status}</small></button>)}<div className="actions"><button disabled={!offset} onClick={()=>setOffset(Math.max(0,offset-30))}>上一页</button><button disabled={list.length<30} onClick={()=>setOffset(offset+30)}>下一页</button></div></section><section className="panel mail-reader">{opened?<><small>{opened.body.sender} → {opened.body.to?.join(', ')}</small><h2>{opened.body.subject}</h2>{opened.body.incomplete&&<p className="mail-warning">历史资料缺少完整原始头部，收件时间可能为旧入库时间。</p>}<div className="actions"><button onClick={()=>void makeDraft('reply')}>回复草稿</button><button onClick={()=>void makeDraft('reply_all')}>回复全部</button><button onClick={()=>{setPage('assistant');setSelected([opened.body.account_id]);setSession('');setTurns([]);setQuery('总结这组往来并列出有证据的待办与截止时间')}}>询问此线程</button>{['filtered','review'].includes(opened.status)?<button onClick={()=>void act(()=>api(`mail/messages/${opened.id}/state`,{status:'active'}),'已放行并排队建立索引')}>恢复处理</button>:<button onClick={()=>void act(()=>api(`mail/messages/${opened.id}/state`,{status:'archived'}),'已在本地归档')}>本地归档</button>}</div><pre className="mail-body">{opened.body.raw_text||opened.body.text}</pre>{opened.body.attachments?.map((a:any)=><details key={a.id}><summary>附件：{a.name} · {a.status}</summary>{a.segments?.map((s:any,i:number)=><p key={i}>{s.location}：{s.text}</p>)}</details>)}<details><summary>过滤依据与原始头部</summary><pre>{pretty({filter:opened.body.filter,headers:opened.body.headers})}</pre></details><h3>同一线程 · {thread?.messages.length||0} 封</h3>{thread?.messages.map((r:Row)=><button key={r.id} onClick={()=>void openMail(r.id)}>{r.body.subject} · {new Date(r.body.received_at).toLocaleString()}</button>)}<details><summary>手工关联到线程</summary><form onSubmit={e=>{e.preventDefault();const target=new FormData(e.currentTarget).get('target');void act(()=>api(`mail/messages/${opened.id}/thread`,{target_thread_id:target}),'已关联')}}><input name="target" placeholder="目标线程 ID" required/><button>关联</button></form><small>当前线程：{opened.body.thread_id}</small></details></>:<div className="empty">选择邮件查看正文、附件和往来线程。</div>}</section></div></>}
- {page==='accounts'&&<><section className="panel"><div className="mail-sectionbar"><h3>已连接邮箱</h3><button onClick={()=>setAccountForm({body:{...blankAccount}})}>添加邮箱</button></div>{accounts.map(a=><article className="mail-account" key={a.id}><div><h3>{a.body.name}</h3><p>{a.body.address} · {a.body.enabled?'收取已启用':'收取已暂停'} · {a.body.credential_configured?'凭证已保存':'待配置凭证'}</p><small>{a.body.last_job?.kind} {a.body.last_job?.status} {a.body.last_job?.error}</small></div><div className="actions"><button onClick={()=>setAccountForm({id:a.id,body:{...blankAccount,...Object.fromEntries(Object.entries(a.body).filter(([k])=>k in blankAccount)),password:''}})}>编辑</button><button disabled={busy} onClick={()=>void act(async()=>waitJob((await api(`mail/accounts/${a.id}/test`,{})).job_id),'IMAP 与 SMTP 连接测试成功；没有发送邮件')}>测试连接</button><button onClick={()=>void act(async()=>{await api(`mail/accounts/${a.id}/enabled`,{enabled:!a.body.enabled});await loadAccounts()})}>{a.body.enabled?'暂停收取':'启用收取'}</button><button onClick={()=>void act(async()=>waitJob((await api(`mail/accounts/${a.id}/sync`,{})).job_id),'同步任务已完成')}>同步一轮</button></div></article>)}</section>{accountForm&&<section className="panel"><h3>{accountForm.id?'编辑邮箱':'添加邮箱'}</h3><form onSubmit={e=>{e.preventDefault();void act(async()=>{const b={...accountForm.body,password:accountForm.body.password||null};const r=await api('mail/accounts'+(accountForm.id?'/'+accountForm.id:''),b);await loadAccounts();setAccount(r.id);setSelected([r.id]);setAccountForm(null)},'邮箱已保存')} }><div className="pricing-grid">{[['name','邮箱名称'],['address','邮箱地址'],['username','登录名'],['password','授权码 / 密码']].map(([k,n])=><label key={k}>{n}<input aria-label={n} type={k==='password'?'password':'text'} autoComplete="off" required={['name','address'].includes(k)} value={accountForm.body[k]} onChange={e=>setAccountForm({...accountForm,body:{...accountForm.body,[k]:e.target.value}})}/></label>)}<label>服务商<select aria-label="服务商" value={accountForm.body.provider} onChange={e=>setAccountForm({...accountForm,body:{...accountForm.body,provider:e.target.value}})}><option value="qq">QQ</option><option value="163">163</option><option value="custom">通用 IMAP / SMTP</option></select></label>{['imap','smtp'].map(kind=><div key={kind}><label>{kind.toUpperCase()} 主机<input aria-label={kind+'主机'} disabled={accountForm.body.provider!=='custom'} value={accountForm.body[kind+'_host']} onChange={e=>setAccountForm({...accountForm,body:{...accountForm.body,[kind+'_host']:e.target.value}})}/></label><label>端口<input type="number" value={accountForm.body[kind+'_port']} onChange={e=>setAccountForm({...accountForm,body:{...accountForm.body,[kind+'_port']:+e.target.value}})}/></label><select aria-label={kind+' TLS'} value={accountForm.body[kind+'_tls']} onChange={e=>setAccountForm({...accountForm,body:{...accountForm.body,[kind+'_tls']:e.target.value}})}><option value="ssl">隐式 TLS</option><option value="starttls">STARTTLS</option></select></div>)}<label>每轮扫描上限<input type="number" min={1} max={200} value={accountForm.body.scan_limit} onChange={e=>setAccountForm({...accountForm,body:{...accountForm.body,scan_limit:+e.target.value}})}/></label><label>自动分析每小时上限<input type="number" min={1} max={200} value={accountForm.body.hourly_analysis_limit} onChange={e=>setAccountForm({...accountForm,body:{...accountForm.body,hourly_analysis_limit:+e.target.value}})}/></label></div><label><input type="checkbox" checked={accountForm.body.auto_analyze} onChange={e=>setAccountForm({...accountForm,body:{...accountForm.body,auto_analyze:e.target.checked}})}/>自动分析已放行的新邮件（可能调用外部模型）</label><p>新账号默认暂停。凭证只写不读，编辑时留空保留原凭证。</p><button className="primary" disabled={busy}>保存邮箱</button><button type="button" onClick={()=>setAccountForm(null)}>取消</button></form></section>}</>}
- {['search','assistant'].includes(page)&&<>{page==='assistant'&&<section className="panel"><label>历史会话<select aria-label="历史会话" value={session} onChange={e=>{const id=e.target.value;setSession(id);setTurns([]);setOpened(null);if(id)void act(async()=>{const detail=await api('assistant/sessions/'+id);setSelected(detail.session.body.account_ids);setTurns(detail.turns)},'已恢复会话及原账号范围')}}><option value="">新会话</option>{sessions.map(s=><option key={s.id} value={s.id}>{s.id.slice(0,8)} · {s.body.account_ids.map((id:string)=>accounts.find(a=>a.id===id)?.body.name||id).join('、')}</option>)}</select></label></section>}<section className="panel"><h3>本次允许读取的邮箱</h3><div className="mail-scope">{accounts.map(a=><label key={a.id}><input type="checkbox" checked={selected.includes(a.id)} onChange={e=>{setSelected(e.target.checked?[...selected,a.id]:selected.filter(id=>id!==a.id));setSession('');setTurns([]);setSearchResult(null)}}/>{a.body.name} · {a.body.address}</label>)}</div><p>跨邮箱必须显式选择；生成回答时会将选中的证据交给已配置的主模型。</p><textarea aria-label="邮件问题" rows={4} value={query} onChange={e=>setQuery(e.target.value)} placeholder="例如：导师最近要求修改哪些实验？有哪些承诺还未完成？"/><div className="actions"><button className="primary" disabled={busy||!query.trim()||!selected.length} onClick={()=>void (page==='search'?act(async()=>setSearchResult(await waitJob((await api('search',{account_ids:selected,query})).job_id))):ask())}>{page==='search'?'检索证据':'交给 Agent'}</button>{page==='assistant'&&<><button onClick={()=>{setSession('');setTurns([]);setTrace(null)}}>新建会话</button><button disabled={!session} onClick={()=>void act(async()=>setTurns((await api('assistant/sessions/'+session)).turns))}>刷新会话</button></>}</div></section>{searchResult&&<section className="panel"><h3>检索结果 · {searchResult.mode}</h3><p>{searchResult.degraded?'已降级 / 部分索引未完成：'+searchResult.reason:'检索已完成'} · {searchResult.latency_ms} ms</p>{searchResult.evidence.map((e:any)=><article className="mail-evidence" key={e.id}><button onClick={()=>{setPage('inbox');void openMail(e.message_id)}}>查看来源 · {e.location}</button><p>{e.text}</p></article>)}<details><summary>检索排名与版本</summary><pre>{pretty(searchResult)}</pre></details></section>}{page==='assistant'&&turns.map(t=><section className="panel" key={t.id}><small>{label[t.status]||t.status}</small><h3>{t.body.text}</h3><p className="mail-answer">{t.body.answer||'正在处理…'}</p>{t.body.error&&<pre>{pretty(t.body.error)}</pre>}{t.body.citations?.map((id:string)=>{const e=t.body.evidence.find((v:any)=>v.id===id);return e?<button key={id} onClick={()=>{setPage('inbox');void openMail(e.message_id)}}>来源：{e.location}</button>:null})}<div className="actions"><button onClick={()=>void act(async()=>setTrace(await api('assistant/turns/'+t.id)))}>查看 Agent Trace</button>{['running','queued'].includes(t.status)&&<button onClick={()=>void act(()=>api('assistant/turns/'+t.id+'/cancel',{}))}>取消本轮</button>}</div><details><summary>工具调用步骤</summary><pre>{pretty(t.body.steps)}</pre></details></section>)}</>}
- {page==='followups'&&<><section className="panel"><h3>&#24453;&#21150;&#19982;&#36319;&#36827;</h3><p>&#24453;&#21150;&#25353;&#37038;&#31665;&#38548;&#31163;&#12290;&#36825;&#37324;&#21482;&#20445;&#23384;&#26412;&#22320;&#20219;&#21153;&#65292;&#19981;&#20250;&#20462;&#25913;&#37038;&#31665;&#26381;&#21153;&#22120;&#12290;</p><form onSubmit={e=>{e.preventDefault();const d=new FormData(e.currentTarget);void act(()=>api('mail/followups',{account_id:account,title:String(d.get('title')||''),deadline:d.get('deadline')?new Date(String(d.get('deadline'))).toISOString():null}),'\u5f85\u529e\u5df2\u521b\u5efa')}}><label className="mail-field">&#20219;&#21153;<input name="title" required placeholder="&#20363;&#22914;&#65306;&#21608;&#20116;&#21069;&#34917;&#20805;&#23454;&#39564;&#23545;&#27604;"/></label><label className="mail-field">&#25130;&#27490;&#26102;&#38388;<input name="deadline" type="datetime-local"/></label><button className="primary" disabled={!account||busy}>&#28155;&#21152;&#24453;&#21150;</button>{!account&&<small>&#35831;&#20808;&#22312;&#39030;&#37096;&#36873;&#25321;&#37038;&#31665;&#36134;&#21495;&#12290;</small>}</form></section>{list.map(t=><article className="panel" key={t.id}><h3>{t.body.title||t.body.text||'提醒'}</h3><p>{t.body.deadline||'&#26410;&#35774;&#25130;&#27490;&#26102;&#38388;'} · {label[t.status]||t.status} · {t.scope}</p><div className="actions">{t.kind==='todo'&&t.status==='active'&&<button disabled={busy} onClick={()=>void act(()=>api('actions',{tool:'update_todo',args:{id:t.id,status:'completed'}}),'\u5df2\u63d0\u4ea4\u5b8c\u6210\u7533\u8bf7\uff0c\u8bf7\u5728\u5ba1\u6279\u4e2d\u5fc3\u786e\u8ba4')}>&#30003;&#35831;&#26631;&#35760;&#23436;&#25104;</button>}</div><details><summary>&#26469;&#28304;&#19982;&#35760;&#24405;</summary><pre>{pretty(t.body)}</pre></details></article>)}</>}
- {page==='approvals'&&<section className="panel"><h3>&#37038;&#20214;&#21457;&#36865;&#23457;&#25209;</h3><p>Please verify the sender account, recipients, subject, and full message before approving.</p>{list.length===0&&<div className="empty">&#24403;&#21069;&#33539;&#22260;&#20869;&#27809;&#26377;&#24453;&#23457;&#25209;&#21160;&#20316;&#12290;</div>}{list.map(a=><article className="mail-account" key={a.id}><div><h3>{(actionLabel[a.body.action?.tool]||a.body.summary||'邮件动作')} · {a.body.action?.args?.subject||''}</h3><p>{label[a.status]||a.status} · v{a.body.version}</p><pre>{pretty(a.body.action?.args||a.body)}</pre></div>{a.status==='pending'&&<div className="actions"><button disabled={busy} onClick={()=>void act(()=>api('approvals/'+a.id,{decision:'reject',version:a.body.version}),'\u5df2\u62d2\u7edd')}>&#25298;&#32477;</button><button className="primary" disabled={busy} onClick={()=>void act(()=>api('approvals/'+a.id,{decision:'approve',version:a.body.version}),'\u5df2\u6279\u51c6\uff0c\u6267\u884c\u7ed3\u679c\u53ef\u5728 Trace \u67e5\u770b')}>&#25209;&#20934;&#25191;&#34892;</button></div>}</article>)}</section>}
- {page==='drafts'&&<><section className="panel"><button onClick={()=>void makeDraft()}>新邮件草稿</button>{list.map(d=><article className="mail-account" key={d.id}><div><h3>{d.body.subject||'无主题草稿'}</h3><p>{d.body.to?.join(', ')} · {label[d.status]||d.status} · v{d.body.version}</p></div><button onClick={()=>setDraftForm(d)}>打开草稿</button></article>)}</section>{draftForm&&<section className="panel"><h3>编辑草稿 · v{draftForm.body.version}</h3><p>发件邮箱：{accounts.find(a=>a.id===draftForm.body.account_id)?.body.address} · {label[draftForm.status]||draftForm.status}</p>{[['to','收件人'],['cc','抄送'],['subject','邮件主题'],['content','邮件正文']].map(([k,n])=><label className="mail-field" key={k}>{n}<textarea rows={k==='content'?10:1} aria-label={n} value={['to','cc'].includes(k)?draftForm.body[k].join(', '):draftForm.body[k]} onChange={e=>setDraftForm({...draftForm,dirty:true,body:{...draftForm.body,[k]:['to','cc'].includes(k)?e.target.value.split(',').map(v=>v.trim()):e.target.value}})}/></label>)}<p>编辑后需要先保存；保存会使旧发送审批失效。审批内容必须与当前草稿版本一致。</p><div className="actions"><button disabled={busy} onClick={()=>void act(async()=>setDraftForm(await api('mail/drafts/'+draftForm.id,draftPayload())),'草稿已保存，旧审批已失效')}>保存草稿</button><button disabled={busy||draftForm.dirty||draftForm.status!=='draft'} onClick={()=>void act(async()=>{await api('mail/drafts/'+draftForm.id+'/submit',{version:draftForm.body.version});setDraftForm({...draftForm,status:'approval'})},'已提交审批，请前往审批中心核对收件人与正文')}>申请发送审批</button><button onClick={()=>navigate('approvals')}>前往审批中心</button></div></section>}</>}
- {page==='imports'&&<><section className="panel"><h3>历史导入 · {current?.body.name||'请先选择邮箱'}</h3><p>起止时间按本机时间输入，结束时间不包含在范围内。预览不下载正文、不推进实时游标。</p><div className="pricing-grid"><label>开始时间<input aria-label="开始时间" type="datetime-local" value={range.start} onChange={e=>setRange({...range,start:e.target.value})}/></label><label>结束时间<input aria-label="结束时间" type="datetime-local" value={range.end} onChange={e=>setRange({...range,end:e.target.value})}/></label><label>本批累计上限<input type="number" min={1} max={10000} value={range.limit} onChange={e=>setRange({...range,limit:+e.target.value})}/></label></div><div className="actions"><button disabled={busy} onClick={()=>void act(async()=>{const result=await waitJob((await api('mail/imports/preview',rangePayload())).job_id);setNotice('匹配邮件：'+result.matched+' 封')},'预览已完成，查看下方任务结果')}>预览范围</button><button disabled={busy} onClick={()=>void act(()=>api('mail/imports',rangePayload()),'导入批次已创建')}>创建导入批次</button><button disabled={!account} onClick={()=>void act(async()=>setJob(await api('mail/accounts/'+account+'/status')),'')}>查看账号状态</button></div>{job&&<pre>{pretty(job)}</pre>}<details><summary>离线积压处理</summary><p>默认最多补读最近 24 小时的 50 封。继续将放行当前剩余积压；从现在开始会跳过尚未收取的旧邮件，但不删除远端内容。</p><button disabled={!account} onClick={()=>void act(()=>api(`mail/accounts/${account}/backlog/continue`,{}))}>继续当前积压</button><button disabled={!account} onClick={()=>void act(()=>api(`mail/accounts/${account}/backlog/from_now`,{}))}>重新从现在开始</button></details></section>{imports.map(r=><section className="panel" key={r.id}><h3>{label[r.status]||r.status} · {r.body.imported}/{r.body.limit} 封</h3><p>{r.body.start} — {r.body.end}</p>{['pause','resume','cancel'].map((v,i)=><button key={v} disabled={['completed','cancelled'].includes(r.status)} onClick={()=>void act(()=>api(`mail/imports/${r.id}/${v}`,{}))}>{['暂停','继续','取消'][i]}</button>)}</section>)}</>}
- {page==='memory'&&<><section className="panel"><h3>确认后进入后续运行的长期记忆</h3><textarea aria-label="记忆内容" value={memory} onChange={e=>setMemory(e.target.value)} placeholder="例如：回复导师时先给结论，再列出需要确认的问题。"/><label><input type="checkbox" checked={globalMemory} onChange={e=>setGlobalMemory(e.target.checked)}/>明确共享到全部邮箱的通用偏好</label><button disabled={!memory||(!globalMemory&&!account)} onClick={()=>void act(async()=>{await api('mail/memory',{content:memory,account_id:globalMemory?'global':account,memory_type:'preference'});setMemory('')},'已创建待确认记忆')}>创建记忆候选</button></section>{memories.map(r=><section className="panel" key={r.id}><p>{r.body.content}</p><small>{r.scope==='global'?'全局共享':'仅当前邮箱'} · {r.status}</small>{r.status==='candidate'?<><button onClick={()=>void act(()=>api(`review/${r.id}/publish`,{}))}>确认记忆</button><button onClick={()=>void act(()=>api(`review/${r.id}/reject`,{}))}>拒绝</button></>:r.status==='published'&&<button onClick={()=>void act(()=>api(`review/${r.id}/suspend`,{}))}>撤销记忆</button>}</section>)}</>}
- {page==='settings'&&<><PricingSettings api={api}/><section className="panel"><h3>当前邮箱过滤规则</h3><p>编辑完整规则 JSON；只影响当前邮箱后续收取，可在过滤箱纠正已收取邮件。</p><button disabled={!account} onClick={()=>void act(async()=>setRules(pretty(await api(`mail/accounts/${account}/filters`))))}>读取过滤规则</button>{rules&&<><textarea aria-label="邮箱过滤规则" rows={12} value={rules} onChange={e=>setRules(e.target.value)}/><button onClick={()=>void act(async()=>{const value=JSON.parse(rules);delete value.version;setRules(pretty(await api(`mail/accounts/${account}/filters`,value)))})}>保存过滤规则</button></>}<button disabled={!account} onClick={()=>void act(()=>api(`mail/accounts/${account}/reindex`,{}),'已排队重建当前账号索引')}>重建本地检索索引</button></section><section className="panel"><h3>升级与历史数据</h3><button onClick={()=>void act(async()=>setTrace(await api('mail/migration')))}>查看迁移复核</button><p>模型和邮箱凭证通过项目根目录的 .env 配置。旧任务不会在升级后自动执行。</p></section></>}
- {trace&&<div className="modal"><section className="panel mail-trace"><div className="mail-sectionbar"><h2>Agent Trace / 迁移记录</h2><button onClick={()=>setTrace(null)}>关闭</button></div><BillingSummary value={trace.billing}/>{trace.runs?.map((r:Row)=><p key={r.id}>{r.body.summary||r.id}<button onClick={()=>void act(()=>api(`mail/legacy/${r.id}/resume`,{}),'已记录人工迁移复核')}>确认恢复此旧运行</button></p>)}<button onClick={()=>{const url=URL.createObjectURL(new Blob([pretty(trace)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='zhixing-mail-trace.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}}>导出邮件 Trace JSON</button><pre>{pretty(trace)}</pre></section></div>}
- <footer>知行 · 邮件是证据，记忆需确认，发送经审批。</footer></main></div>
+import { BillingSummary } from "./PricingSettings";
+import "./mail.css";
+import { MailTrace } from "./MailTrace";
+import { MailActivity } from "./MailActivity";
+import { MailCalendar } from "./MailCalendar";
+import { WorkspaceContext } from "./mail/context";
+import { useMailWorkspace } from "./mail/useMailWorkspace";
+import { pretty, blankAccount, type Api, type Row } from "./mail/shared";
+import { MailboxPage } from "./mail/MailboxPage";
+import { AccountsPage } from "./mail/AccountsPage";
+import { AssistantPage } from "./mail/AssistantPage";
+import { FollowupsPage } from "./mail/FollowupsPage";
+import { ApprovalsPage } from "./mail/ApprovalsPage";
+import { DraftsPage } from "./mail/DraftsPage";
+import { ImportsPage } from "./mail/ImportsPage";
+import { MemoryPage } from "./mail/MemoryPage";
+import { SettingsPage } from "./mail/SettingsPage";
+export function MailApp({ api }: { api: Api }) {
+  const workspace = useMailWorkspace(api);
+  const {
+    page,
+    accounts,
+    account,
+    setAccount,
+    setOffset,
+    config,
+    error,
+    setError,
+    notice,
+    setOpened,
+    setAccountForm,
+    selected,
+    setSelected,
+    setSession,
+    setTurns,
+    trace,
+    setTrace,
+    imports,
+    memory,
+    loadAccounts,
+    refresh,
+    act,
+    navigate,
+    unread,
+  } = workspace;
+  const nav = [
+    ["inbox", "收件箱"],
+    ["followups", "待办与跟进"],
+    ["approvals", "审批中心"],
+    ["activity", "运行记录"],
+    ["notifications", "通知与提醒"],
+    ["calendar", "日程"],
+    ["assistant", "邮件 Agent"],
+    ["search", "知识检索"],
+    ["drafts", "回复草稿"],
+    ["filter", "过滤箱"],
+    ["imports", "收取与导入"],
+    ["accounts", "邮箱账号"],
+    ["memory", "记忆"],
+    ["settings", "设置与计价"],
+  ];
+  return (
+    <WorkspaceContext.Provider value={workspace}>
+      <div className="mail-shell">
+        <aside className="mail-sidebar">
+          <div className="brand">
+            <img src="/zhixing-mark.svg" width="38" alt="知行标志" />
+            <div className="brand-name">
+              知行<small>MAIL AGENT</small>
+            </div>
+          </div>
+          <p className="mail-subtitle">从邮件中，找到下一步。</p>
+          <nav>
+            {[
+              ["邮件", ["inbox", "drafts", "filter"]],
+              [
+                "工作",
+                [
+                  "assistant",
+                  "search",
+                  "followups",
+                  "calendar",
+                  "approvals",
+                  "notifications",
+                  "activity",
+                ],
+              ],
+              ["管理", ["accounts", "imports", "memory", "settings"]],
+            ].map(([title, ids]) => (
+              <section className="mail-nav-group" key={String(title)}>
+                <small>{title}</small>
+                {nav
+                  .filter(([id]) => ids.includes(id))
+                  .map(([id, name]) => (
+                    <button
+                      key={id}
+                      className={page === id ? "selected" : ""}
+                      onClick={() => navigate(id)}
+                    >
+                      {name}
+                      {id === "notifications" && unread > 0 && (
+                        <span
+                          className="mail-badge"
+                          aria-label={`${unread} 条未读通知`}
+                        >
+                          {unread > 99 ? "99+" : unread}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+              </section>
+            ))}
+          </nav>
+          <div className="mail-local">● 本地索引 · 人工确认发送</div>
+        </aside>
+        <main className="mail-main">
+          <header>
+            <div>
+              <span className="eyebrow">ZHIXING / PERSONAL MAIL AGENT</span>
+              <h1>{nav.find(([id]) => id === page)?.[1]}</h1>
+            </div>
+            <div className="mail-toolbar">
+              <span>
+                {config.mode === "demo" ? "离线演示模式" : "真实模型模式"}
+              </span>
+              <select
+                aria-label="当前邮箱"
+                value={account}
+                onChange={(e) => {
+                  setAccount(e.target.value);
+                  setOffset(0);
+                  setOpened(null);
+                  setSession("");
+                  setTurns([]);
+                  setSelected(e.target.value ? [e.target.value] : []);
+                }}
+              >
+                <option value="">全部邮箱（仅浏览）</option>
+                {accounts.map((a) => (
+                  <option value={a.id} key={a.id}>
+                    {a.body.name} · {a.body.address}
+                  </option>
+                ))}
+              </select>
+              <button onClick={() => void act(() => refresh(), "已刷新")}>
+                刷新
+              </button>
+            </div>
+          </header>
+          {error && (
+            <div role="alert" className="alert">
+              {error}
+              <button onClick={() => setError("")}>×</button>
+            </div>
+          )}
+          {notice && (
+            <div role="status" className="notice">
+              {notice}
+            </div>
+          )}
+          {!accounts.length && (
+            <section className="panel mail-welcome">
+              <h2>让知行成为你的邮件工作助理</h2>
+              <p>
+                连接多个邮箱，保留来源、查找证据、整理待办。新账号默认暂停，连接测试不会发送邮件。
+              </p>
+              <button
+                onClick={() => {
+                  navigate("accounts");
+                  setAccountForm({ body: { ...blankAccount } });
+                }}
+              >
+                添加邮箱
+              </button>
+              {config.mode === "demo" && (
+                <button
+                  onClick={() =>
+                    void act(async () => {
+                      const r = await api("mail/demo", {});
+                      await loadAccounts();
+                      setAccount(r.account_id);
+                      setSelected([r.account_id]);
+                      await refresh();
+                    }, "已导入明确标记的演示邮件")
+                  }
+                >
+                  导入演示邮件
+                </button>
+              )}
+            </section>
+          )}
+          <MailboxPage />
+          <AccountsPage />
+          <AssistantPage />
+          <FollowupsPage />
+          <ApprovalsPage />
+          <DraftsPage />
+          <ImportsPage />
+          <MemoryPage />
+          <SettingsPage />
+          {trace?.root && (
+            <MailTrace
+              data={trace}
+              onClose={() => setTrace(null)}
+              onRefresh={() =>
+                void act(
+                  async () => setTrace(await api("mail/traces/" + trace.id)),
+                  "已刷新执行结果",
+                )
+              }
+            />
+          )}
+          {["activity", "notifications"].includes(page) && (
+            <MailActivity
+              key={page}
+              api={api}
+              account={account}
+              notifications={page === "notifications"}
+              onTrace={(id) =>
+                void act(
+                  async () => setTrace(await api("mail/traces/" + id)),
+                  "",
+                )
+              }
+            />
+          )}
+          {page === "calendar" && (
+            <MailCalendar
+              api={api}
+              account={account}
+              onTrace={(id) =>
+                void act(
+                  async () => setTrace(await api("mail/traces/" + id)),
+                  "",
+                )
+              }
+            />
+          )}
+          {trace && !trace.root && (
+            <div className="modal">
+              <section className="panel mail-trace">
+                <div className="mail-sectionbar">
+                  <h2>Agent Trace / 迁移记录</h2>
+                  <button onClick={() => setTrace(null)}>关闭</button>
+                </div>
+                <BillingSummary value={trace.billing} />
+                {trace.runs?.map((r: Row) => (
+                  <p key={r.id}>
+                    {r.body.summary || r.id}
+                    <button
+                      onClick={() =>
+                        void act(
+                          () => api(`mail/legacy/${r.id}/resume`, {}),
+                          "已记录人工迁移复核",
+                        )
+                      }
+                    >
+                      确认恢复此旧运行
+                    </button>
+                  </p>
+                ))}
+                <button
+                  onClick={() => {
+                    const url = URL.createObjectURL(
+                      new Blob([pretty(trace)], { type: "application/json" }),
+                    );
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "zhixing-mail-trace.json";
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  }}
+                >
+                  导出邮件 Trace JSON
+                </button>
+                <pre>{pretty(trace)}</pre>
+              </section>
+            </div>
+          )}
+          <footer>知行 · 邮件是证据，记忆需确认，发送经审批。</footer>
+        </main>
+      </div>
+    </WorkspaceContext.Provider>
+  );
 }

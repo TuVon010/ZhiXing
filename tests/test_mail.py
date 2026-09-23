@@ -300,11 +300,11 @@ def test_history_batches_keep_the_live_cursor_and_cumulative_limit(db,monkeypatc
     spec={'account_id':aid,'start':'2026-09-22T00:00:00+00:00','end':'2026-09-23T00:00:00+00:00','limit':2}
     ident=db.insert('mail_import',{**spec,'last_uid':0,'imported':0,'scanned':0},scope=aid,status='running')
     result=scan(db,aid,spec,import_id=ident)
-    assert result['imported']==2 and db.get(ident)['status']=='paused'
+    assert result['imported']==2 and db.get(ident)['status']=='completed'
     assert db.get('mail-cursor:'+aid+':INBOX')==cursor
     from backend.mail_api import import_action
     with pytest.raises(ValueError):import_action(ident,'resume',db)
-    import_action(ident,'cancel',db);assert db.get(ident)['status']=='cancelled'
+    with pytest.raises(ValueError):import_action(ident,'cancel',db)
 
 
 def test_filter_version_validation_and_duplicate_entries(db):

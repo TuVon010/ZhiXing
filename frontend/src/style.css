@@ -1,1 +1,199 @@
-:root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#252a27;background:#f6f7f4;font-synthesis:none;font-size:14px}*{box-sizing:border-box}body{margin:0}button,textarea,input,select{font:inherit}button{border:1px solid #dce1d9;background:white;color:#38443b;padding:8px 13px;border-radius:7px;cursor:pointer;transition:.15s}button:hover{background:#eaf0e7;border-color:#bccdb6}button:disabled{opacity:.45;cursor:default}button.primary{background:#36583e;color:#fff;border-color:#36583e}h1{font-size:27px;font-weight:550;margin:9px 0 0}h2{font-weight:500}h3{font-size:14px;font-weight:600;margin:0 0 10px}.eyebrow{font-size:10px;color:#819078;letter-spacing:1.6px;font-weight:600}.panel{border:1px solid #e1e6de;background:#fff;border-radius:12px;padding:24px;margin:22px 0}.panel>p{color:#78846f;font-size:13px;line-height:1.7}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0}details{margin-top:12px;color:#687566;font-size:12px}summary{cursor:pointer}pre{background:#f6f8f3;border:1px solid #e8ece2;padding:15px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;color:#52624b;font:12px/1.8 Consolas,monospace;max-height:450px;overflow:auto}.empty{text-align:center;padding:40px 12px;color:#879181}.alert,.notice{padding:14px 18px;border-radius:9px;margin:12px 0;overflow-wrap:anywhere}.alert{background:#fbece6;color:#a55f44;display:flex;justify-content:space-between}.notice{background:#eaf2e3;color:#587d46}.pagination{display:flex;align-items:center;justify-content:flex-end;gap:16px;margin-top:20px}footer{padding:15px 0;color:#899382;font-size:11px}.overlay{position:fixed;inset:0;background:#24352265;display:flex;align-items:center;justify-content:center;padding:35px;z-index:10;backdrop-filter:blur(3px)}.modal{background:white;border-radius:16px;padding:30px;width:850px;max-width:100%;max-height:90vh;overflow:auto}.json-editor{width:100%;height:350px;padding:18px;border:1px solid #d9e2d1;border-radius:9px;font:13px/1.7 Consolas,monospace;resize:vertical}.field-form label{display:flex;flex-direction:column;gap:9px;margin:15px 0;color:#64735a}.field-form textarea,.field-form select{padding:12px;border:1px solid #d9e2d1;border-radius:7px;font:inherit;color:#34482b;resize:vertical}.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:20px 0}.pricing-grid label{display:flex;flex-direction:column;gap:6px}.pricing-settings input,.pricing-settings select{padding:10px;border:1px solid #ccd6d1;border-radius:8px;background:white;color:inherit}.pricing-settings small{color:#65766f}.pricing-settings textarea{width:100%;font-family:monospace}.pricing-settings pre{white-space:pre-wrap;overflow-wrap:anywhere}.billing-summary,.billing-details{padding:16px;background:#f1f6f3;border:1px solid #dce7e0;border-radius:10px;margin:12px 0}.pricing-settings [role=alert]{color:#a42e24}.pricing-settings [role=status]{color:#186a43}@media(max-width:700px){.panel{padding:18px}.mail-main header{display:block}.mail-toolbar{margin-top:15px}}
+:root {
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: #252a27;
+  background: #f6f7f4;
+  font-synthesis: none;
+  font-size: 14px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+textarea,
+input,
+select {
+  font: inherit;
+}
+button {
+  border: 1px solid #dce1d9;
+  background: white;
+  color: #38443b;
+  padding: 8px 13px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+button:hover {
+  background: #eaf0e7;
+  border-color: #bccdb6;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button.primary {
+  background: #36583e;
+  color: #fff;
+  border-color: #36583e;
+}
+h1 {
+  font-size: 27px;
+  font-weight: 550;
+  margin: 9px 0 0;
+}
+h2 {
+  font-weight: 500;
+}
+h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+.eyebrow {
+  font-size: 10px;
+  color: #819078;
+  letter-spacing: 1.6px;
+  font-weight: 600;
+}
+.panel {
+  border: 1px solid #e1e6de;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 22px 0;
+}
+.panel > p {
+  color: #78846f;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+details {
+  margin-top: 12px;
+  color: #687566;
+  font-size: 12px;
+}
+summary {
+  cursor: pointer;
+}
+pre {
+  background: #f6f8f3;
+  border: 1px solid #e8ece2;
+  padding: 15px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #52624b;
+  font:
+    12px/1.8 Consolas,
+    monospace;
+  max-height: 450px;
+  overflow: auto;
+}
+.empty {
+  text-align: center;
+  padding: 40px 12px;
+  color: #879181;
+}
+.alert,
+.notice {
+  padding: 14px 18px;
+  border-radius: 9px;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.alert {
+  background: #fbece6;
+  color: #a55f44;
+  display: flex;
+  justify-content: space-between;
+}
+.notice {
+  background: #eaf2e3;
+  color: #587d46;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 20px;
+}
+footer {
+  padding: 15px 0;
+  color: #899382;
+  font-size: 11px;
+}
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  width: 850px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+}
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.pricing-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pricing-settings input,
+.pricing-settings select {
+  padding: 10px;
+  border: 1px solid #ccd6d1;
+  border-radius: 8px;
+  background: white;
+  color: inherit;
+}
+.pricing-settings small {
+  color: #65766f;
+}
+.pricing-settings textarea {
+  width: 100%;
+  font-family: monospace;
+}
+.pricing-settings pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.billing-summary,
+.billing-details {
+  padding: 16px;
+  background: #f1f6f3;
+  border: 1px solid #dce7e0;
+  border-radius: 10px;
+  margin: 12px 0;
+}
+.pricing-settings [role="alert"] {
+  color: #a42e24;
+}
+.pricing-settings [role="status"] {
+  color: #186a43;
+}
+@media (max-width: 700px) {
+  .panel {
+    padding: 18px;
+  }
+  .mail-main header {
+    display: block;
+  }
+  .mail-toolbar {
+    margin-top: 15px;
+  }
+}

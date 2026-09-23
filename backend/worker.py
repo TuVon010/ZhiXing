@@ -17,7 +17,7 @@ def tick(db=store):
     for row in db.list('reminder',status='active',limit=10000):
         if datetime.fromisoformat(row['body']['due_at']).timestamp()<=time.time():
             with db.engine.begin() as c:
-                db.insert('notification',{'title':'到期提醒','content':row['body']['title']},status='pending',dedupe='reminder:'+row['id'],conn=c)
+                db.insert('notification',{'title':'到期提醒','content':row['body']['title'],'item_id':row['id'],'run_id':row['body'].get('run_id')},scope=row['scope'],status='pending',dedupe='reminder:'+row['id'],conn=c)
                 db.update(row['id'],status='completed',conn=c)
     local=datetime.now(ZoneInfo('Asia/Shanghai'))
     if local.hour>=20:
@@ -26,7 +26,12 @@ def tick(db=store):
             db.get(daily)
         except KeyError:
             todos=db.list('todo',status='active',limit=10000)
-            db.insert('notification',{'title':'每日工作摘要','content':'\n'.join(r['body']['title'] for r in todos) or '当前没有待办任务'},id=daily,status='pending')
+            groups={}
+            for todo in todos:groups.setdefault(todo['scope'],[]).append(todo['body']['title'])
+            with db.engine.begin() as c:
+                for scope,titles in groups.items():
+                    db.insert('notification',{'title':'每日工作摘要','content':'\n'.join(titles)},scope=scope,status='pending',conn=c)
+                db.insert('schedule',{},id=daily,status='completed',conn=c)
     notifications(db)
     try:
         cfg=db.get('runtime-settings')['body']
@@ -57,6 +62,14 @@ def tick(db=store):
                     except Exception as e:
                         db.audit(marker,'PARSER_CURATOR_FAILED',error=type(e).__name__)
 
+def work_cycle(db=store):
+    """Give each queue one turn: a busy mail queue cannot starve approved actions."""
+    from . import mail_worker
+    action_work = work_once(db)
+    mail_work = mail_worker.work_once(db)
+    return action_work or mail_work
+
+
 def main():
     os.environ['ZHIXING_MAIL_WORKER']='1'
     seed(store)
@@ -66,7 +79,7 @@ def main():
     def run_loop():
         while True:
             try:
-                if not mail_worker.work_once(store) and not work_once():
+                if not work_cycle(store):
                     time.sleep(.5)
             except Exception:
                 time.sleep(2)

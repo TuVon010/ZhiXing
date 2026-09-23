@@ -22,6 +22,7 @@ def followups(account_id:str|None=None,db=Depends(database)):
     for aid in accounts:
         items.extend(db.list('todo',limit=200,scope='web:mail:'+aid))
         items.extend(db.list('reminder',limit=200,scope='web:mail:'+aid))
+        items.extend(db.list('calendar',limit=200,scope='web:mail:'+aid))
     return {'items':sorted(items,key=lambda r:r['updated_at'],reverse=True)}
 
 
@@ -349,3 +350,7 @@ def demo(db=Depends(database)):
     msg=EmailMessage();msg['From']='teacher@example.com';msg['To']='demo@example.com';msg['Subject']='实验报告修改';msg['Message-ID']='<demo-experiment@example.com>';msg.set_content('请在周五前补充实验对比，并回复最终报告。')
     mid=store_message(db,account['id'],'demo',1,msg.as_bytes(),now())
     return {'account_id':account['id'],'message_id':mid}
+
+
+from .mail_observability import router as observability_router
+router.include_router(observability_router)

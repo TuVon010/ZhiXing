@@ -39,7 +39,12 @@ def execute_job(db,job):
     if kind=='import':
         row=require(db,payload['import_id'],'mail_import')
         if row['status']!='running':return {'paused':True}
-        return scan(db,aid,{k:v for k,v in row['body'].items() if k in {'account_id','start','end','limit'}},import_id=row['id'])
+        result=scan(db,aid,{k:v for k,v in row['body'].items() if k in {'account_id','start','end','limit'}},import_id=row['id'])
+        current=require(db,row['id'],'mail_import')
+        if current['status']=='running':
+            enqueue(db,'import',{'import_id':row['id']},aid,priority=15,
+                    dedupe=f"import:{row['id']}:{current['body']['last_uid']}")
+        return result
     if kind=='index':
         from .mail_rag import index_message
         result=index_message(db,payload['message_id'])
