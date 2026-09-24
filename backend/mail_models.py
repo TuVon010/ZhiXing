@@ -51,6 +51,7 @@ class ImportRequest(BaseModel):
     start: datetime
     end: datetime
     limit: int = Field(default=100,ge=1,le=10000)
+    analyze_after_import: bool = False
     @model_validator(mode='after')
     def interval(self):
         if not self.start.tzinfo or not self.end.tzinfo or self.end<=self.start:

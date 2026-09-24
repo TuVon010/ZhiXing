@@ -82,6 +82,7 @@ export function MemoryPage() {
                   </button>
                 )
               )}
+              {r.status !== "published" && <button onClick={() => void act(() => api(`mail/records/${r.id}/trash`, {}), "记忆已移入回收站")}>移入回收站</button>}
             </section>
           ))}
         </>

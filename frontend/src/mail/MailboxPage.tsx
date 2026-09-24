@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useWorkspace } from "./context";
 import { pretty, label, type Row } from "./shared";
 export function MailboxPage() {
@@ -21,6 +22,16 @@ export function MailboxPage() {
     makeDraft,
     api,
   } = useWorkspace();
+  useEffect(() => {
+    if (!opened?.id || !["inbox", "filter"].includes(page)) return;
+    let active = true;
+    const timer = setInterval(() => {
+      void api(`mail/messages/${opened.id}`).then((value) => {
+        if (active) setOpened(value);
+      }).catch(() => {});
+    }, 3000);
+    return () => { active = false; clearInterval(timer); };
+  }, [opened?.id, page, api]);
   async function feedback(change: Record<string, unknown>, message: string) {
     if (!opened) return;
     await act(async () => {
@@ -61,6 +72,8 @@ export function MailboxPage() {
                     <small>{label[m.status] || m.status}</small>
                   </span>
                   <strong>{m.body.subject || "无主题"}</strong>
+                  {!m.body.perception && ["active", "review"].includes(m.status) &&
+                    <small>待 Agent 分析</small>}
                   <span>
                     {m.body.perception?.summary || m.body.text?.slice(0, 90)}
                     {m.body.perception?.priority === "high" && (
@@ -109,6 +122,10 @@ export function MailboxPage() {
                     </p>
                   )}
                   <div className="actions">
+                    <button onClick={() => void act(async () => {
+                      await api(`mail/records/${opened.id}/trash`, {});
+                      setOpened(null);
+                    }, "邮件已移入本地回收站；原邮箱邮件未删除")}>移入回收站</button>
                     <button onClick={() => void makeDraft("reply")}>
                       回复草稿
                     </button>
@@ -156,7 +173,8 @@ export function MailboxPage() {
                       </button>
                     )}
                   </div>
-                  <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception`, {}), "已加入分析队列；完成后可刷新邮件查看结果")}>分析 / 重新分析</button>
+                  {!opened.body.perception && <p>这封邮件尚无 Agent 产出。导入只负责入库；点击下方按钮分析，或到“历史导入”批量分析。</p>}
+                  <button onClick={() => void act(() => api(`mail/messages/${opened.id}/perception`, {}), "已加入分析队列；完成后本页会显示结果")}>分析 / 重新分析</button>
                   {opened.body.perception && (
                     <div className="mail-perception">
                       <h3>AI 感知结果</h3>

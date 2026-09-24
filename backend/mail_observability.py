@@ -17,7 +17,7 @@ def database():
 
 
 def activity(db, account_id=None, limit=30, offset=0):
-    condition = "kind IN ('run','assistant_turn')"
+    condition = "kind IN ('run','assistant_turn') AND coalesce(json_extract(body,'$.ui_hidden'),0)=0"
     if account_id:
         require(db, account_id, 'mail_account')
         condition += " AND EXISTS (SELECT 1 FROM json_each(CASE WHEN kind='run' THEN json_extract(body,'$.message.metadata.mail_accounts') ELSE json_extract(body,'$.account_ids') END) WHERE value=:account)"
@@ -76,7 +76,7 @@ def get_trace(ident:str,db=Depends(database)):
 
 @router.get('/mail/notifications')
 def notifications(account_id:str|None=None,limit:int=Query(30,ge=1,le=100),offset:int=Query(0,ge=0),db=Depends(database)):
-    condition="n.kind='notification'"
+    condition="n.kind='notification' AND n.status!='trashed'"
     if account_id:
         require(db,account_id,'mail_account')
         condition+=" AND (n.scope=:scope OR EXISTS (SELECT 1 FROM records r,json_each(json_extract(r.body,'$.message.metadata.mail_accounts')) a WHERE r.id=json_extract(n.body,'$.run_id') AND a.value=:account))"

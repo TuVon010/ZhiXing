@@ -95,6 +95,8 @@ def save_account(db,value:MailAccount,ident=None):
     body=value.model_dump(exclude={'password'})
     if ident:
         old=require(db,ident,'mail_account')['body']
+        if old.get('test_account') and (value.enabled or value.password):
+            raise ValueError('测试邮箱不可配置真实收发或凭证')
         if any(body[k]!=old[k] for k in ('address','username','imap_host','imap_port','imap_tls')):
             raise ValueError('账号或收件服务器变更请新建账号，避免混用游标')
         body={**old,**body}

@@ -307,6 +307,44 @@ def test_history_batches_keep_the_live_cursor_and_cumulative_limit(db,monkeypatc
     with pytest.raises(ValueError):import_action(ident,'cancel',db)
 
 
+def test_history_import_can_explicitly_queue_perception(db,monkeypatch):
+    from backend.mail_models import ImportRequest
+    aid=account(db);fake=FakeIMAP(2);mock_imap(monkeypatch,fake)
+    spec={'account_id':aid,'start':'2026-09-22T00:00:00+00:00',
+          'end':'2026-09-23T00:00:00+00:00','limit':2,
+          'analyze_after_import':True}
+    ImportRequest.model_validate(spec)
+    ident=db.insert('mail_import',{**spec,'last_uid':0,'imported':0,'scanned':0},scope=aid,status='running')
+    scan(db,aid,spec,import_id=ident)
+    with db.engine.connect() as c:
+        queued=c.execute(text("SELECT COUNT(*) FROM mail_jobs WHERE kind='perception' AND account_id=:a"),{'a':aid}).scalar_one()
+    assert queued==2 and db.get(ident)['body']['analysis_queued']==2
+
+
+def test_history_import_analysis_is_capped_across_scan_batches(db,monkeypatch):
+    aid=account(db);fake=FakeIMAP(21);mock_imap(monkeypatch,fake)
+    spec={'account_id':aid,'start':'2026-09-22T00:00:00+00:00',
+          'end':'2026-09-23T00:00:00+00:00','limit':21,
+          'analyze_after_import':True}
+    ident=db.insert('mail_import',{**spec,'last_uid':0,'imported':0,'scanned':0},scope=aid,status='running')
+    scan(db,aid,spec,import_id=ident)
+    scan(db,aid,spec,import_id=ident)
+    assert db.get(ident)['body']['imported']==21
+    assert db.get(ident)['body']['analysis_queued']==20
+
+
+def test_import_opt_in_does_not_duplicate_account_auto_analysis(db,monkeypatch):
+    aid=account(db);row=db.get(aid);db.update(aid,{**row['body'],'auto_analyze':True})
+    mock_imap(monkeypatch,FakeIMAP(2))
+    spec={'account_id':aid,'start':'2026-09-22T00:00:00+00:00',
+          'end':'2026-09-23T00:00:00+00:00','limit':2,'analyze_after_import':True}
+    ident=db.insert('mail_import',{**spec,'last_uid':0,'imported':0,'scanned':0},scope=aid,status='running')
+    scan(db,aid,spec,import_id=ident)
+    with db.engine.connect() as c:
+        queued=c.execute(text("SELECT COUNT(*) FROM mail_jobs WHERE kind='perception' AND account_id=:a"),{'a':aid}).scalar_one()
+    assert queued==2
+
+
 def test_filter_version_validation_and_duplicate_entries(db):
     from backend.mail_api import FilterRules,filters
     aid=account(db)

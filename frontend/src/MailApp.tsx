@@ -15,6 +15,7 @@ import { DraftsPage } from "./mail/DraftsPage";
 import { ImportsPage } from "./mail/ImportsPage";
 import { MemoryPage } from "./mail/MemoryPage";
 import { SettingsPage } from "./mail/SettingsPage";
+import { RecordsPage } from "./mail/RecordsPage";
 export function MailApp({ api }: { api: Api }) {
   const workspace = useMailWorkspace(api);
   const {
@@ -58,6 +59,7 @@ export function MailApp({ api }: { api: Api }) {
     ["accounts", "邮箱账号"],
     ["memory", "记忆"],
     ["settings", "设置与计价"],
+    ["records", "记录管理"],
   ];
   return (
     <WorkspaceContext.Provider value={workspace}>
@@ -85,7 +87,7 @@ export function MailApp({ api }: { api: Api }) {
                   "activity",
                 ],
               ],
-              ["管理", ["accounts", "imports", "memory", "settings"]],
+              ["管理", ["accounts", "imports", "memory", "records", "settings"]],
             ].map(([title, ids]) => (
               <section className="mail-nav-group" key={String(title)}>
                 <small>{title}</small>
@@ -198,6 +200,7 @@ export function MailApp({ api }: { api: Api }) {
           <ImportsPage />
           <MemoryPage />
           <SettingsPage />
+          <RecordsPage />
           {trace?.root && (
             <MailTrace
               data={trace}

@@ -3,6 +3,7 @@ from pydantic import BaseModel,Field,field_validator,ConfigDict
 from sqlalchemy import text
 import json
 from .mail_models import MailAccount,ImportRequest,SearchRequest,DraftInput,SessionInput,TurnInput,PerceptionFeedback
+from .mail_perception_queue import BatchRequest, queue_batch, summary as perception_queue_summary
 from .mail_store import initialize,rows,require,public_account,save_account,enqueue,job,validate_accounts
 from .db import now
 
@@ -21,14 +22,37 @@ def followups(account_id:str|None=None,db=Depends(database)):
     items=[]
     for aid in accounts:
         require(db,aid,'mail_account')
-        items.extend(db.list('todo',limit=200,scope='web:mail:'+aid))
-        items.extend(db.list('reminder',limit=200,scope='web:mail:'+aid))
-        items.extend(db.list('calendar',limit=200,scope='web:mail:'+aid))
+        for kind in ('todo','reminder','calendar','mail_followup'):
+            items.extend(r for r in db.list(kind,limit=200,scope='web:mail:'+aid)
+                         if r['status'] not in {'trashed','deleted'})
         # 感知候选保留邮箱作用域；确认后仍在同一工作台可见。
         for kind in ('todo','calendar'):
             items.extend(r for r in rows(db,kind,[aid],limit=200)
-                         if r['body'].get('source')=='perception')
+                         if r['body'].get('source')=='perception' and r['status'] not in {'trashed','deleted'})
     return {'items':sorted(items,key=lambda r:r['updated_at'],reverse=True)}
+
+
+@router.post('/mail/followups/{ident}/{operation}')
+def followup_action(ident:str,operation:str,db=Depends(database)):
+    if operation not in {'resolve','reopen'}:raise ValueError('无效跟进操作')
+    row=require(db,ident,'mail_followup')
+    status='resolved' if operation=='resolve' else 'active'
+    db.update(ident,{**row['body'],'user_action_at':now()},status)
+    db.audit('user','MAIL_FOLLOWUP_'+operation.upper(),followup_id=ident)
+    return db.get(ident)
+
+
+@router.post('/mail/todos/{ident}/{operation}')
+def local_todo_action(ident:str,operation:str,db=Depends(database)):
+    if operation not in {'complete','reopen'}:raise ValueError('无效待办操作')
+    row=require(db,ident,'todo')
+    if not row['scope'].startswith('web:mail:') or row['status'] not in {'active','completed'}:
+        raise ValueError('仅能更改当前本地工作台的已确认待办')
+    account_id=row['scope'].removeprefix('web:mail:')
+    require(db,account_id,'mail_account')
+    db.update(ident,{**row['body'],'user_action_at':now()},'completed' if operation=='complete' else 'active')
+    db.audit('user','MAIL_TODO_'+operation.upper(),todo_id=ident)
+    return db.get(ident)
 
 
 @router.post('/mail/followups')
@@ -65,6 +89,12 @@ def create_account(body:MailAccount,db=Depends(database)):
     return save_account(db,body)
 
 
+@router.post('/mail/test-scenarios')
+def test_scenarios(db=Depends(database)):
+    from .mail_scenarios import seed
+    return seed(db)
+
+
 @router.post('/mail/accounts/{ident}')
 def update_account(ident:str,body:MailAccount,db=Depends(database)):
     return save_account(db,body,ident)
@@ -72,13 +102,15 @@ def update_account(ident:str,body:MailAccount,db=Depends(database)):
 
 @router.post('/mail/accounts/{ident}/test')
 def connection_test(ident:str,db=Depends(database)):
-    require(db,ident,'mail_account')
+    if require(db,ident,'mail_account')['body'].get('test_account'):
+        raise ValueError('测试邮箱只有本地合成邮件，不连接服务器')
     return {'job_id':enqueue(db,'connection_test',{},ident,priority=0)}
 
 
 @router.post('/mail/accounts/{ident}/sync')
 def sync(ident:str,db=Depends(database)):
-    require(db,ident,'mail_account')
+    if require(db,ident,'mail_account')['body'].get('test_account'):
+        raise ValueError('测试邮箱只有本地合成邮件，不连接服务器')
     return {'job_id':enqueue(db,'sync',{},ident,priority=10)}
 
 
@@ -88,7 +120,10 @@ class Toggle(BaseModel):
 
 @router.post('/mail/accounts/{ident}/enabled')
 def enable(ident:str,body:Toggle,db=Depends(database)):
-    row=require(db,ident,'mail_account');db.update(ident,{**row['body'],'enabled':body.enabled})
+    row=require(db,ident,'mail_account')
+    if row['body'].get('test_account') and body.enabled:
+        raise ValueError('测试邮箱不可启用真实收取')
+    db.update(ident,{**row['body'],'enabled':body.enabled})
     return public_account(db.get(ident))
 
 
@@ -106,6 +141,8 @@ def account_status(ident:str,db=Depends(database)):
 def backlog(ident:str,choice:str,db=Depends(database)):
     from .mail_ingest import lease,connection
     account=require(db,ident,'mail_account')['body'];key='mail-cursor:'+ident+':INBOX'
+    if account.get('test_account'):
+        raise ValueError('测试邮箱没有远端积压')
     if choice not in {'continue','from_now'}:raise ValueError('无效的积压处理方式')
     if choice=='continue':
         row=db.get(key);b=row['body'];b.update(paused=False,catchup=None,last_poll=now());db.update(key,b,'active')
@@ -118,13 +155,15 @@ def backlog(ident:str,choice:str,db=Depends(database)):
 
 @router.post('/mail/imports/preview')
 def preview(body:ImportRequest,db=Depends(database)):
-    require(db,body.account_id,'mail_account')
+    if require(db,body.account_id,'mail_account')['body'].get('test_account'):
+        raise ValueError('测试邮箱使用本地合成样本，无远端历史导入')
     return {'job_id':enqueue(db,'preview',body.model_dump(mode='json'),body.account_id,priority=5)}
 
 
 @router.post('/mail/imports')
 def create_import(body:ImportRequest,db=Depends(database)):
-    require(db,body.account_id,'mail_account')
+    if require(db,body.account_id,'mail_account')['body'].get('test_account'):
+        raise ValueError('测试邮箱使用本地合成样本，无远端历史导入')
     ident=db.insert('mail_import',{**body.model_dump(mode='json'),'last_uid':0,'imported':0,'scanned':0},scope=body.account_id,status='running')
     enqueue(db,'import',{'import_id':ident},body.account_id,priority=15)
     return db.get(ident)
@@ -133,6 +172,16 @@ def create_import(body:ImportRequest,db=Depends(database)):
 @router.get('/mail/imports')
 def imports(account_id:str|None=None,db=Depends(database)):
     return {'items':rows(db,'mail_import',[account_id] if account_id else None)}
+
+
+@router.get('/mail/accounts/{ident}/perception/summary')
+def perception_summary(ident:str,db=Depends(database)):
+    return perception_queue_summary(db,ident)
+
+
+@router.post('/mail/accounts/{ident}/perception/batch')
+def perception_batch(ident:str,body:BatchRequest,db=Depends(database)):
+    return queue_batch(db,ident,body)
 
 
 @router.post('/mail/imports/{ident}/{operation}')
@@ -229,7 +278,7 @@ def reindex(ident:str,db=Depends(database)):
 
 @router.get('/mail/drafts')
 def drafts(account_id:str|None=None,db=Depends(database)):
-    return {'items':rows(db,'mail_draft',[account_id] if account_id else None)}
+    return {'items':[r for r in rows(db,'mail_draft',[account_id] if account_id else None) if r['status']!='trashed']}
 
 
 @router.post('/mail/drafts')
@@ -262,7 +311,7 @@ def session(body:SessionInput,db=Depends(database)):
 
 @router.get('/assistant/sessions')
 def sessions(db=Depends(database)):
-    return {'items':rows(db,'assistant_session')}
+    return {'items':[r for r in rows(db,'assistant_session') if r['status']!='trashed']}
 
 
 @router.post('/assistant/sessions/{ident}/turns')
@@ -388,6 +437,10 @@ def request_perception(ident:str,db=Depends(database)):
     """用户显式分析或重试；仍受全局模型调用预算限制。"""
     mail=require(db,ident,'mail_message')
     require(db,mail['scope'],'mail_account')
+    with db.engine.connect() as c:
+        pending=c.execute(text("SELECT id FROM mail_jobs WHERE kind='perception' AND account_id=:account AND json_extract(payload,'$.message_id')=:message AND status IN ('queued','running') ORDER BY created_at DESC LIMIT 1"),
+                          {'account':mail['scope'],'message':ident}).first()
+    if pending:return {'job_id':pending[0]}
     return {'job_id':enqueue(db,'perception',{'message_id':ident,'manual':True},mail['scope'],priority=5)}
 
 
@@ -505,3 +558,5 @@ def generate_digest_now(account_id:str='', date:str='', db=Depends(database)):
 
 from .mail_observability import router as observability_router
 router.include_router(observability_router)
+from .mail_records import router as records_router
+router.include_router(records_router)

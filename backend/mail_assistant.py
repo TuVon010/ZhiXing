@@ -40,7 +40,9 @@ def create_turn(db,session_id,value:TurnInput,new_id=None):
             enqueue(db,'assistant',{'turn_id':new_id},scope=session_id,priority=0,dedupe='turn:'+new_id)
             return existing
         except KeyError:pass
-    session=require(db,session_id,'assistant_session')['body'];accounts=validate_accounts(db,session['account_ids'])
+    session_row=require(db,session_id,'assistant_session')
+    if session_row['status']=='trashed':raise ValueError('会话在回收站中，请先恢复')
+    session=session_row['body'];accounts=validate_accounts(db,session['account_ids'])
     from .mail_rag import model_version,model_manifest
     snapshot=memory_snapshot(db,accounts)
     version={'skills':[r['id'] for r in db.list('skill',status='published')],
@@ -90,7 +92,7 @@ def draft(db,value:DraftInput,ident=None,new_id=None,source_turn=None):
             old=require(db,ident,'mail_draft',[value.account_id],c)
             if old['body'].get('source_turn'):body['source_turn']=old['body']['source_turn']
             if old['body']['version']!=value.version:raise ValueError('草稿版本已改变')
-            if old['status'] in {'submitted','unknown','smtp_accepted','simulated'}:raise ValueError('已提交草稿不可修改，请复制为新草稿')
+            if old['status'] in {'submitted','unknown','smtp_accepted','simulated','trashed'}:raise ValueError('已提交或删除的草稿不可修改，请复制为新草稿')
             approval_runs=old['body'].get('approval_runs',[])
             for rid in approval_runs:
                 run=db.get(rid,c)

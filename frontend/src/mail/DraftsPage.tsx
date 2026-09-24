@@ -33,6 +33,10 @@ export function DraftsPage() {
                 </div>
                 <div className="actions">
                   <button onClick={() => setDraftForm(d)}>打开草稿</button>
+                  {d.status === "draft" && <button disabled={busy} onClick={() => void act(async () => {
+                    await api(`mail/records/${d.id}/trash`, {});
+                    if (draftForm?.id === d.id) setDraftForm(null);
+                  }, "草稿已移入回收站")}>删除草稿</button>}
                   {d.body.approval_runs?.map((id: string) => (
                     <button
                       key={id}

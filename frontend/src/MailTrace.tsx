@@ -4,6 +4,7 @@ export type RecordRow = {
   id: string;
   kind: string;
   status: string;
+  scope?: string;
   created_at: string;
   body: Record<string, any>;
 };

@@ -59,6 +59,14 @@ export function MailActivity({
       setError(String(e));
     }
   }
+  async function remove(id: string) {
+    try {
+      await api(`mail/records/${id}/${notifications ? "trash" : "hide"}`, {});
+      setRevision((x) => x + 1);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
   return (
     <section className="panel">
       <h3>
@@ -106,6 +114,7 @@ export function MailActivity({
             {notifications && row.status !== "read" && (
               <button onClick={() => void read(row.id)}>标记已读</button>
             )}
+            <button disabled={notifications ? !row.scope?.startsWith("web:mail:") : ["queued", "running", "waiting_approval"].includes(row.status)} onClick={() => void remove(row.id)}>{notifications ? "移入回收站" : "隐藏记录"}</button>
           </div>
         </article>
       ))}

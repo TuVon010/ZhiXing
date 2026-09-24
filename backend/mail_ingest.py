@@ -148,7 +148,8 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
     if status in ('active','review'):
         enqueue(db,'index',{'message_id':ident},account_id,priority=50,dedupe='index:'+ident)
         # 自动分析由用户逐账号启用；历史导入同样遵守此开关。
-        if require(db,account_id,'mail_account')['body'].get('auto_analyze'):
+        account_options=require(db,account_id,'mail_account')['body']
+        if account_options.get('enabled') and account_options.get('auto_analyze'):
             enqueue(db,'perception',{'message_id':ident},account_id,priority=40,dedupe='perception:'+ident)
     return ident
 
@@ -230,6 +231,16 @@ def scan(db,account_id,request=None,preview=False,import_id=None):
                 if typ!='OK':raise ValueError('邮件正文读取失败；游标未推进')
                 raw=next(x[1] for x in full if isinstance(x,tuple))
             ident=store_message(db,account_id,validity,mail_uid,raw,received.isoformat());imported+=1
+            import_body=db.get(import_id)['body'] if import_id else None
+            if import_body and import_body.get('analyze_after_import') and import_body.get('analysis_queued',0)<20:
+                item=require(db,ident,'mail_message',[account_id])
+                if item['status'] in {'active','review'} and not item['body'].get('perception'):
+                    with db.engine.connect() as c:
+                        pending=c.execute(text("SELECT 1 FROM mail_jobs WHERE kind='perception' AND account_id=:a AND json_extract(payload,'$.message_id')=:m AND status IN ('queued','running') LIMIT 1"),{'a':account_id,'m':ident}).first()
+                    if not pending:
+                        enqueue(db,'perception',{'message_id':ident,'manual':True,'import_id':import_id},
+                                account_id,priority=25,dedupe='perception-import:'+ident)
+                    db.update(import_id,{**import_body,'analysis_queued':import_body.get('analysis_queued',0)+1})
             if size_match and int(size_match[1])>30*1024**2:
                 item=db.get(ident);db.update(ident,{**item['body'],'incomplete':True,'body_status':'oversize_not_downloaded'})
             if spec and import_id:

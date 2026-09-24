@@ -30,12 +30,14 @@ def check_draft(db,args,accounts=None,conn=None):
         if args.get(key)!=b.get(key):raise ValueError('审批参数不再对应当前草稿；请编辑草稿后重新申请')
     if args.get('draft_hash')!=b.get('approved_hash'):raise ValueError('草稿内容校验失败')
     account=require(db,row['scope'],'mail_account',conn=conn)['body']
-    if not account.get('enabled'):raise ValueError('发件账号已暂停')
+    if not account.get('test_account') and not account.get('enabled'):
+        raise ValueError('发件账号已暂停')
     return row,account
 
 
 def send(db,args,action_id):
     row,account=check_draft(db,args)
+    if account.get('test_account'):raise ValueError('测试邮箱不可真实发信')
     msg=EmailMessage();msg['From']=account['address'];msg['To']=', '.join(args['to']);msg['Subject']=args['subject']
     if args.get('cc'):msg['Cc']=', '.join(args['cc'])
     msg['Message-ID']='<'+action_id+'@zhixing.local>'
@@ -52,4 +54,6 @@ def send(db,args,action_id):
             db.update(row['id'],status='unknown')
             raise ExternalUnknown('SMTP 结果不明，禁止自动重发，请核对') from exc
     db.update(row['id'],{**row['body'],'smtp_message_id':str(msg['Message-ID'])},'smtp_accepted')
+    from .mail_work_items import mark_replied
+    mark_replied(db,row['body'].get('message_id'),row['id'])
     return {'message_id':str(msg['Message-ID']),'status':'smtp_accepted','delivered':False,'draft_id':row['id']}

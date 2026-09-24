@@ -100,8 +100,39 @@ def _idempotency_key(message_id: str, title: str, start: str) -> str:
     return 'perception-cal:' + hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
+def _prior_thread_events(db, account_id: str, message_id: str, start: str) -> list[dict]:
+    """A changed time in the same thread needs review before it replaces a calendar entry."""
+    try:
+        message = require(db, message_id, 'mail_message', [account_id])
+    except KeyError:
+        # Direct callers may create a standalone local candidate without an imported mail.
+        return []
+    thread_id = message['body'].get('thread_id')
+    if not thread_id:
+        return []
+    with db.engine.connect() as c:
+        rows = c.execute(text("""
+            SELECT id, body FROM records WHERE kind='calendar' AND status='active'
+            AND scope=:scope AND json_extract(body,'$.source_message') IS NOT NULL
+        """), {'scope': 'web:mail:' + account_id}).mappings().all()
+    related = []
+    for row in rows:
+        body = json.loads(row['body'])
+        source_id = body.get('source_message')
+        if source_id == message_id or body.get('start') == start:
+            continue
+        try:
+            source = require(db, source_id, 'mail_message', [account_id])
+        except (KeyError, ValueError):
+            continue
+        if source['body'].get('thread_id') == thread_id:
+            related.append({'id': row['id'], 'title': body.get('title'), 'start': body.get('start')})
+    return related
+
+
 def create_calendar_candidate(db, account_id: str, message_id: str,
-                              event: dict) -> dict:
+                              event: dict, auto_activate: bool = False,
+                              decision_reason: str = '') -> dict:
     """
     从感知结果创建日程候选。
 
@@ -141,8 +172,12 @@ def create_calendar_candidate(db, account_id: str, message_id: str,
     except KeyError:
         pass
 
-    # 2. 冲突检测
+    # 2. 冲突和同线程改期检测
     conflicts = detect_conflicts(db, account_id, start, end)
+    prior_events = _prior_thread_events(db, account_id, message_id, start)
+    if prior_events:
+        auto_activate = False
+        decision_reason = '同一邮件线程已有不同时间的日程，请核实改期并处理旧日程'
 
     # 3. 创建候选
     calendar_body = {
@@ -155,7 +190,11 @@ def create_calendar_candidate(db, account_id: str, message_id: str,
         'source_quote': source_quote,
         'has_conflict': len(conflicts) > 0,
         'conflicts': conflicts,
+        'prior_thread_events': prior_events,
         'created_at': now(),
+        'decision': {'mode': 'auto' if auto_activate and not conflicts else 'review',
+                     'reason': decision_reason if not conflicts else '存在日程冲突',
+                     'policy_version': 'mail-work-v1', 'at': now()},
     }
 
     db.insert('calendar', calendar_body, id=idem_key, scope='web:mail:' + account_id, status='candidate')
@@ -170,6 +209,10 @@ def create_calendar_candidate(db, account_id: str, message_id: str,
     if conflicts:
         result['conflicts'] = conflicts
         result['warning'] = f'检测到 {len(conflicts)} 个时间冲突，请确认后再加入日程'
+
+    if auto_activate and not conflicts:
+        confirmed = confirm_calendar(db, idem_key, account_id)
+        return {**result, **confirmed, 'auto_activated': True}
 
     return result
 
@@ -235,7 +278,26 @@ def confirm_calendar(db, calendar_id: str, account_id: str) -> dict:
                                    'source_message': body.get('source_message')},
                       id=reminder_id, scope='web:mail:' + account_id)
 
+    replaced = []
+    for previous in body.get('prior_thread_events', []):
+        try:
+            old = require(db, previous['id'], 'calendar', ['web:mail:' + account_id])
+        except (KeyError, ValueError):
+            continue
+        if old['status'] != 'active' or old['body'].get('start') != previous.get('start'):
+            continue
+        db.update(old['id'], {**old['body'], 'replaced_by': calendar_id, 'replaced_at': now()}, 'cancelled')
+        replaced.append(old['id'])
+        try:
+            reminder = require(db, 'perception-reminder:' + old['id'], 'reminder', ['web:mail:' + account_id])
+            if reminder['status'] == 'active':
+                db.update(reminder['id'], {**reminder['body'], 'cancelled_with_calendar': old['id']}, 'cancelled')
+        except KeyError:
+            pass
+
     result = {'id': calendar_id, 'status': 'active'}
+    if replaced:
+        result['replaced_events'] = replaced
     if conflicts:
         result['conflicts'] = conflicts
         result['warning'] = f'已加入日程，但存在 {len(conflicts)} 个时间冲突'

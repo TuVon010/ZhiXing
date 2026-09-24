@@ -101,7 +101,7 @@ export function useMailWorkspace(api: Api) {
     if (target === "memory")
       setMemories(
         (await api("memory?limit=200")).items.filter(
-          (r: Row) => r.scope === "global" || r.scope === account,
+          (r: Row) => (r.scope === "global" || r.scope === account) && r.status !== "trashed",
         ),
       );
     if (target === "followups")

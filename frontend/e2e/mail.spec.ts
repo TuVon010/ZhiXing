@@ -26,10 +26,8 @@ test('多邮箱工作台、证据检索、草稿变更与 Trace（离线演示�
  await page.getByLabel('任务',{exact:true}).fill('验证新版工作台待办');
  await page.getByRole('button',{name:'添加待办',exact:true}).click();
  await expect(page.getByText('验证新版工作台待办',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'申请标记完成',exact:true}).click();
- await expect(page.getByRole('status')).toContainText('提交完成申请');
- await page.locator('nav').getByRole('button',{name:'审批中心',exact:true}).click();
- await expect(page.getByRole('heading',{name:/更新待办/})).toBeVisible({timeout:15000});
+ await page.getByRole('button',{name:'完成',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('已完成本地待办');
  await page.screenshot({path:info.outputPath('draft-review.png'),fullPage:true});
  await page.locator('nav').getByRole('button',{name:'邮箱账号',exact:true}).click();
  for(const [name,address] of [['研究邮箱','research@163.com'],['个人邮箱','personal@qq.com']]){

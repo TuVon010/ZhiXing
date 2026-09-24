@@ -12,6 +12,7 @@ export function AccountsPage() {
     setAccountForm,
     setSelected,
     loadAccounts,
+    navigate,
     act,
     waitJob,
     api,
@@ -28,6 +29,13 @@ export function AccountsPage() {
               >
                 添加邮箱
               </button>
+              <button disabled={busy} onClick={() => void act(async () => {
+                const seeded = await api('mail/test-scenarios', {});
+                await loadAccounts();
+                setAccount(seeded.account_id);
+                setSelected([seeded.account_id]);
+                navigate('inbox');
+              }, '已准备 14 封本地合成邮件，可在“收取与导入”分批分析')}>创建 Agent 测试邮箱（14 封）</button>
             </div>
             {accounts.map((a) => (
               <article className="mail-account" key={a.id}>
@@ -35,8 +43,8 @@ export function AccountsPage() {
                   <h3>{a.body.name}</h3>
                   <p>
                     {a.body.address} ·{" "}
-                    {a.body.enabled ? "收取已启用" : "收取已暂停"} ·{" "}
-                    {a.body.credential_configured ? "凭证已保存" : "待配置凭证"}
+                    {a.body.test_account ? '本地合成测试账号 · 无真实收发' : a.body.enabled ? "收取已启用" : "收取已暂停"} ·{" "}
+                    {!a.body.test_account && (a.body.credential_configured ? "凭证已保存" : "待配置凭证")}
                   </p>
                   <small>
                     {a.body.last_job?.kind} {a.body.last_job?.status}{" "}
@@ -44,7 +52,7 @@ export function AccountsPage() {
                   </small>
                 </div>
                 <div className="actions">
-                  <button
+                  {!a.body.test_account && <button
                     onClick={() =>
                       setAccountForm({
                         id: a.id,
@@ -61,8 +69,8 @@ export function AccountsPage() {
                     }
                   >
                     编辑
-                  </button>
-                  <button
+                  </button>}
+                  {!a.body.test_account && <button
                     disabled={busy}
                     onClick={() =>
                       void act(
@@ -76,8 +84,8 @@ export function AccountsPage() {
                     }
                   >
                     测试连接
-                  </button>
-                  <button
+                  </button>}
+                  {!a.body.test_account && <button
                     onClick={() =>
                       void act(async () => {
                         await api(`mail/accounts/${a.id}/enabled`, {
@@ -88,8 +96,8 @@ export function AccountsPage() {
                     }
                   >
                     {a.body.enabled ? "暂停收取" : "启用收取"}
-                  </button>
-                  <button
+                  </button>}
+                  {!a.body.test_account && <button
                     onClick={() =>
                       void act(
                         async () =>
@@ -102,7 +110,7 @@ export function AccountsPage() {
                     }
                   >
                     同步一轮
-                  </button>
+                  </button>}
                 </div>
               </article>
             ))}

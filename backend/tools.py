@@ -59,10 +59,13 @@ def execute(db, action, run_id, scope, dry_run=False):
             return result
         c.commit()
     try:
-        if settings.mode == 'demo':
+        synthetic_draft = bool(args.get('draft_id') and db.get(args['account_id'])['body'].get('test_account'))
+        if settings.mode == 'demo' or synthetic_draft:
             result = {'simulated':True,'tool':tool,'args':args}
             if args.get('draft_id'):
                 db.update(args['draft_id'],status='simulated')
+                from .mail_work_items import mark_replied
+                mark_replied(db,args.get('message_id'),args['draft_id'])
         elif tool == 'send_email':
             if args.get('draft_id'):
                 from .mail_send import send

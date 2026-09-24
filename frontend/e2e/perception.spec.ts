@@ -31,6 +31,7 @@ test('邮件感知、纠偏与待办候选形成可操作闭环（离线演示�
   await page.getByText('纠正感知结果').click();
   await page.getByRole('button', { name: '标记正常' }).click();
   await page.locator('nav').getByRole('button', { name: '待办与跟进', exact: true }).click();
+  await page.getByRole('tab', { name: /待核实建议/ }).click();
   await expect(page.getByRole('button', { name: '确认加入' }).first()).toBeVisible();
   await page.getByRole('button', { name: '确认加入' }).first().click();
   await expect.poll(async () => {

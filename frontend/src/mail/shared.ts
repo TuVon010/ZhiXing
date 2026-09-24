@@ -23,12 +23,14 @@ export const label: Record<string, string> = {
   unknown: "发送待核对",
   running: "处理中",
   queued: "排队中",
-  completed: "完成",
   paused: "暂停",
   failed: "失败",
   cancelled: "取消",
   budget_exceeded: "达到预算",
   clarification: "需要澄清",
+  waiting: "等待对方",
+  resolved: "已处理",
+  completed: "已完成",
 };
 export const actionLabel: Record<string, string> = {
   send_email: "发送邮件",
