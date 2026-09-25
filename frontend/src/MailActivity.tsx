@@ -72,12 +72,12 @@ export function MailActivity({
       <h3>
         {notifications
           ? `通知与提醒 · ${unread} 条未读`
-          : "Agent 与动作运行记录"}
+          : "Agent Trace 与动作运行"}
       </h3>
       <p>
         {notifications
           ? "到期提醒、审批请求和执行结果保存在这里。"
-          : "每 3 秒刷新；对话结束后，动作可能仍在排队或等待审批。"}{" "}
+          : "这里是统一的 Trace 入口：可以查看 Agent 决策、检索、模型调用、风险判断、用户确认和工具执行结果。每 3 秒自动刷新。"}{" "}
         当前范围：{account ? "所选邮箱" : "全部邮箱"}。
       </p>
       {error && <p role="alert">{error}</p>}
@@ -108,7 +108,7 @@ export function MailActivity({
                   onTrace(notifications ? row.body.run_id : row.id)
                 }
               >
-                查看执行 Trace
+                查看完整 Trace
               </button>
             )}
             {notifications && row.status !== "read" && (

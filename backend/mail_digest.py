@@ -42,7 +42,7 @@ def generate_digest(db, account_id: str, date: str | None = None) -> dict:
     Args:
         db: 数据库连接
         account_id: 账号 ID
-        date: 日期字符串（YYYY-MM-DD），默认昨天（上海时间）
+        date: 日期字符串（YYYY-MM-DD），默认今天（上海时间）
 
     Returns:
         摘要 dict，包含统计、待回复、待办、高优先级等
@@ -53,7 +53,7 @@ def generate_digest(db, account_id: str, date: str | None = None) -> dict:
     if date:
         target_date = datetime.strptime(date, '%Y-%m-%d').replace(tzinfo=timezone(timedelta(hours=8)))
     else:
-        target_date = _get_shanghai_now() - timedelta(days=1)
+        target_date = _get_shanghai_now()
 
     day_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
     day_end = day_start + timedelta(days=1)
@@ -151,9 +151,9 @@ def generate_digest(db, account_id: str, date: str | None = None) -> dict:
     # 生成自然语言摘要
     summary_parts = []
     if total == 0:
-        summary_parts.append('昨天没有新邮件。')
+        summary_parts.append('当天没有新邮件。')
     else:
-        summary_parts.append(f'昨天共收到 {total} 封邮件。')
+        summary_parts.append(f'当天共收到 {total} 封邮件。')
         if filtered_count:
             summary_parts.append(f'{filtered_count} 封在本地过滤箱。')
         if needs_reply:
@@ -203,7 +203,7 @@ def save_digest(db, digest: dict) -> str:
 def get_digest(db, account_id: str, date: str | None = None) -> dict | None:
     """获取指定日期的摘要，没有则返回 None。"""
     if date is None:
-        date = (_get_shanghai_now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        date = _get_shanghai_now().strftime('%Y-%m-%d')
     key = f"digest:{account_id}:{date}"
     try:
         return require(db, key, 'digest')['body']

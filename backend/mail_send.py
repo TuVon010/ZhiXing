@@ -1,4 +1,4 @@
-"""SMTP accepts immutable, approved draft snapshots only."""
+"""SMTP accepts immutable draft snapshots after the user confirms sending."""
 from contextlib import contextmanager
 from email.message import EmailMessage
 import hashlib
@@ -24,10 +24,10 @@ def smtp_connection(db,account):
 
 def check_draft(db,args,accounts=None,conn=None):
     row=require(db,args['draft_id'],'mail_draft',accounts,conn);b=row['body']
-    if args['account_id']!=row['scope'] or args['draft_version']!=b['version'] or row['status']!='approval':
-        raise ValueError('草稿状态、账号或版本已改变，请重新审批')
+    if args['account_id']!=row['scope'] or args['draft_version']!=b['version'] or row['status']!='submitted':
+        raise ValueError('草稿状态、账号或版本已改变，请重新确认发送')
     for key in ['account_id','to','cc','subject','content','message_id','mode','thread_id','in_reply_to','references']:
-        if args.get(key)!=b.get(key):raise ValueError('审批参数不再对应当前草稿；请编辑草稿后重新申请')
+        if args.get(key)!=b.get(key):raise ValueError('发送参数不再对应已确认草稿；请编辑草稿后重新确认')
     if args.get('draft_hash')!=b.get('approved_hash'):raise ValueError('草稿内容校验失败')
     account=require(db,row['scope'],'mail_account',conn=conn)['body']
     if not account.get('test_account') and not account.get('enabled'):

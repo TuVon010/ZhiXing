@@ -266,17 +266,7 @@ def confirm_calendar(db, calendar_id: str, account_id: str) -> dict:
         with db.engine.begin() as c:
             c.execute(text('UPDATE records SET scope=:scope WHERE id=:id'),
                       {'scope': 'web:mail:' + account_id, 'id': calendar_id})
-    start = _parse_iso(body.get('start'))
-    if start and start.tzinfo and start > datetime.now(timezone.utc):
-        reminder_id = 'perception-reminder:' + calendar_id
-        try:
-            require(db, reminder_id, 'reminder')
-        except KeyError:
-            due = max(start - timedelta(minutes=30), datetime.now(timezone.utc))
-            db.insert('reminder', {'title': body.get('title', '日程即将开始'),
-                                   'due_at': due.isoformat(), 'source_calendar': calendar_id,
-                                   'source_message': body.get('source_message')},
-                      id=reminder_id, scope='web:mail:' + account_id)
+    sync_calendar_reminder(db,calendar_id)
 
     replaced = []
     for previous in body.get('prior_thread_events', []):
@@ -302,3 +292,22 @@ def confirm_calendar(db, calendar_id: str, account_id: str) -> dict:
         result['conflicts'] = conflicts
         result['warning'] = f'已加入日程，但存在 {len(conflicts)} 个时间冲突'
     return result
+
+
+def sync_calendar_reminder(db,calendar_id):
+    item=require(db,calendar_id,'calendar');reminder_id='calendar-reminder:'+calendar_id
+    try:reminder=require(db,reminder_id,'reminder')
+    except KeyError:
+        try:
+            reminder_id='perception-reminder:'+calendar_id;reminder=require(db,reminder_id,'reminder')
+        except KeyError:
+            reminder_id='calendar-reminder:'+calendar_id;reminder=None
+    start=_parse_iso(item['body'].get('start'))
+    if item['status']!='active' or not start or not start.tzinfo or start<=datetime.now(timezone.utc):
+        if reminder and reminder['status']=='active':db.update(reminder_id,{**reminder['body'],'cancelled_by_calendar':calendar_id},'cancelled')
+        return None
+    body={'title':item['body'].get('title','日程即将开始'),'due_at':max(start-timedelta(minutes=30),datetime.now(timezone.utc)).isoformat(),
+          'source_calendar':calendar_id,'source_message':item['body'].get('source_message')}
+    if reminder:db.update(reminder_id,body,'active')
+    else:db.insert('reminder',body,id=reminder_id,scope=item['scope'])
+    return reminder_id

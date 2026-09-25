@@ -172,6 +172,13 @@ def perceive(db, message_id: str) -> dict:
 
     from .mail_work_items import ensure_reply_followup
     ensure_reply_followup(db, account_id, message_id, serial)
+    if serial.get('priority')=='high' or serial.get('needs_reply'):
+        notification_id='mail-attention:'+message_id
+        try:require(db,notification_id,'notification')
+        except KeyError:
+            db.insert('notification',{'title':'重要邮件' if serial.get('priority')=='high' else '邮件需要回复',
+                      'content':serial.get('summary') or body.get('subject',''),'message_id':message_id},
+                      id=notification_id,scope='web:mail:'+account_id,status='pending')
 
     return result.model_dump()
 
@@ -263,6 +270,12 @@ def _demo_perceive(db, message_id: str, body: dict) -> dict:
         _create_todo_candidates(db, body['account_id'], message_id, serial['todos'], serial, body)
     from .mail_work_items import ensure_reply_followup
     ensure_reply_followup(db, body['account_id'], message_id, serial)
+    if serial.get('priority')=='high' or serial.get('needs_reply'):
+        notification_id='mail-attention:'+message_id
+        try:require(db,notification_id,'notification')
+        except KeyError:
+            db.insert('notification',{'title':'重要邮件','content':serial.get('summary') or body.get('subject',''),
+                      'message_id':message_id},id=notification_id,scope='web:mail:'+body['account_id'],status='pending')
     return result.model_dump()
 
 
@@ -321,17 +334,9 @@ def _create_todo_candidates(db, account_id: str, message_id: str, todos: list,
             'decision': {'mode': 'auto' if auto else 'review', 'reason': reason,
                          'policy_version': POLICY_VERSION, 'at': now()},
         }, id=key, scope='web:mail:' + account_id, status='active' if auto else 'candidate')
-        if auto and todo.get('deadline'):
-            from datetime import timedelta
-            due = datetime.fromisoformat(str(todo['deadline'])) - timedelta(hours=1)
-            reminder_id = 'perception-reminder:' + key
-            try:
-                require(db, reminder_id, 'reminder')
-            except KeyError:
-                db.insert('reminder', {'title': todo['action'],
-                                      'due_at': max(due, datetime.now(timezone.utc)).isoformat(),
-                                      'source_todo': key, 'source_message': message_id},
-                          id=reminder_id, scope='web:mail:' + account_id)
+        if auto:
+            from .mail_work_items import sync_todo_reminder
+            sync_todo_reminder(db,key)
 
 
 def _create_calendar_candidates(db, account_id: str, message_id: str, events: list,

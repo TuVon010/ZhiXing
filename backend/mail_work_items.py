@@ -1,6 +1,8 @@
 """Deterministic promotion of model suggestions into reversible local work."""
 import re
+import json
 from datetime import datetime, timezone, timedelta
+from sqlalchemy import text
 
 from .db import now
 from .mail_store import require
@@ -131,3 +133,38 @@ def mark_replied(db, message_id, draft_id):
         return
     if row['status'] == 'active':
         db.update(row['id'], {**row['body'], 'draft_id': draft_id, 'replied_at': now()}, 'waiting')
+
+
+def sync_todo_reminder(db, todo_id):
+    """Keep the derived reminder aligned with a local todo's lifecycle."""
+    todo=require(db,todo_id,'todo');reminder_id='todo-reminder:'+todo_id
+    try:reminder=require(db,reminder_id,'reminder')
+    except KeyError:reminder=None
+    deadline=todo['body'].get('deadline')
+    if todo['status']!='active' or not deadline:
+        if reminder and reminder['status']=='active':
+            db.update(reminder_id,{**reminder['body'],'cancelled_by_todo':todo_id},'cancelled')
+        return None
+    try:due=datetime.fromisoformat(str(deadline))-timedelta(hours=1)
+    except (TypeError,ValueError):return None
+    body={'title':todo['body'].get('title','待办即将截止'),'due_at':max(due,datetime.now(timezone.utc)).isoformat(),
+          'source_todo':todo_id,'source_message':todo['body'].get('source_message')}
+    if reminder:db.update(reminder_id,body,'active')
+    else:db.insert('reminder',body,id=reminder_id,scope=todo['scope'])
+    return reminder_id
+
+
+def resolve_thread_followups(db,account_id,thread_id,message_id,sender):
+    """An inbound reply closes follow-ups that were waiting on the same thread."""
+    account=require(db,account_id,'mail_account')['body']
+    if not thread_id or sender.lower() in {account.get('address','').lower(),account.get('username','').lower()}:
+        return []
+    closed=[]
+    with db.engine.connect() as c:
+        found=c.execute(text("""SELECT id,body FROM records WHERE kind='mail_followup'
+            AND scope=:scope AND status='waiting' AND json_extract(body,'$.thread_id')=:thread"""),
+            {'scope':'web:mail:'+account_id,'thread':thread_id}).mappings().all()
+    for row in found:
+        body=json.loads(row['body']);body.update({'resolved_by_message':message_id,'resolved_at':now()})
+        db.update(row['id'],body,'resolved');closed.append(row['id'])
+    return closed

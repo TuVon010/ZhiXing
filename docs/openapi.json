@@ -177,50 +177,6 @@
         }
       }
     },
-    "/api/mail/approvals": {
-      "get": {
-        "summary": "Mail Approvals",
-        "operationId": "mail_approvals_api_mail_approvals_get",
-        "parameters": [
-          {
-            "name": "account_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Account Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/mail/accounts": {
       "get": {
         "summary": "Accounts",
@@ -249,6 +205,61 @@
           },
           "required": true
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/home": {
+      "get": {
+        "summary": "Home",
+        "description": "Action-oriented home read model; all derived items retain their source ids.",
+        "operationId": "home_api_mail_home_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "include_test",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Test"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -386,6 +397,62 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/reminders/{ident}/{operation}": {
+      "post": {
+        "summary": "Reminder Action",
+        "operationId": "reminder_action_api_mail_reminders__ident___operation__post",
+        "parameters": [
+          {
+            "name": "ident",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ident"
+            }
+          },
+          {
+            "name": "operation",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Operation"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderAction"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -894,6 +961,46 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "smart",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "all",
+              "title": "View"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Category"
+            }
+          },
+          {
+            "name": "include_test",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Test"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -954,6 +1061,55 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/messages/{ident}/read": {
+      "post": {
+        "summary": "Message Read",
+        "operationId": "message_read_api_mail_messages__ident__read_post",
+        "parameters": [
+          {
+            "name": "ident",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ident"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1305,10 +1461,11 @@
         }
       }
     },
-    "/api/mail/drafts/{ident}/submit": {
+    "/api/mail/drafts/{ident}/send": {
       "post": {
-        "summary": "Submit",
-        "operationId": "submit_api_mail_drafts__ident__submit_post",
+        "summary": "Confirm Send",
+        "description": "A user's final click authorizes exactly this frozen draft version.",
+        "operationId": "confirm_send_api_mail_drafts__ident__send_post",
         "parameters": [
           {
             "name": "ident",
@@ -2102,7 +2259,7 @@
     "/api/mail/digest": {
       "get": {
         "summary": "Get Digest",
-        "description": "获取每日邮件摘要。date 格式 YYYY-MM-DD，默认昨天。",
+        "description": "获取邮件动态摘要。date 格式 YYYY-MM-DD，默认今天。",
         "operationId": "get_digest_api_mail_digest_get",
         "parameters": [
           {
@@ -4452,6 +4609,25 @@
             "title": "Auto Analyze",
             "default": false
           },
+          "auto_import_enabled": {
+            "type": "boolean",
+            "title": "Auto Import Enabled",
+            "default": false
+          },
+          "auto_import_days": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Auto Import Days",
+            "default": 7
+          },
+          "poll_interval_seconds": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": 10.0,
+            "title": "Poll Interval Seconds",
+            "default": 15
+          },
           "scan_limit": {
             "type": "integer",
             "maximum": 200.0,
@@ -5083,6 +5259,19 @@
           "evidence"
         ],
         "title": "Reconciliation"
+      },
+      "ReminderAction": {
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "maximum": 10080.0,
+            "minimum": 5.0,
+            "title": "Minutes",
+            "default": 30
+          }
+        },
+        "type": "object",
+        "title": "ReminderAction"
       },
       "RunDetail": {
         "properties": {

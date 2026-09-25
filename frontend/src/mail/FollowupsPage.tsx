@@ -58,11 +58,16 @@ export function FollowupsPage() {
               mode: "reply", message_id: source });
             setDraftForm(draft);
             navigate("drafts");
-          }, "回复草稿已创建；发送仍需你审批")}>起草回复</button>}
+          }, "回复草稿已创建；发送前需要你在草稿页最终确认")}>起草回复</button>}
         {item.kind === "mail_followup" && item.status !== "resolved" &&
           <button disabled={busy} onClick={() => void act(() => api(`mail/followups/${item.id}/resolve`, {}), "邮件跟进已处理")}>标记已处理</button>}
         {item.kind === "mail_followup" && item.status === "resolved" &&
           <button disabled={busy} onClick={() => void act(() => api(`mail/followups/${item.id}/reopen`, {}), "邮件跟进已重新打开")}>重新跟进</button>}
+        {item.kind === "reminder" && item.status === "active" && <>
+          <button disabled={busy} onClick={() => void act(() => api(`mail/reminders/${item.id}/complete`, { minutes: 30 }), "提醒已完成")}>完成</button>
+          <button disabled={busy} onClick={() => void act(() => api(`mail/reminders/${item.id}/snooze`, { minutes: 30 }), "将在 30 分钟后再次提醒")}>稍后 30 分钟</button>
+          <button disabled={busy} onClick={() => void act(() => api(`mail/reminders/${item.id}/dismiss`, { minutes: 30 }), "提醒已忽略")}>忽略</button>
+        </>}
         {item.status === "candidate" && item.body.source === "perception" && <>
           <button disabled={busy} onClick={() => void act(() => api(`mail/perception/${item.kind === "calendar" ? "calendars" : "todos"}/${item.id}/confirm`, {}), "建议已确认")}>{item.kind === "calendar" && item.body.prior_thread_events?.length ? "确认改期并停用旧日程" : "确认加入"}</button>
           <button disabled={busy} onClick={() => void act(() => api(`mail/perception/${item.kind === "calendar" ? "calendars" : "todos"}/${item.id}/dismiss`, {}), "建议已忽略")}>忽略</button>
@@ -74,7 +79,7 @@ export function FollowupsPage() {
 
   return page === "followups" && <>
     {account && <section className="panel">
-      <h3>昨日邮件摘要</h3>
+      <h3>今日邮件动态</h3>
       <p>{digest?.summary || digest?.message || "尚未生成，可手动生成。"}</p>
       <button disabled={busy} onClick={() => void act(async () => {
         setDigest(await api("mail/digest/generate?account_id=" + encodeURIComponent(account), {}));

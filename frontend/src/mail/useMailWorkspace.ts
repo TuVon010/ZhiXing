@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import type { Api, Row } from "./shared";
 export function useMailWorkspace(api: Api) {
-  const [page, setPage] = useState("inbox"),
+  const stored = (key: string, fallback: string) => localStorage.getItem("zhixing." + key) || fallback;
+  const [page, setPage] = useState(() => {
+      const saved=stored("page", "home");
+      return saved==="approvals" ? "drafts" : saved;
+    }),
     [accounts, setAccounts] = useState<Row[]>([]),
-    [account, setAccount] = useState(""),
+    [account, setAccount] = useState(() => stored("account", "")),
     [list, setList] = useState<Row[]>([]),
     [offset, setOffset] = useState(0),
     [config, setConfig] = useState<any>({}),
@@ -15,7 +19,7 @@ export function useMailWorkspace(api: Api) {
     [accountForm, setAccountForm] = useState<any>(null),
     [draftForm, setDraftForm] = useState<any>(null),
     [query, setQuery] = useState(""),
-    [selected, setSelected] = useState<string[]>([]),
+    [selected, setSelected] = useState<string[]>(() => { try { return JSON.parse(stored("agentAccounts", "[]")); } catch { return []; } }),
     [searchResult, setSearchResult] = useState<any>(null),
     [session, setSession] = useState(""),
     [turns, setTurns] = useState<Row[]>([]),
@@ -30,6 +34,18 @@ export function useMailWorkspace(api: Api) {
   const [ready, setReady] = useState(false),
     [sessions, setSessions] = useState<Row[]>([]);
   const [unread, setUnread] = useState(0);
+  const [showTest, setShowTest] = useState(() => stored("showTest", "false") === "true"),
+    [inboxSort, setInboxSort] = useState(() => stored("inboxSort", "smart")),
+    [inboxView, setInboxView] = useState(() => stored("inboxView", "all")),
+    [inboxCategory, setInboxCategory] = useState(() => stored("inboxCategory", "")),
+    [home, setHome] = useState<any>(null);
+  useEffect(() => localStorage.setItem("zhixing.page", page), [page]);
+  useEffect(() => localStorage.setItem("zhixing.account", account), [account]);
+  useEffect(() => localStorage.setItem("zhixing.agentAccounts", JSON.stringify(selected)), [selected]);
+  useEffect(() => localStorage.setItem("zhixing.showTest", String(showTest)), [showTest]);
+  useEffect(() => localStorage.setItem("zhixing.inboxSort", inboxSort), [inboxSort]);
+  useEffect(() => localStorage.setItem("zhixing.inboxView", inboxView), [inboxView]);
+  useEffect(() => localStorage.setItem("zhixing.inboxCategory", inboxCategory), [inboxCategory]);
   useEffect(() => {
     if (!ready) return;
     let active = true;
@@ -75,12 +91,14 @@ export function useMailWorkspace(api: Api) {
     return data.items as Row[];
   }
   async function refresh(target = page) {
+    if (target === "home")
+      setHome(await api(`mail/home?include_test=${showTest}${account ? "&account_id=" + encodeURIComponent(account) : ""}`));
     if (["inbox", "filter"].includes(target)) {
       const suffix = target === "filter" ? "&status=filtered" : "&status=inbox";
       setList(
         (
           await api(
-            `mail/messages?limit=30&offset=${offset}${account ? "&account_id=" + account : ""}${suffix}`,
+            `mail/messages?limit=30&offset=${offset}${account ? "&account_id=" + account : ""}${suffix}&include_test=${showTest}&sort=${inboxSort}&view=${inboxView}&category=${encodeURIComponent(inboxCategory)}`,
           )
         ).items,
       );
@@ -112,14 +130,6 @@ export function useMailWorkspace(api: Api) {
           )
         ).items,
       );
-    if (target === "approvals")
-      setList(
-        (
-          await api(
-            "mail/approvals" + (account ? "?account_id=" + account : ""),
-          )
-        ).items,
-      );
   }
   useEffect(() => {
     let cancelled = false;
@@ -131,10 +141,11 @@ export function useMailWorkspace(api: Api) {
         if (!cancelled) {
           setConfig(cfg);
           setReady(true);
-          if (rows[0]) {
-            setAccount(rows[0].id);
-            setSelected([rows[0].id]);
-          }
+          const validAccount=rows.some((r) => r.id===account) ? account : "";
+          const preferred=validAccount || rows.find((r) => r.body.enabled && !r.body.test_account)?.id || rows.find((r) => !r.body.test_account)?.id || "";
+          setAccount(preferred);
+          const validSelected=selected.filter((id) => rows.some((r) => r.id===id));
+          setSelected(validSelected.length ? validSelected : preferred ? [preferred] : []);
         }
       } catch (e) {
         setError(String(e));
@@ -146,13 +157,13 @@ export function useMailWorkspace(api: Api) {
   }, []);
   useEffect(() => {
     if (ready) void refresh().catch((e) => setError(String(e)));
-  }, [ready, page, account, offset]);
+  }, [ready, page, account, offset, showTest, inboxSort, inboxView, inboxCategory]);
   useEffect(() => {
     if (!ready) return;
     const source = new EventSource("/api/stream");
     source.onmessage = () => void refresh().catch((e) => setError(String(e)));
     return () => source.close();
-  }, [ready, page, account, offset]);
+  }, [ready, page, account, offset, showTest, inboxSort, inboxView, inboxCategory]);
   async function act(fn: () => Promise<any>, message = "已保存") {
     setBusy(true);
     setError("");
@@ -184,6 +195,7 @@ export function useMailWorkspace(api: Api) {
   }
   async function openMail(id: string) {
     await act(async () => {
+      await api("mail/messages/" + id + "/read", { read: true });
       const m = await api("mail/messages/" + id);
       setOpened(m);
       setThread(await api("mail/threads/" + m.body.thread_id));
@@ -267,6 +279,15 @@ export function useMailWorkspace(api: Api) {
 
   return {
     unread,
+    home,
+    showTest,
+    setShowTest,
+    inboxSort,
+    setInboxSort,
+    inboxView,
+    setInboxView,
+    inboxCategory,
+    setInboxCategory,
     page,
     setPage,
     accounts,

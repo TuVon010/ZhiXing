@@ -9,6 +9,40 @@ from .db import now,encode
 from .mail_store import initialize,enqueue,rows,require,secret
 
 
+def queue_rolling_import(db,account_id,reason='scheduled'):
+    account=require(db,account_id,'mail_account')['body']
+    if not account.get('enabled') or not account.get('auto_import_enabled') or account.get('test_account'):
+        return None
+    shanghai=timezone(timedelta(hours=8));end=datetime.now(shanghai);days=account.get('auto_import_days',7)
+    key=f'rolling-import:{account_id}:{end.date().isoformat()}:{days}'
+    try:batch=require(db,key,'mail_import')
+    except KeyError:
+        body={'account_id':account_id,'start':(end-timedelta(days=days)).isoformat(),'end':end.isoformat(),
+              'limit':10000,'analyze_after_import':bool(account.get('auto_analyze')),
+              'last_uid':0,'imported':0,'existing':0,'scanned':0,'analysis_queued':0,
+              'automatic':True,'rolling_days':days,'trigger':reason}
+        db.insert('mail_import',body,id=key,scope=account_id,status='running');batch=require(db,key,'mail_import')
+        db.audit('system','MAIL_ROLLING_IMPORT_CREATED',account_id=account_id,days=days,reason=reason)
+    job_id=enqueue(db,'import',{'import_id':key},account_id,priority=30,dedupe=f'import:{key}:{batch["body"].get("last_uid",0)}')
+    return {'import_id':key,'job_id':job_id}
+
+
+def queue_auto_perception(db,account_id):
+    account=require(db,account_id,'mail_account')['body']
+    if not account.get('enabled') or not account.get('auto_analyze'):return 0
+    cutoff=(datetime.now(timezone.utc)-timedelta(hours=1)).isoformat();hour=datetime.now(timezone.utc).strftime('%Y%m%d%H')
+    with db.engine.connect() as c:
+        used=c.execute(text("SELECT COUNT(*) FROM records WHERE kind='analysis_slot' AND scope=:a AND created_at>=:cutoff"),{'a':account_id,'cutoff':cutoff}).scalar_one()
+        candidates=c.execute(text("""SELECT r.id FROM records r WHERE r.kind='mail_message' AND r.scope=:a
+            AND r.status IN ('active','review') AND json_type(r.body,'$.perception') IS NULL
+            AND NOT EXISTS(SELECT 1 FROM mail_jobs j WHERE j.kind='perception' AND j.account_id=:a
+              AND json_extract(j.payload,'$.message_id')=r.id AND j.status IN ('queued','running'))
+            ORDER BY r.created_at DESC LIMIT :limit"""),{'a':account_id,'limit':max(0,account.get('hourly_analysis_limit',20)-used)}).scalars().all()
+    for message_id in candidates:
+        enqueue(db,'perception',{'message_id':message_id},account_id,priority=40,dedupe=f'perception-auto:{message_id}:{hour}')
+    return len(candidates)
+
+
 def schedule(db):
     initialize(db)
     if os.environ.get('ZHIXING_DISABLE_MAIL_NETWORK')=='1':return
@@ -18,7 +52,10 @@ def schedule(db):
         if account['body'].get('enabled'):
             with db.engine.connect() as c:
                 pending=c.execute(text("SELECT 1 FROM mail_jobs WHERE account_id=:a AND kind='sync' AND status IN ('queued','running')"),{'a':account['id']}).first()
-            if not pending:enqueue(db,'sync',{},account['id'],priority=20,dedupe='sync:'+account['id']+':'+str(int(time.time()//30)))
+            interval=max(10,int(account['body'].get('poll_interval_seconds',15)))
+            if not pending:enqueue(db,'sync',{},account['id'],priority=20,dedupe='sync:'+account['id']+':'+str(int(time.time()//interval)))
+            queue_rolling_import(db,account['id'])
+            queue_auto_perception(db,account['id'])
     # 每天生成一次前一天的邮件摘要（Digest）
     _schedule_daily_digest(db)
 
@@ -60,7 +97,7 @@ def execute_job(db,job):
         result=scan(db,aid,{k:v for k,v in row['body'].items() if k in {'account_id','start','end','limit'}},import_id=row['id'])
         current=require(db,row['id'],'mail_import')
         if current['status']=='running':
-            enqueue(db,'import',{'import_id':row['id']},aid,priority=15,
+            enqueue(db,'import',{'import_id':row['id']},aid,priority=30 if current['body'].get('automatic') else 15,
                     dedupe=f"import:{row['id']}:{current['body']['last_uid']}")
         return result
     if kind=='index':
@@ -114,7 +151,10 @@ def execute_job(db,job):
                         return {'skipped':'hourly_analysis_limit'}
                     db.insert('analysis_slot',{'message_id':mail['id'],'kind':'perception'},id=slot,scope=aid,conn=c)
                 c.commit()
-        return perceive(db,mail['id'])
+        result=perceive(db,mail['id'])
+        from .mail_digest import generate_and_save_digest
+        generate_and_save_digest(db,aid,datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d'))
+        return result
     if kind=='digest':
         from .mail_digest import generate_and_save_digest
         return generate_and_save_digest(db, aid, payload.get('date'))

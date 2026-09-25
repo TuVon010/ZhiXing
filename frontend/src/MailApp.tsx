@@ -10,12 +10,12 @@ import { MailboxPage } from "./mail/MailboxPage";
 import { AccountsPage } from "./mail/AccountsPage";
 import { AssistantPage } from "./mail/AssistantPage";
 import { FollowupsPage } from "./mail/FollowupsPage";
-import { ApprovalsPage } from "./mail/ApprovalsPage";
 import { DraftsPage } from "./mail/DraftsPage";
 import { ImportsPage } from "./mail/ImportsPage";
 import { MemoryPage } from "./mail/MemoryPage";
 import { SettingsPage } from "./mail/SettingsPage";
 import { RecordsPage } from "./mail/RecordsPage";
+import { HomePage } from "./mail/HomePage";
 export function MailApp({ api }: { api: Api }) {
   const workspace = useMailWorkspace(api);
   const {
@@ -43,16 +43,17 @@ export function MailApp({ api }: { api: Api }) {
     act,
     navigate,
     unread,
+    showTest,
+    setShowTest,
   } = workspace;
   const nav = [
+    ["home", "首页"],
     ["inbox", "收件箱"],
     ["followups", "待办与跟进"],
-    ["approvals", "审批中心"],
-    ["activity", "运行记录"],
+    ["activity", "Trace 与运行"],
     ["notifications", "通知与提醒"],
     ["calendar", "日程"],
     ["assistant", "邮件 Agent"],
-    ["search", "知识检索"],
     ["drafts", "回复草稿"],
     ["filter", "过滤箱"],
     ["imports", "收取与导入"],
@@ -74,15 +75,13 @@ export function MailApp({ api }: { api: Api }) {
           <p className="mail-subtitle">从邮件中，找到下一步。</p>
           <nav>
             {[
-              ["邮件", ["inbox", "drafts", "filter"]],
+              ["邮件", ["home", "inbox", "drafts", "filter"]],
               [
                 "工作",
                 [
                   "assistant",
-                  "search",
                   "followups",
                   "calendar",
-                  "approvals",
                   "notifications",
                   "activity",
                 ],
@@ -134,16 +133,17 @@ export function MailApp({ api }: { api: Api }) {
                   setOpened(null);
                   setSession("");
                   setTurns([]);
-                  setSelected(e.target.value ? [e.target.value] : []);
+                  if (e.target.value) setSelected([e.target.value]);
                 }}
               >
-                <option value="">全部邮箱（仅浏览）</option>
-                {accounts.map((a) => (
+                <option value="">统一收件箱</option>
+                {accounts.filter((a) => showTest || !a.body.test_account || a.id === account).map((a) => (
                   <option value={a.id} key={a.id}>
                     {a.body.name} · {a.body.address}
                   </option>
                 ))}
               </select>
+              <label className="mail-test-toggle"><input type="checkbox" checked={showTest} onChange={(e) => setShowTest(e.target.checked)} />显示测试数据</label>
               <button onClick={() => void act(() => refresh(), "已刷新")}>
                 刷新
               </button>
@@ -191,11 +191,11 @@ export function MailApp({ api }: { api: Api }) {
               )}
             </section>
           )}
+          <HomePage />
           <MailboxPage />
           <AccountsPage />
           <AssistantPage />
           <FollowupsPage />
-          <ApprovalsPage />
           <DraftsPage />
           <ImportsPage />
           <MemoryPage />
@@ -280,7 +280,7 @@ export function MailApp({ api }: { api: Api }) {
               </section>
             </div>
           )}
-          <footer>知行 · 邮件是证据，记忆需确认，发送经审批。</footer>
+          <footer>知行 · 邮件是证据，记忆需确认，发送前由用户最终核对。</footer>
         </main>
       </div>
     </WorkspaceContext.Provider>

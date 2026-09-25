@@ -15,6 +15,7 @@ export const label: Record<string, string> = {
   archived: "本地归档",
   legacy: "历史资料",
   draft: "草稿",
+  submitted: "发送处理中",
   approval: "待审批",
   approved: "已批准",
   rejected: "已拒绝",
@@ -53,6 +54,9 @@ export const blankAccount = {
   smtp_tls: "ssl",
   enabled: false,
   auto_analyze: false,
+  auto_import_enabled: false,
+  auto_import_days: 7,
+  poll_interval_seconds: 15,
   scan_limit: 20,
   hourly_analysis_limit: 20,
 };

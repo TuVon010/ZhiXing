@@ -83,11 +83,18 @@ def date_header(value):
     except Exception:return None
 
 
-def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'):
+def _source_fingerprint(message_id,sender,subject,body,declared_at,to,cc):
+    value={'message_id':(message_id or '').strip().lower(),'sender':sender,'subject':subject.strip(),
+           'body':clean(body),'declared_at':declared_at or '','to':sorted(to),'cc':sorted(cc)}
+    return hashlib.sha256(json.dumps(value,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+
+
+def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX',return_details=False):
     initialize(db)
+    result=lambda ident,created:(ident,created) if return_details else ident
     identity=f'{account_id}:{folder}:{validity}:{mail_uid}'
     ident='mail-'+hashlib.sha256(identity.encode()).hexdigest()[:32]
-    try:return require(db,ident,'mail_message')['id']
+    try:return result(require(db,ident,'mail_message')['id'],False)
     except KeyError:pass
     message=email.message_from_bytes(raw,policy=policy.default)
     part=message.get_body(preferencelist=('plain','html'))
@@ -95,8 +102,31 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
     if not isinstance(body,str):body=''
     if part and part.get_content_type()=='text/html':
         parser=TextHTML();parser.feed(body);body=''.join(parser.parts)
+    sender=getaddresses([str(message.get('From',''))]);sender_address=sender[0][1].lower() if sender else ''
+    subject=str(message.get('Subject',''));mid=str(message.get('Message-ID',''))
+    to=[a.lower() for _,a in getaddresses(message.get_all('To',[]))]
+    cc=[a.lower() for _,a in getaddresses(message.get_all('Cc',[]))]
+    declared_at=date_header(str(message.get('Date','')))
+    fingerprint=_source_fingerprint(mid,sender_address,subject,body,declared_at,to,cc)
+    with db.engine.begin() as c:
+        existing=c.execute(text('SELECT record_id FROM mail_source_fingerprints WHERE account_id=:a AND folder=:f AND fingerprint=:p'),
+                           {'a':account_id,'f':folder,'p':fingerprint}).first()
+        if existing:return result(existing[0],False)
+        if mid:
+            candidates=c.execute(text("SELECT id,body FROM records WHERE kind='mail_message' AND scope=:a AND json_extract(body,'$.folder')=:f AND json_extract(body,'$.message_id')=:mid"),
+                                 {'a':account_id,'f':folder,'mid':mid}).mappings().all()
+            for candidate in candidates:
+                saved=json.loads(candidate['body'])
+                saved_fingerprint=saved.get('source_fingerprint') or _source_fingerprint(
+                    saved.get('message_id'),saved.get('sender',''),saved.get('subject',''),
+                    saved.get('raw_text') or saved.get('text',''),saved.get('declared_at'),
+                    saved.get('to',[]),saved.get('cc',[]))
+                if saved_fingerprint==fingerprint:
+                    c.execute(text('INSERT OR IGNORE INTO mail_source_fingerprints VALUES(:a,:f,:p,:id)'),
+                              {'a':account_id,'f':folder,'p':fingerprint,'id':candidate['id']})
+                    return result(candidate['id'],False)
     refs=re.findall(r'<[^<>\s]+>',str(message.get('References',''))+' '+str(message.get('In-Reply-To','')))
-    mid=str(message.get('Message-ID',''));refs=list(dict.fromkeys(refs+[mid] if mid else refs))
+    refs=list(dict.fromkeys(refs+[mid] if mid else refs))
     attachments=[];used=0
     for i,p in enumerate(message.iter_attachments()):
         data=p.get_payload(decode=True) or b'';size=len(data);used+=size
@@ -113,8 +143,6 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
     try:rules=db.get('mail-filter:'+account_id)['body']
     except KeyError:rules={**DEFAULT_RULES}
     # Parse actual addresses before applying the user's sender rules.
-    sender=getaddresses([str(message.get('From',''))]);sender_address=sender[0][1].lower() if sender else ''
-    subject=str(message.get('Subject',''))
     filtered,reason,category,evidence=should_filter({'sender_id':sender_address,'text':subject+'\n'+body},rules=rules)
     status='filtered' if filtered else 'review' if category=='manual' else 'active'
     tid='thread-'+uid()
@@ -122,7 +150,12 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
         c.exec_driver_sql('BEGIN IMMEDIATE')
         # Duplicate event during a concurrent retry cannot create another thread.
         existing=c.execute(text('SELECT id FROM records WHERE id=:id'),{'id':ident}).first()
-        if existing:return ident
+        if existing:return result(ident,False)
+        c.execute(text('INSERT OR IGNORE INTO mail_source_fingerprints VALUES(:a,:f,:p,:id)'),
+                  {'a':account_id,'f':folder,'p':fingerprint,'id':ident})
+        owner=c.execute(text('SELECT record_id FROM mail_source_fingerprints WHERE account_id=:a AND folder=:f AND fingerprint=:p'),
+                        {'a':account_id,'f':folder,'p':fingerprint}).scalar_one()
+        if owner!=ident:return result(owner,False)
         found=[]
         for ref in refs:
             r=c.execute(text('SELECT thread_id FROM mail_refs WHERE account_id=:a AND reference=:ref'),{'a':account_id,'ref':ref}).first()
@@ -137,12 +170,11 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
         for ref in refs:c.execute(text('INSERT OR REPLACE INTO mail_refs VALUES(:a,:ref,:tid)'),{'a':account_id,'ref':ref,'tid':tid})
         value={'account_id':account_id,'thread_id':tid,'folder':folder,'uid':mail_uid,'uidvalidity':validity,
                'subject':subject,'sender':sender_address,'sender_display':str(message.get('From','')),
-               'to':[a.lower() for _,a in getaddresses(message.get_all('To',[]))],
-               'cc':[a.lower() for _,a in getaddresses(message.get_all('Cc',[]))],
+               'to':to,'cc':cc,
                'reply_to':[a.lower() for _,a in getaddresses(message.get_all('Reply-To',[]))],
                'message_id':mid,'references':refs,'text':clean(body),'raw_text':body,
                'headers':dict((k,str(v)) for k,v in message.items()),'received_at':received_at,
-               'declared_at':date_header(str(message.get('Date',''))),'fetched_at':now(),
+               'declared_at':declared_at,'fetched_at':now(),'source_fingerprint':fingerprint,
                'attachments':attachments,'index_status':'pending','filter':{'reason':reason,'category':category,'evidence':evidence,'rules_version':rules.get('version',1)}}
         db.insert('mail_message',value,id=ident,scope=account_id,status=status,conn=c);c.commit()
     if status in ('active','review'):
@@ -151,7 +183,9 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
         account_options=require(db,account_id,'mail_account')['body']
         if account_options.get('enabled') and account_options.get('auto_analyze'):
             enqueue(db,'perception',{'message_id':ident},account_id,priority=40,dedupe='perception:'+ident)
-    return ident
+        from .mail_work_items import resolve_thread_followups
+        resolve_thread_followups(db,account_id,tid,ident,sender_address)
+    return result(ident,True)
 
 
 def internal_date(raw):
@@ -180,8 +214,11 @@ def scan(db,account_id,request=None,preview=False,import_id=None):
             start=spec.start.astimezone(timezone.utc)-timedelta(days=1)
             end=spec.end.astimezone(timezone.utc)+timedelta(days=1)
             typ,data=imap.uid('search',None,'SINCE',imap_date(start),'BEFORE',imap_date(end))
-        else:
+        elif cursor is None:
             typ,data=imap.uid('search',None,'ALL')
+        else:
+            # Normal polling asks the server only for UIDs after the durable cursor.
+            typ,data=imap.uid('search',None,'UID',f"{int(cursor.get('uid',0))+1}:*")
         if typ!='OK':raise ValueError('无法读取邮件索引')
         all_uids=sorted(int(v) for v in (data[0] or b'').split())
         if not spec:
@@ -203,7 +240,7 @@ def scan(db,account_id,request=None,preview=False,import_id=None):
                 if not batch.get('validity'):
                     batch={**batch,'validity':validity};db.update(import_id,batch)
                 selected=[u for u in selected if u>batch.get('last_uid',0)]
-        matched=0;imported=0;examined=0;done=True
+        matched=0;imported=0;existing_count=0;examined=0;done=True
         for mail_uid in selected:
             if import_id:
                 batchrow=require(db,import_id,'mail_import')
@@ -230,7 +267,9 @@ def scan(db,account_id,request=None,preview=False,import_id=None):
                 typ,full=imap.uid('fetch',str(mail_uid),'(BODY.PEEK[])')
                 if typ!='OK':raise ValueError('邮件正文读取失败；游标未推进')
                 raw=next(x[1] for x in full if isinstance(x,tuple))
-            ident=store_message(db,account_id,validity,mail_uid,raw,received.isoformat());imported+=1
+            ident,created=store_message(db,account_id,validity,mail_uid,raw,received.isoformat(),return_details=True)
+            if created:imported+=1
+            else:existing_count+=1
             import_body=db.get(import_id)['body'] if import_id else None
             if import_body and import_body.get('analyze_after_import') and import_body.get('analysis_queued',0)<20:
                 item=require(db,ident,'mail_message',[account_id])
@@ -244,7 +283,9 @@ def scan(db,account_id,request=None,preview=False,import_id=None):
             if size_match and int(size_match[1])>30*1024**2:
                 item=db.get(ident);db.update(ident,{**item['body'],'incomplete':True,'body_status':'oversize_not_downloaded'})
             if spec and import_id:
-                b=db.get(import_id)['body'];db.update(import_id,{**b,'last_uid':mail_uid,'scanned':b.get('scanned',0)+1,'imported':b.get('imported',0)+1})
+                b=db.get(import_id)['body'];db.update(import_id,{**b,'last_uid':mail_uid,
+                    'scanned':b.get('scanned',0)+1,'imported':b.get('imported',0)+(1 if created else 0),
+                    'existing':b.get('existing',0)+(0 if created else 1)})
             elif not spec:
                 cursor['uid']=mail_uid
                 if cursor.get('catchup'):
@@ -261,4 +302,5 @@ def scan(db,account_id,request=None,preview=False,import_id=None):
                 # Yield after one scan batch while preserving an explicit user pause.
                 if batch['status']=='running':db.update(import_id,b,'completed' if done else 'running',conn=c)
                 c.commit()
-        return {'matched':matched,'imported':imported,'preview':preview,'complete':done}
+        return {'matched':matched,'imported':imported,'created':imported,'existing':existing_count,
+                'preview':preview,'complete':done}

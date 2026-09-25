@@ -41,6 +41,7 @@ const events: Record<string, string> = {
   RISK_CHECKED: "风险判断",
   APPROVAL_REQUESTED: "等待人工审批",
   APPROVAL_DECIDED: "审批已决定",
+  USER_CONFIRMATION_APPLIED: "应用用户最终发送确认",
   TOOL_CALLED: "执行工具",
   TOOL_RESULT: "工具执行结果",
   WORKFLOW_FINISHED: "动作运行结束",

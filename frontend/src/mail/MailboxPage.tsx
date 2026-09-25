@@ -21,6 +21,12 @@ export function MailboxPage() {
     openMail,
     makeDraft,
     api,
+    inboxSort,
+    setInboxSort,
+    inboxView,
+    setInboxView,
+    inboxCategory,
+    setInboxCategory,
   } = useWorkspace();
   useEffect(() => {
     if (!opened?.id || !["inbox", "filter"].includes(page)) return;
@@ -54,6 +60,19 @@ export function MailboxPage() {
             </p>
             <button onClick={() => void makeDraft()}>新邮件草稿</button>
           </div>
+          {page === "inbox" && <section className="mail-filterbar">
+            <select aria-label="收件箱范围" value={inboxView} onChange={(e) => setInboxView(e.target.value)}>
+              <option value="all">全部邮件</option><option value="today">今天</option><option value="unread">未读</option>
+              <option value="actionable">需要行动</option><option value="pending">待 Agent 分析</option>
+            </select>
+            <select aria-label="邮件分类" value={inboxCategory} onChange={(e) => setInboxCategory(e.target.value)}>
+              <option value="">全部分类</option><option value="work">工作</option><option value="personal">个人</option>
+              <option value="notification">系统通知</option><option value="ad">广告</option><option value="other">其他</option>
+            </select>
+            <select aria-label="邮件排序" value={inboxSort} onChange={(e) => setInboxSort(e.target.value)}>
+              <option value="smart">智能排序</option><option value="latest">最新优先</option><option value="oldest">最早优先</option>
+            </select>
+          </section>}
           <div className="mail-columns">
             <section className="panel mail-list">
               {!list.length && (
@@ -69,7 +88,7 @@ export function MailboxPage() {
                 >
                   <span className="mail-row-meta">
                     {m.body.sender_display || m.body.sender || "历史来源"}{" "}
-                    <small>{label[m.status] || m.status}</small>
+                    <small>{!m.body.read_at ? "未读 · " : ""}{label[m.status] || m.status}</small>
                   </span>
                   <strong>{m.body.subject || "无主题"}</strong>
                   {!m.body.perception && ["active", "review"].includes(m.status) &&
@@ -132,6 +151,10 @@ export function MailboxPage() {
                     <button onClick={() => void makeDraft("reply_all")}>
                       回复全部
                     </button>
+                    <button onClick={() => void act(async () => {
+                      await api(`mail/messages/${opened.id}/read`, { read: false });
+                      setOpened({ ...opened, body: { ...opened.body, read_at: undefined } });
+                    }, "已标记为未读")}>标记未读</button>
                     <button
                       onClick={() => {
                         setPage("assistant");

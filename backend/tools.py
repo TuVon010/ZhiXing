@@ -100,5 +100,11 @@ def local_tool(db,tool,args,run_id,scope,conn):
         if status not in {'active','completed','cancelled','deleted'}:
             raise ValueError('无效任务状态')
         db.update(item['id'],{**item['body'],**allowed,'sync_status':'local'},status,conn)
+        if tool=='delete_item' and item['kind'] in {'todo','calendar'}:
+            source='source_todo' if item['kind']=='todo' else 'source_calendar'
+            conn.execute(text("""UPDATE records SET status='cancelled',updated_at=:at
+                WHERE kind='reminder' AND scope=:scope AND status='active'
+                AND json_extract(body,:path)=:id"""),
+                {'at':now(),'scope':item['scope'],'path':'$.'+source,'id':item['id']})
         return {'id':item['id'],'status':status}
     return {'content':args['content']}

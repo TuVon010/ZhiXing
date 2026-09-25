@@ -56,23 +56,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/mail/approvals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Mail Approvals */
-        get: operations["mail_approvals_api_mail_approvals_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/mail/accounts": {
         parameters: {
             query?: never;
@@ -85,6 +68,26 @@ export interface paths {
         put?: never;
         /** Create Account */
         post: operations["create_account_api_mail_accounts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Home
+         * @description Action-oriented home read model; all derived items retain their source ids.
+         */
+        get: operations["home_api_mail_home_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -153,6 +156,23 @@ export interface paths {
         put?: never;
         /** Sync */
         post: operations["sync_api_mail_accounts__ident__sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mail/reminders/{ident}/{operation}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reminder Action */
+        post: operations["reminder_action_api_mail_reminders__ident___operation__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -364,6 +384,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mail/messages/{ident}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Message Read */
+        post: operations["message_read_api_mail_messages__ident__read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/mail/messages/{ident}/state": {
         parameters: {
             query?: never;
@@ -484,7 +521,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/mail/drafts/{ident}/submit": {
+    "/api/mail/drafts/{ident}/send": {
         parameters: {
             query?: never;
             header?: never;
@@ -493,8 +530,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Submit */
-        post: operations["submit_api_mail_drafts__ident__submit_post"];
+        /**
+         * Confirm Send
+         * @description A user's final click authorizes exactly this frozen draft version.
+         */
+        post: operations["confirm_send_api_mail_drafts__ident__send_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -846,7 +886,7 @@ export interface paths {
         };
         /**
          * Get Digest
-         * @description 获取每日邮件摘要。date 格式 YYYY-MM-DD，默认昨天。
+         * @description 获取邮件动态摘要。date 格式 YYYY-MM-DD，默认今天。
          */
         get: operations["get_digest_api_mail_digest_get"];
         put?: never;
@@ -1904,6 +1944,21 @@ export interface components {
              */
             auto_analyze: boolean;
             /**
+             * Auto Import Enabled
+             * @default false
+             */
+            auto_import_enabled: boolean;
+            /**
+             * Auto Import Days
+             * @default 7
+             */
+            auto_import_days: number;
+            /**
+             * Poll Interval Seconds
+             * @default 15
+             */
+            poll_interval_seconds: number;
+            /**
              * Scan Limit
              * @default 20
              */
@@ -2103,6 +2158,14 @@ export interface components {
             executed: boolean;
             /** Evidence */
             evidence: string;
+        };
+        /** ReminderAction */
+        ReminderAction: {
+            /**
+             * Minutes
+             * @default 30
+             */
+            minutes: number;
         };
         /** RunDetail */
         RunDetail: {
@@ -2359,37 +2422,6 @@ export interface operations {
             };
         };
     };
-    mail_approvals_api_mail_approvals_get: {
-        parameters: {
-            query?: {
-                account_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     accounts_api_mail_accounts_get: {
         parameters: {
             query?: never;
@@ -2422,6 +2454,38 @@ export interface operations {
                 "application/json": components["schemas"]["MailAccount"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    home_api_mail_home_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+                include_test?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -2539,6 +2603,42 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reminder_action_api_mail_reminders__ident___operation__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+                operation: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderAction"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2920,6 +3020,10 @@ export interface operations {
             query?: {
                 account_id?: string | null;
                 status?: string | null;
+                sort?: string;
+                view?: string;
+                category?: string;
+                include_test?: boolean;
                 limit?: number;
                 offset?: number;
             };
@@ -2959,6 +3063,43 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    message_read_api_mail_messages__ident__read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -3244,7 +3385,7 @@ export interface operations {
             };
         };
     };
-    submit_api_mail_drafts__ident__submit_post: {
+    confirm_send_api_mail_drafts__ident__send_post: {
         parameters: {
             query?: never;
             header?: never;

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useWorkspace } from "./context";
 import { label } from "./shared";
 export function DraftsPage() {
+  const [confirmSend, setConfirmSend] = useState(false);
   const {
     page,
     accounts,
@@ -11,7 +13,6 @@ export function DraftsPage() {
     setDraftForm,
     setTrace,
     act,
-    navigate,
     makeDraft,
     draftPayload,
     api,
@@ -32,7 +33,7 @@ export function DraftsPage() {
                   </p>
                 </div>
                 <div className="actions">
-                  <button onClick={() => setDraftForm(d)}>打开草稿</button>
+                  <button onClick={() => { setConfirmSend(false); setDraftForm(d); }}>打开草稿</button>
                   {d.status === "draft" && <button disabled={busy} onClick={() => void act(async () => {
                     await api(`mail/records/${d.id}/trash`, {});
                     if (draftForm?.id === d.id) setDraftForm(null);
@@ -97,7 +98,7 @@ export function DraftsPage() {
                 </label>
               ))}
               <p>
-                编辑后需要先保存；保存会使旧发送审批失效。审批内容必须与当前草稿版本一致。
+                编辑后需要先保存。最终确认只授权当前草稿版本；之后修改收件人、主题或正文必须重新确认。
               </p>
               <div className="actions">
                 <button
@@ -111,7 +112,7 @@ export function DraftsPage() {
                             draftPayload(),
                           ),
                         ),
-                      "草稿已保存，旧审批已失效",
+                      "草稿已保存，旧的发送确认已失效",
                     )
                   }
                 >
@@ -119,23 +120,36 @@ export function DraftsPage() {
                 </button>
                 <button
                   disabled={
-                    busy || draftForm.dirty || draftForm.status !== "draft"
+                    busy || draftForm.dirty || draftForm.status !== "draft" ||
+                    !draftForm.body.to?.some((value: string) => value.trim()) ||
+                    !draftForm.body.content?.trim()
                   }
-                  onClick={() =>
-                    void act(async () => {
-                      await api("mail/drafts/" + draftForm.id + "/submit", {
-                        version: draftForm.body.version,
-                      });
-                      setDraftForm({ ...draftForm, status: "approval" });
-                    }, "已提交审批，请前往审批中心核对收件人与正文")
-                  }
+                  onClick={() => setConfirmSend(true)}
                 >
-                  申请发送审批
-                </button>
-                <button onClick={() => navigate("approvals")}>
-                  前往审批中心
+                  准备发送
                 </button>
               </div>
+              {confirmSend && <section className="send-confirmation" aria-label="最终发送确认">
+                <span className="eyebrow">FINAL CHECK</span>
+                <h3>确认发送这封邮件？</h3>
+                <dl className="approval-fields">
+                  <div><dt>发件邮箱</dt><dd>{accounts.find((a) => a.id === draftForm.body.account_id)?.body.address}</dd></div>
+                  <div><dt>收件人</dt><dd>{draftForm.body.to.join("、")}</dd></div>
+                  {draftForm.body.cc.length > 0 && <div><dt>抄送</dt><dd>{draftForm.body.cc.join("、")}</dd></div>}
+                  <div><dt>主题</dt><dd>{draftForm.body.subject}</dd></div>
+                  <div><dt>正文</dt><dd>{draftForm.body.content}</dd></div>
+                </dl>
+                <p>发送后不能撤回。系统会冻结当前版本并使用执行账本防止重复发送。</p>
+                <div className="actions">
+                  <button disabled={busy} onClick={() => setConfirmSend(false)}>返回修改</button>
+                  <button className="primary" disabled={busy} onClick={() => void act(async () => {
+                    const result = await api("mail/drafts/" + draftForm.id + "/send", { version: draftForm.body.version });
+                    setDraftForm({ ...draftForm, status: "submitted",
+                      body: { ...draftForm.body, approval_runs: [result.run_id] } });
+                    setConfirmSend(false);
+                  }, "发送请求已进入安全执行队列，可通过“查看发送结果”跟踪")}>确认发送</button>
+                </div>
+              </section>}
             </section>
           )}
         </>

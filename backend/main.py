@@ -86,8 +86,11 @@ async def stream(request:Request):
     async def events():
         last=None
         while not await request.is_disconnected():
-            runs=store.list('run',limit=50)
-            signature=json.dumps([(r['id'],r['updated_at'],r['status']) for r in runs])
+            with store.engine.connect() as c:
+                revision=c.execute(text("""SELECT max(updated_at),count(*) FROM records WHERE kind IN
+                    ('run','assistant_turn','mail_message','todo','calendar','reminder','mail_followup','notification','mail_draft')""")).first()
+                jobs=c.execute(text("SELECT max(updated_at),count(*) FROM mail_jobs")).first()
+            signature=json.dumps([list(revision),list(jobs)])
             if signature!=last:
                 yield 'data: '+json.dumps({'event':'refresh'})+'\n\n';last=signature
             else:

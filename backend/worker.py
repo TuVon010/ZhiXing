@@ -20,18 +20,6 @@ def tick(db=store):
                 db.insert('notification',{'title':'到期提醒','content':row['body']['title'],'item_id':row['id'],'run_id':row['body'].get('run_id')},scope=row['scope'],status='pending',dedupe='reminder:'+row['id'],conn=c)
                 db.update(row['id'],status='completed',conn=c)
     local=datetime.now(ZoneInfo('Asia/Shanghai'))
-    if local.hour>=20:
-        daily='daily:'+local.date().isoformat()
-        try:
-            db.get(daily)
-        except KeyError:
-            todos=db.list('todo',status='active',limit=10000)
-            groups={}
-            for todo in todos:groups.setdefault(todo['scope'],[]).append(todo['body']['title'])
-            with db.engine.begin() as c:
-                for scope,titles in groups.items():
-                    db.insert('notification',{'title':'每日工作摘要','content':'\n'.join(titles)},scope=scope,status='pending',conn=c)
-                db.insert('schedule',{},id=daily,status='completed',conn=c)
     notifications(db)
     try:
         cfg=db.get('runtime-settings')['body']
@@ -96,7 +84,7 @@ def main():
             store.get('worker-heartbeat');store.update('worker-heartbeat',{'at':now()})
         except KeyError:
             store.insert('channel',{'at':now()},id='worker-heartbeat')
-        time.sleep(30)
+        time.sleep(5)
 
 if __name__=='__main__':
     main()

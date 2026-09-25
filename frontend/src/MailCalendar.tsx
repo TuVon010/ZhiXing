@@ -31,7 +31,8 @@ export function MailCalendar({
           "mail/followups" + (account ? "?account_id=" + account : ""),
         );
         if (active)
-          setItems(data.items.filter((r: RecordRow) => r.kind === "calendar"));
+          setItems(data.items.filter((r: RecordRow) =>
+            r.kind === "calendar" && ["active", "candidate"].includes(r.status)));
       } catch (e) {
         if (active) setError(String(e));
       }
@@ -53,8 +54,21 @@ export function MailCalendar({
         start: new Date(draft.start).toISOString(),
         end: new Date(draft.end).toISOString(),
       });
-      setNotice("日程已提交审批，请到审批中心确认。");
+      setNotice("本地日程已保存，提醒会随时间自动更新。");
       setDraft({ id: "", title: "", start: "", end: "" });
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function remove(item: RecordRow) {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api(`mail/records/${item.id}/trash`, {});
+      setItems((current) => current.filter((row) => row.id !== item.id));
+      setNotice("日程已移入本地回收站，关联提醒已停用，可在记录管理中恢复。");
     } catch (e) {
       setError(String(e));
     } finally {
@@ -65,7 +79,7 @@ export function MailCalendar({
     <>
       <section className="panel">
         <h3>{draft.id ? "修改日程" : "新建日程"}</h3>
-        <p>仅保存在本地；创建和修改经审批后生效。时间按本机时区输入。</p>
+        <p>仅保存在本地；你主动创建和修改时立即生效，时间按本机时区输入。</p>
         {error && <p role="alert">{error}</p>}
         {notice && <p role="status">{notice}</p>}
         <form
@@ -97,7 +111,7 @@ export function MailCalendar({
               </label>
             ))}
           </div>
-          <button disabled={!account || busy}>提交日程审批</button>
+          <button disabled={!account || busy}>保存日程</button>
           {!account && <small>请先选择邮箱。</small>}
           {draft.id && (
             <button
@@ -141,6 +155,14 @@ export function MailCalendar({
                 查看来源 Trace
               </button>
             )}
+            {!item.body.run_id && item.body.source_message && (
+              <button onClick={() => onTrace(item.body.source_message)}>
+                查看来源 Trace
+              </button>
+            )}
+            <button disabled={busy} onClick={() => void remove(item)}>
+              {item.status === "candidate" ? "忽略建议" : "移入回收站"}
+            </button>
           </div>
         </section>
       ))}

@@ -168,12 +168,12 @@ export function ImportsPage() {
           {imports.map((r) => (
             <section className="panel" key={r.id}>
               <h3>
-                {label[r.status] || r.status} · {r.body.imported}/{r.body.limit}{" "}
-                封
+                {r.body.automatic ? `自动补齐最近 ${r.body.rolling_days} 天` : "历史导入"} · {label[r.status] || r.status}
               </h3>
               <p>
                 {r.body.start} — {r.body.end}
               </p>
+              <p>本次新增 {r.body.imported || 0} 封 · 已存在跳过 {r.body.existing || 0} 封 · 已扫描 {r.body.scanned || 0} 封</p>
               <p>Agent 分析：{r.body.analyze_after_import ? `已选择，已排队 ${r.body.analysis_queued || 0} 封（最多 20 封）` : "未选择，仅入库和索引"}</p>
               {["pause", "resume", "cancel"].map((v, i) => (
                 <button

@@ -80,6 +80,8 @@ def notifications(account_id:str|None=None,limit:int=Query(30,ge=1,le=100),offse
     if account_id:
         require(db,account_id,'mail_account')
         condition+=" AND (n.scope=:scope OR EXISTS (SELECT 1 FROM records r,json_each(json_extract(r.body,'$.message.metadata.mail_accounts')) a WHERE r.id=json_extract(n.body,'$.run_id') AND a.value=:account))"
+    else:
+        condition+=" AND n.scope LIKE 'web:mail:%'"
     args={'scope':'web:mail:'+str(account_id),'account':account_id,'limit':limit,'offset':offset}
     with db.engine.connect() as c:
         total=c.execute(text('SELECT COUNT(*) FROM records n WHERE '+condition),args).scalar_one()
@@ -108,16 +110,18 @@ class CalendarInput(BaseModel):
 
 
 def calendar_action(db,body,ident=None):
-    from .runtime import ingest
     from .db import uid
     require(db,body.account_id,'mail_account')
-    args=body.model_dump(mode='json');args.pop('account_id')
+    args=body.model_dump(mode='json');args.pop('account_id');scope='web:mail:'+body.account_id
+    from .mail_schedule import detect_conflicts,sync_calendar_reminder
+    conflicts=detect_conflicts(db,body.account_id,args['start'],args['end'],ident)
     if ident:
-        require(db,ident,'calendar',['web:mail:'+body.account_id]);args['id']=ident
-    run_id=ingest({'message_id':uid(),'source':'web','conversation_id':'mail:'+body.account_id,
-                   'text':'日程：'+body.title,'metadata':{'mail_accounts':[body.account_id]}},db,
-                  explicit_plan={'summary':'用户申请保存日程','actions':[{'tool':'update_calendar' if ident else 'create_calendar','args':args,'confidence':1}]})
-    return {'run_id':run_id}
+        old=require(db,ident,'calendar',[scope]);db.update(ident,{**old['body'],**args,'conflicts':conflicts,'has_conflict':bool(conflicts),'updated_by':'user'},'active')
+    else:
+        ident=db.insert('calendar',{**args,'source':'manual','conflicts':conflicts,'has_conflict':bool(conflicts),'created_by':'user'},id='calendar-'+uid(),scope=scope)
+    sync_calendar_reminder(db,ident)
+    db.audit('user','MAIL_CALENDAR_SAVED',calendar_id=ident,account_id=body.account_id,conflicts=len(conflicts))
+    return {'id':ident,'status':'active','conflicts':conflicts}
 
 
 @router.post('/mail/calendar')

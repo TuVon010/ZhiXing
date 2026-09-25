@@ -25,6 +25,9 @@ class MailAccount(BaseModel):
     username: str = ''
     enabled: bool = False
     auto_analyze: bool = False
+    auto_import_enabled: bool = False
+    auto_import_days: int = Field(default=7,ge=1,le=30)
+    poll_interval_seconds: int = Field(default=15,ge=10,le=300)
     scan_limit: int = Field(default=20,ge=1,le=200)
     hourly_analysis_limit: int = Field(default=20,ge=1,le=200)
     password: str | None = Field(default=None,max_length=1000,json_schema_extra={'writeOnly':True})

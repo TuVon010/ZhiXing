@@ -14,6 +14,6 @@
 | 发信 | mail_send、channels | 当前账号草稿 SMTP、外部结果不明的共享异常 |
 | 可选演进能力 | evolution | Skill/Parser 样本、评测、人工发布和回滚；定时生成默认关闭 |
 
-`planner` 除规划外还提供统一 `model_json` 调用，邮件 Agent、演进等共享预算/计价记录。`evolution` 提供内置 Skill 初始化，不能直接当作死代码删除。`channels.py` 只定义异常，没有旧飞书或单邮箱直发适配器。
+`planner` 除规划外还提供统一 `model_json` 调用，邮件 Agent、演进等共享预算/计价记录。`evolution` 提供内置 Skill 初始化，不能直接当作死代码删除。`channels.py` 只定义异常，没有旧的单邮箱直发适配器。
 
 建议阅读：mail_api → mail_store/mail_worker → mail_assistant → runtime → tools/mail_send → tracing。业务流程和接口调试见 [工作台指南](../docs/WORKSPACE_GUIDE.md)。

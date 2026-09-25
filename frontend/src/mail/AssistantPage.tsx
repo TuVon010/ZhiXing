@@ -28,44 +28,42 @@ export function AssistantPage() {
   } = useWorkspace();
   return (
     <>
-      {["search", "assistant"].includes(page) && (
+      {page === "assistant" && (
         <>
-          {page === "assistant" && (
-            <section className="panel">
-              <label>
-                历史会话
-                <select
-                  aria-label="历史会话"
-                  value={session}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    setSession(id);
-                    setTurns([]);
-                    setOpened(null);
-                    if (id)
-                      void act(async () => {
-                        const detail = await api("assistant/sessions/" + id);
-                        setSelected(detail.session.body.account_ids);
-                        setTurns(detail.turns);
-                      }, "已恢复会话及原账号范围");
-                  }}
-                >
-                  <option value="">新会话</option>
-                  {sessions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.id.slice(0, 8)} ·{" "}
-                      {s.body.account_ids
-                        .map(
-                          (id: string) =>
-                            accounts.find((a) => a.id === id)?.body.name || id,
-                        )
-                        .join("、")}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </section>
-          )}
+          <section className="panel">
+            <label>
+              历史会话
+              <select
+                aria-label="历史会话"
+                value={session}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSession(id);
+                  setTurns([]);
+                  setOpened(null);
+                  if (id)
+                    void act(async () => {
+                      const detail = await api("assistant/sessions/" + id);
+                      setSelected(detail.session.body.account_ids);
+                      setTurns(detail.turns);
+                    }, "已恢复会话及原账号范围");
+                }}
+              >
+                <option value="">新会话</option>
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.id.slice(0, 8)} ·{" "}
+                    {s.body.account_ids
+                      .map(
+                        (id: string) =>
+                          accounts.find((a) => a.id === id)?.body.name || id,
+                      )
+                      .join("、")}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </section>
           <section className="panel">
             <h3>本次允许读取的邮箱</h3>
             <div className="mail-scope">
@@ -103,50 +101,37 @@ export function AssistantPage() {
               <button
                 className="primary"
                 disabled={busy || !query.trim() || !selected.length}
+                onClick={() => void ask()}
+              >
+                交给 Agent
+              </button>
+              <button disabled={busy || !query.trim() || !selected.length}
+                onClick={() => void act(async () =>
+                  setSearchResult(await waitJob((await api("search", {
+                    account_ids: selected,
+                    query,
+                  })).job_id)), "已返回原始检索证据")}>仅检索证据</button>
+              <button
+                onClick={() => {
+                  setSession("");
+                  setTurns([]);
+                  setTrace(null);
+                }}
+              >
+                新建会话
+              </button>
+              <button
+                disabled={!session}
                 onClick={() =>
-                  void (page === "search"
-                    ? act(async () =>
-                        setSearchResult(
-                          await waitJob(
-                            (
-                              await api("search", {
-                                account_ids: selected,
-                                query,
-                              })
-                            ).job_id,
-                          ),
-                        ),
-                      )
-                    : ask())
+                  void act(async () =>
+                    setTurns(
+                      (await api("assistant/sessions/" + session)).turns,
+                    ),
+                  )
                 }
               >
-                {page === "search" ? "检索证据" : "交给 Agent"}
+                刷新会话
               </button>
-              {page === "assistant" && (
-                <>
-                  <button
-                    onClick={() => {
-                      setSession("");
-                      setTurns([]);
-                      setTrace(null);
-                    }}
-                  >
-                    新建会话
-                  </button>
-                  <button
-                    disabled={!session}
-                    onClick={() =>
-                      void act(async () =>
-                        setTurns(
-                          (await api("assistant/sessions/" + session)).turns,
-                        ),
-                      )
-                    }
-                  >
-                    刷新会话
-                  </button>
-                </>
-              )}
             </div>
           </section>
           {searchResult && (
@@ -177,8 +162,7 @@ export function AssistantPage() {
               </details>
             </section>
           )}
-          {page === "assistant" &&
-            turns.map((t) => (
+          {turns.map((t) => (
               <section className="panel" key={t.id}>
                 <small>{label[t.status] || t.status}</small>
                 <h3>{t.body.text}</h3>

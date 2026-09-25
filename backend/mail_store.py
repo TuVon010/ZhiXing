@@ -19,6 +19,10 @@ def initialize(db):
         c.exec_driver_sql('CREATE VIRTUAL TABLE IF NOT EXISTS mail_fts USING fts5(chunk_id UNINDEXED, content)')
         c.exec_driver_sql('CREATE TABLE IF NOT EXISTS mail_vectors(content_hash TEXT,model_version TEXT,embedding BLOB,PRIMARY KEY(content_hash,model_version))')
         c.exec_driver_sql('CREATE TABLE IF NOT EXISTS mail_leases(name TEXT PRIMARY KEY,owner TEXT,until REAL)')
+        c.exec_driver_sql('CREATE TABLE IF NOT EXISTS mail_source_fingerprints(account_id TEXT,folder TEXT,fingerprint TEXT,record_id TEXT,PRIMARY KEY(account_id,folder,fingerprint))')
+        columns={row[1] for row in c.exec_driver_sql('PRAGMA table_info(mail_source_fingerprints)')}
+        if 'message_id' in columns and 'record_id' not in columns:
+            c.exec_driver_sql('ALTER TABLE mail_source_fingerprints RENAME COLUMN message_id TO record_id')
 
 
 def rows(db,kind,account_ids=None,status=None,limit=100,offset=0):
@@ -87,7 +91,8 @@ def secret(db,account):
 
 
 def public_account(row):
-    b=dict(row['body']); b['credential_configured']=bool(b.pop('credential_ref',None));b.pop('password',None)
+    b=dict(row['body']);b.setdefault('auto_import_enabled',False);b.setdefault('auto_import_days',7);b.setdefault('poll_interval_seconds',15)
+    b['credential_configured']=bool(b.pop('credential_ref',None));b.pop('password',None)
     return {**row,'body':b}
 
 

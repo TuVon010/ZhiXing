@@ -131,10 +131,24 @@ class Runtime:
         reference=action['args'].get('id')
         if isinstance(reference,str) and reference.startswith('@'):
             action['args']['id']=s['outcomes'].get(reference[1:],{}).get('data',{}).get('id')
+        authorized=False
+        try:
+            grant=self.db.get('authorization:'+action['id'])
+            authorized=(grant['kind']=='authorization' and grant['status']=='active'
+                and grant['scope']==s['run_id'] and grant['body'].get('tool')==action['tool']
+                and grant['body'].get('draft_id')==action['args'].get('draft_id')
+                and grant['body'].get('draft_version')==action['args'].get('draft_version')
+                and grant['body'].get('draft_hash')==action['args'].get('draft_hash'))
+        except KeyError:
+            pass
         if self.db.get(s['run_id'])['status']=='cancelled':
             decision='DENY'
         elif any(s['outcomes'].get(d,{}).get('status')!='completed' for d in action['depends_on']):
             decision='DENY'
+        elif authorized:
+            decision='ALLOW'
+            self.db.audit(s['run_id'],'USER_CONFIRMATION_APPLIED',action_id=action['id'],
+                          authorization_id='authorization:'+action['id'])
         else:
             issue = validate(action)
             if issue:

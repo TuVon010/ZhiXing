@@ -1,6 +1,6 @@
 """Shared external-effect contract. Live sends use mail_send + approved drafts.
 
-The former Feishu and single-mailbox adapters are no longer executable.
+The former single-mailbox adapter is no longer executable.
 """
 
 

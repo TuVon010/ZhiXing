@@ -44,8 +44,7 @@ export function RecordsPage() {
     setBusy(true); setError(""); setNotice("");
     try {
       const result = await api(path, {});
-      setNotice(result.backup_path ? `备份已保存：${result.backup_path}` :
-        result.run_id ? "已提交删除审批，请到审批中心处理。" : message);
+      setNotice(result.backup_path ? `备份已保存：${result.backup_path}` : message);
       setRevision((n) => n + 1);
     } catch (e) { setError(String(e)); }
     finally { setBusy(false); }
@@ -54,7 +53,7 @@ export function RecordsPage() {
   return <>
     <section className="panel">
       <h3>本地记录管理</h3>
-      <p>这里只管理项目本地记录，不会删除邮箱服务器上的邮件。移入回收站可恢复；待办、日程和提醒的删除仍需审批，运行 Trace 与审计只可从列表隐藏。</p>
+      <p>这里只管理项目本地记录，不会删除邮箱服务器上的邮件。待办、日程和提醒移入回收站后可以恢复；运行 Trace 与审计只可从列表隐藏。</p>
       <p>当前主库：{overview?.current_mail_messages ?? "…"} 封新版邮件，{overview?.trash ?? "…"} 条在回收站。测试执行资料单独保存在项目的 artifacts/test-runs。</p>
       {overview && <p>旧项目：{overview.legacy_messages} 条旧来源记录、{overview.legacy_runs} 条旧运行（其中 {overview.legacy_pending_runs} 条未结束）。旧邮件来源字段无法证明是真实邮件还是测试样本，当前保留并隔离。</p>}
       <div className="actions">

@@ -105,7 +105,7 @@ export function AccountsPage() {
                             (await api(`mail/accounts/${a.id}/sync`, {}))
                               .job_id,
                           ),
-                        "同步任务已完成",
+                        a.body.auto_import_enabled ? "新邮件同步完成；最近邮件自动补齐已排队" : "同步任务已完成",
                       )
                     }
                   >
@@ -271,7 +271,47 @@ export function AccountsPage() {
                       }
                     />
                   </label>
+                  <label>
+                    自动补齐最近天数
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      disabled={!accountForm.body.auto_import_enabled}
+                      value={accountForm.body.auto_import_days}
+                      onChange={(e) =>
+                        setAccountForm({
+                          ...accountForm,
+                          body: {
+                            ...accountForm.body,
+                            auto_import_days: +e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    新邮件检查间隔（秒）
+                    <input type="number" min={10} max={300} value={accountForm.body.poll_interval_seconds}
+                      onChange={(e) => setAccountForm({ ...accountForm, body: { ...accountForm.body, poll_interval_seconds: +e.target.value } })} />
+                  </label>
                 </div>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={accountForm.body.auto_import_enabled}
+                    onChange={(e) =>
+                      setAccountForm({
+                        ...accountForm,
+                        body: {
+                          ...accountForm.body,
+                          auto_import_enabled: e.target.checked,
+                        },
+                      })
+                    }
+                  />
+                  自动补齐最近邮件（默认 7 天，每日检查一次）
+                </label>
                 <label>
                   <input
                     type="checkbox"
@@ -288,7 +328,7 @@ export function AccountsPage() {
                   />
                   自动分析已放行的新邮件（可能调用外部模型）
                 </label>
-                <p>新账号默认暂停。凭证只写不读，编辑时留空保留原凭证。</p>
+                <p>自动补齐与模型分析分别控制；重复范围只记录新增邮件。新账号默认暂停，凭证只写不读，编辑时留空保留原凭证。</p>
                 <button className="primary" disabled={busy}>
                   保存邮箱
                 </button>

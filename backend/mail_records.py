@@ -6,7 +6,6 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 
-from .db import uid
 from .mail_store import enqueue, require
 
 router = APIRouter(prefix='/mail/records')
@@ -113,7 +112,7 @@ def trash_record(ident: str, db=Depends(database)):
     if row['kind'] not in MANAGED or row['status'] == 'trashed':
         raise ValueError('该记录不能移入回收站')
     if row['kind'] == 'mail_draft' and row['status'] != 'draft':
-        raise ValueError('只有未提交的草稿可移入回收站；已审批或发送记录需保留审计')
+        raise ValueError('只有未提交的草稿可移入回收站；已确认或已发送记录需保留审计')
     if row['kind'] in {'mail_message','mail_draft'}:
         require(db,row['scope'],'mail_account')
     if row['kind'] == 'memory' and row['status'] == 'published':
@@ -130,16 +129,14 @@ def trash_record(ident: str, db=Depends(database)):
             raise ValueError('旧项目事项保留在历史资料中')
     if row['kind'] == 'notification' and not row['scope'].startswith('web:mail:'):
         raise ValueError('旧项目通知保留在历史资料中')
-    if row['kind'] in {'todo','calendar','reminder'} and row['status'] not in {'candidate','dismissed'}:
-        from .runtime import ingest
-        account_id = row['scope'][len('web:mail:'):]
-        run_id = ingest({'message_id': uid(), 'source': 'web',
-                         'conversation_id': 'mail:' + account_id,
-                         'text': '申请删除本地事项', 'metadata': {'mail_accounts': [account_id]}}, db,
-                        explicit_plan={'summary': '用户申请删除本地事项',
-                                       'actions': [{'tool': 'delete_item', 'args': {'id': ident}, 'confidence': 1}]})
-        return {'status': 'approval_required', 'run_id': run_id}
     db.update(ident, {**row['body'], '_record_previous_status': row['status']}, 'trashed')
+    if row['kind'] in {'todo','calendar'}:
+        source = 'source_todo' if row['kind'] == 'todo' else 'source_calendar'
+        with db.engine.begin() as c:
+            c.execute(text("""UPDATE records SET status='cancelled'
+                WHERE kind='reminder' AND scope=:scope AND status='active'
+                AND json_extract(body,:path)=:id"""),
+                {'scope':row['scope'],'path':'$.'+source,'id':ident})
     db.audit('system', 'MAIL_RECORD_TRASHED', record_id=ident, record_kind=row['kind'])
     return {'status': 'trashed', 'id': ident}
 
@@ -153,6 +150,12 @@ def restore_record(ident: str, db=Depends(database)):
     body = dict(row['body'])
     previous = body.pop('_record_previous_status', 'active')
     db.update(ident, body, previous)
+    if row['kind'] == 'todo':
+        from .mail_work_items import sync_todo_reminder
+        sync_todo_reminder(db, ident)
+    if row['kind'] == 'calendar':
+        from .mail_schedule import sync_calendar_reminder
+        sync_calendar_reminder(db, ident)
     if row['kind'] == 'mail_message' and previous in {'active','archived'}:
         enqueue(db, 'index', {'message_id': ident}, row['scope'], priority=30)
     db.audit('system', 'MAIL_RECORD_RESTORED', record_id=ident, record_kind=row['kind'])
