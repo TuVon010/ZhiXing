@@ -30,17 +30,17 @@
 
 | 代码 | 职责 | 学习重点 |
 | --- | --- | --- |
-| `frontend/src/MailApp.tsx` | 导航、账号选择、页面装配 | 页面壳不写各业务表单 |
-| `frontend/src/mail/useMailWorkspace.ts` | 会话、数据刷新、跨页操作 | UI 状态和异步请求；Context 只在工作台内共享 |
-| `frontend/src/mail/*Page.tsx` | 收件箱、账号、Agent、草稿等页面 | 读写 API、表单校验、用户反馈 |
-| `frontend/src/MailTrace.tsx` | 时间线、执行结果、模型调用与导出 | 可观测性和操作状态分离 |
-| `frontend/src/MailActivity.tsx` | 分页运行记录与通知 | 账号范围、轮询清理、未读状态 |
-| `backend/mail_api.py` | 邮件核心接口 | API 校验、入队与读取 |
-| `backend/mail_observability.py` | 工作台查询、Trace 聚合、通知、日程操作入口 | 只读聚合复用，写动作交给统一执行链 |
-| `backend/mail_assistant.py` | 有界决策循环、草稿、记忆快照 | 工具范围、幂等、动作结果查询 |
-| `backend/worker.py` | 调度和两队列轮转 | 邮件积压不能无限压住审批执行 |
-| `backend/mail_worker.py` | 邮件任务领取、续租、批次续接 | 持久队列、状态迁移与错误 |
-| `backend/runtime.py` / `tools.py` | LangGraph、审批、账本、确定性工具 | 崩溃恢复、参数版本和事务 |
+| `frontend/src/app/MailApp.tsx` | 导航、账号选择、页面装配 | 页面壳不写各业务表单 |
+| `frontend/src/app/workspace/useMailWorkspace.ts` | 会话、数据刷新、跨页操作 | UI 状态和异步请求；Context 只在工作台内共享 |
+| `frontend/src/features/*` | 收件箱、账号、Agent、草稿等功能 | 读写 API、表单校验、用户反馈 |
+| `frontend/src/features/activity/MailTrace.tsx` | 时间线、执行结果、模型调用与导出 | 可观测性和操作状态分离 |
+| `frontend/src/features/activity/MailActivity.tsx` | 分页运行记录与通知 | 账号范围、轮询清理、未读状态 |
+| `backend/app/modules/mail/router.py` | 邮件核心接口 | API 校验、入队与读取 |
+| `backend/app/observability/mail.py` | 工作台查询、Trace 聚合、通知、日程操作入口 | 只读聚合复用，写动作交给统一执行链 |
+| `backend/app/modules/mail/assistant.py` | 有界决策循环、草稿、记忆快照 | 工具范围、幂等、动作结果查询 |
+| `backend/app/workers/runner.py` | 调度和两队列轮转 | 邮件积压不能无限压住审批执行 |
+| `backend/app/workers/mail_jobs.py` | 邮件任务领取、续租、批次续接 | 持久队列、状态迁移与错误 |
+| `backend/app/agent/graph.py` / `tools.py` | LangGraph、审批、账本、确定性工具 | 崩溃恢复、参数版本和事务 |
 
 先学业务状态和调用关系，再读 RAG 排名实现。无需一次理解全部模块。前端保留部分历史宽类型和共享状态，未来可以按实际维护成本逐步收紧；不要为了“架构感”再增加一套执行框架。
 

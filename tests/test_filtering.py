@@ -4,8 +4,8 @@
 """
 from unittest.mock import patch, MagicMock
 import pytest
-from backend import filtering
-from backend.filtering import (
+from backend.app.modules.mail import filtering
+from backend.app.modules.mail.filtering import (
     CATEGORY_AD, CATEGORY_SUBSCRIPTION, CATEGORY_TRANSACTION,
     CATEGORY_TODO, CATEGORY_MANUAL, CATEGORY_LABELS,
     classify_message, should_filter, get_rules, save_rules,
@@ -14,7 +14,7 @@ from backend.filtering import (
     evaluate_classifier, classify_with_model, shadow_classify,
     _extract_domain, _match_sender, _match_keywords,
 )
-from backend.config import settings
+from backend.app.core.config import settings
 
 
 # ========== 辅助函数测试 ==========
@@ -270,7 +270,7 @@ class TestModelClassification:
             'choices': [{'message': {'content': '{"category": "ad", "confidence": 0.9, "reason": "包含促销关键词"}'}}]
         }
         mock_response.raise_for_status = MagicMock()
-        with patch('backend.filtering.httpx.Client') as mock_client:
+        with patch('backend.app.modules.mail.filtering.httpx.Client') as mock_client:
             mock_client.return_value.__enter__.return_value.post.return_value = mock_response
             cat, conf, reason, raw = classify_with_model({'text': '限时优惠'}, db=db)
         assert cat == CATEGORY_AD
@@ -284,7 +284,7 @@ class TestModelClassification:
             'choices': [{'message': {'content': '{"category": "ad", "confidence": 0.85, "reason": "test"}'}}]
         }
         mock_response.raise_for_status = MagicMock()
-        with patch('backend.filtering.httpx.Client') as mock_client:
+        with patch('backend.app.modules.mail.filtering.httpx.Client') as mock_client:
             mock_client.return_value.__enter__.return_value.post.return_value = mock_response
             msg = {'text': '限时优惠点击购买', 'sender_id': 'ad@x.com', 'message_id': 'm1'}
             result = shadow_classify(db, msg)

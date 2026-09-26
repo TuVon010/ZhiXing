@@ -6,9 +6,9 @@
 
 ## 实现链路
 
-[`SettingsPage.tsx`](../../frontend/src/mail/SettingsPage.tsx) 调 `/mail/accounts/{id}/filters`、`/reindex`、`/mail/migration`；[`PricingSettings.tsx`](../../frontend/src/PricingSettings.tsx) 调 `GET /pricing`、`POST /pricing/{profile_id}`。过滤规则请求由 [`mail_api.py`](../../backend/mail_api.py) 的 `FilterRules` 验证、去重并增版本；收取时由 [`filtering.py`](../../backend/filtering.py) 应用，旧邮件不会仅因改规则自动重分类。重建索引进入持久 Worker 队列。
+[`SettingsPage.tsx`](../../frontend/src/features/settings/SettingsPage.tsx) 调 `/mail/accounts/{id}/filters`、`/reindex`、`/mail/migration`；[`PricingSettings.tsx`](../../frontend/src/features/settings/PricingSettings.tsx) 调 `GET /pricing`、`POST /pricing/{profile_id}`。过滤规则请求由 [`router.py`](../../backend/app/modules/mail/router.py) 的 `FilterRules` 验证、去重并增版本；收取时由 [`filtering.py`](../../backend/app/modules/mail/filtering.py) 应用，旧邮件不会仅因改规则自动重分类。重建索引进入持久 Worker 队列。
 
-[`billing.py`](../../backend/billing.py) 管理模型价格、覆盖值、分段时段和费用估算；[`planner.py`](../../backend/planner.py) 在模型调用时保存价格版本和用量快照。Trace 的费用摘要只统计可核对数据；提供方未返回缓存 Token 或缺有效价格时显示“未知”，不把未知当 0，也不按新价格追溯改写旧记录。详见 [计价与缓存统计](../PRICING.md)。
+[`billing.py`](../../backend/app/observability/billing.py) 管理模型价格、覆盖值、分段时段和费用估算；[`model_client.py`](../../backend/app/agent/model_client.py) 在模型调用时保存价格版本和用量快照。Trace 的费用摘要只统计可核对数据；提供方未返回缓存 Token 或缺有效价格时显示“未知”，不把未知当 0，也不按新价格追溯改写旧记录。详见 [计价与缓存统计](../PRICING.md)。
 
 ## 调试提示
 

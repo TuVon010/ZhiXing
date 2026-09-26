@@ -6,7 +6,7 @@
 
 ## 实现链路
 
-[`AccountsPage.tsx`](../../frontend/src/mail/AccountsPage.tsx) 对应 `/mail/accounts`、`/{id}/test`、`/{id}/enabled`、`/{id}/sync` 和 `/mail/test-scenarios`。请求模型是 [`mail_models.py`](../../backend/mail_models.py) 的 `MailAccount`；[`mail_store.py`](../../backend/mail_store.py) 保存账号和 Windows 当前用户 DPAPI 加密凭证，普通查询只返回“已配置”标志，不回显密钥。[`mail_ingest.py`](../../backend/mail_ingest.py) 建立受 TLS 保护的 IMAP 连接；[`mail_worker.py`](../../backend/mail_worker.py) 每账号持久排队。合成邮箱由 [`mail_scenarios.py`](../../backend/mail_scenarios.py) 固定 ID 和 UID 建立，远端连接/导入被服务端拦截。
+[`AccountsPage.tsx`](../../frontend/src/features/accounts/AccountsPage.tsx) 对应 `/mail/accounts`、`/{id}/test`、`/{id}/enabled`、`/{id}/sync` 和 `/mail/test-scenarios`。请求模型是 [`schemas.py`](../../backend/app/modules/mail/schemas.py) 的 `MailAccount`；[`repository.py`](../../backend/app/modules/mail/repository.py) 保存账号和 Windows 当前用户 DPAPI 加密凭证，普通查询只返回“已配置”标志，不回显密钥。[`ingestion.py`](../../backend/app/modules/mail/ingestion.py) 建立受 TLS 保护的 IMAP 连接；[`mail_jobs.py`](../../backend/app/workers/mail_jobs.py) 每账号持久排队。合成邮箱由 [`scenarios.py`](../../backend/app/modules/mail/scenarios.py) 固定 ID 和 UID 建立，远端连接/导入被服务端拦截。
 
 账号范围是安全边界：线程、搜索、附件、草稿、工具调用都应在服务端验证归属。设置“全部邮箱”只改变浏览视图，不自动授权 Agent 跨账号检索。凭证备份跨 Windows 用户或跨机器恢复时需重新输入，详见 [邮箱配置](../MAIL_SETUP.md)。
 

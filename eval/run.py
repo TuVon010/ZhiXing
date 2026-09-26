@@ -17,10 +17,10 @@ output=args.output_dir or Path(__file__).resolve().parents[1]/'artifacts'/'evalu
 output.mkdir(parents=True,exist_ok=False)
 os.environ['ZHIXING_DATA_DIR']=str(output.resolve()/'database')
 os.environ['ZHIXING_MODE']='live' if args.live else 'demo'
-from backend.planner import demo_plan, plan
-from backend.policy import risk, decide
-from backend.db import store
-from backend.config import settings
+from backend.app.agent.model_client import demo_plan, plan
+from backend.app.agent.policy import risk, decide
+from backend.app.persistence.store import store
+from backend.app.core.config import settings
 root=Path(__file__).resolve().parent
 shutil.copy2(args.dataset,output/'dataset.jsonl')
 rows=[json.loads(line) for line in args.dataset.read_text(encoding='utf-8').splitlines() if line.strip()]

@@ -4,22 +4,23 @@ from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
 import pytest
 from sqlalchemy import text
-from backend.mail_store import initialize, save_account, rows, require, enqueue, job
-from backend.mail_models import MailAccount, DraftInput, SessionInput, TurnInput, ImportRequest, SearchRequest
-from backend.mail_ingest import store_message, scan, lease, clean, internal_date
-from backend.mail_assistant import draft, submit_draft, create_session, create_turn, run_turn, thread_messages, memory_snapshot
-from backend.mail_rag import index_message, search, chunks, tokens
-from backend.mail_api import FilterRules, filters, get_filters, message_state
-from backend.runtime import work_once, approve
-from backend.tools import execute
-from backend.channels import ExternalUnknown
-from backend.filtering import classify_message, CATEGORY_AD, CATEGORY_SUBSCRIPTION, CATEGORY_TRANSACTION, CATEGORY_TODO, CATEGORY_MANUAL
+from backend.app.modules.mail.repository import initialize, save_account, rows, require, enqueue, job
+from backend.app.modules.mail.schemas import MailAccount, DraftInput, SessionInput, TurnInput, ImportRequest, SearchRequest
+from backend.app.modules.mail.ingestion import store_message, scan, lease, clean, internal_date
+from backend.app.modules.mail.assistant import draft, submit_draft, create_session, create_turn, run_turn, thread_messages, memory_snapshot
+from backend.app.modules.mail.retrieval import index_message, search, chunks, tokens
+from backend.app.modules.mail.routes.settings import FilterRules, filters, get_filters
+from backend.app.modules.mail.routes.messages import message_state
+from backend.app.agent.graph import work_once, approve
+from backend.app.agent.tools import execute
+from backend.app.core.exceptions import ExternalUnknown
+from backend.app.modules.mail.filtering import classify_message, CATEGORY_AD, CATEGORY_SUBSCRIPTION, CATEGORY_TRANSACTION, CATEGORY_TODO, CATEGORY_MANUAL
 
 
 def account(db, number=1, enabled=True):
     initialize(db)
     aid = save_account(db, MailAccount(name=f'测试{number}', address=f'owner{number}@qq.com', enabled=enabled))['id']
-    from backend.filtering import DEFAULT_RULES
+    from backend.app.modules.mail.filtering import DEFAULT_RULES
     db.insert('setting', {**DEFAULT_RULES, 'whitelist_senders': ['teacher@example.com']}, id='mail-filter:' + aid)
     return aid
 
@@ -47,7 +48,7 @@ def store(db, aid, msg, uid=1, received='2026-09-22T10:00:00+00:00'):
 class TestCollection:
     def test_html_clean_removes_scripts_and_style(self):
         html = '<html><head><style>body{color:red}</style></head><body><p>正文内容</p><script>alert(1)</script></body></html>'
-        from backend.mail_ingest import TextHTML
+        from backend.app.modules.mail.ingestion import TextHTML
         p = TextHTML()
         p.feed(html)
         result = ''.join(p.parts)
@@ -104,7 +105,7 @@ class TestCollection:
 
     def test_oversize_message_marked_incomplete(self, db, monkeypatch):
         aid = account(db)
-        import backend.mail_ingest as ing
+        import backend.app.modules.mail.ingestion as ing
         state = {'call': 0}
         class FakeIMAP:
             def select(self, *a, **k): return 'OK', [b'1']
@@ -325,7 +326,7 @@ class TestClassification:
         assert cat == CATEGORY_MANUAL
 
     def test_all_categories_have_labels(self):
-        from backend.filtering import CATEGORY_LABELS
+        from backend.app.modules.mail.filtering import CATEGORY_LABELS
         for cat in [CATEGORY_AD, CATEGORY_SUBSCRIPTION, CATEGORY_TRANSACTION, CATEGORY_TODO, CATEGORY_MANUAL]:
             assert cat in CATEGORY_LABELS
 
@@ -335,7 +336,7 @@ class TestClassification:
 class TestRAG:
     def test_qdrant_local_vectors_persist_and_search(self, db, monkeypatch):
         import numpy as np
-        import backend.mail_rag as rag
+        import backend.app.modules.mail.retrieval as rag
         class Tokenizer:
             def encode(self, value, add_special_tokens=False): return list(value)
             def decode(self, ids, skip_special_tokens=True): return ''.join(ids)
@@ -418,8 +419,8 @@ class TestRAG:
 
 class TestAgent:
     def test_agent_answer_requires_evidence_citation(self, db, monkeypatch):
-        import backend.planner as planner
-        from backend.config import settings
+        import backend.app.agent.model_client as planner
+        from backend.app.core.config import settings
         aid = account(db)
         mid = store(db, aid, make_message())
         index_message(db, mid)
@@ -431,8 +432,8 @@ class TestAgent:
         assert '引用了未读取的证据' in str(result['steps'][-1]['result'])
 
     def test_agent_cannot_cross_account_draft(self, db, monkeypatch):
-        import backend.planner as planner
-        from backend.config import settings
+        import backend.app.agent.model_client as planner
+        from backend.app.core.config import settings
         aid, other = account(db), account(db, 2)
         s = create_session(db, SessionInput(account_ids=[aid]))
         t = create_turn(db, s['id'], TurnInput(text='发邮件'))
@@ -442,8 +443,8 @@ class TestAgent:
         assert '不能跨账号' in str(result['steps'][-1]['result'])
 
     def test_agent_search_limit_3(self, db, monkeypatch):
-        import backend.planner as planner
-        from backend.config import settings
+        import backend.app.agent.model_client as planner
+        from backend.app.core.config import settings
         aid = account(db)
         s = create_session(db, SessionInput(account_ids=[aid]))
         t = create_turn(db, s['id'], TurnInput(text='搜索'))
@@ -461,8 +462,8 @@ class TestAgent:
         assert db.get(t['id'])['status'] == 'budget_exceeded'
 
     def test_agent_max_6_rounds(self, db, monkeypatch):
-        import backend.planner as planner
-        from backend.config import settings
+        import backend.app.agent.model_client as planner
+        from backend.app.core.config import settings
         aid = account(db)
         s = create_session(db, SessionInput(account_ids=[aid]))
         t = create_turn(db, s['id'], TurnInput(text='循环'))
@@ -473,8 +474,8 @@ class TestAgent:
         assert db.get(t['id'])['status'] == 'budget_exceeded'
 
     def test_agent_clarification_status(self, db, monkeypatch):
-        import backend.planner as planner
-        from backend.config import settings
+        import backend.app.agent.model_client as planner
+        from backend.app.core.config import settings
         aid = account(db)
         mid = store(db, aid, make_message())
         index_message(db, mid)
@@ -496,7 +497,7 @@ class TestAgent:
         assert t2['body']['memory_snapshot'] == snap1
 
     def test_agent_thread_context_loaded(self, db, monkeypatch):
-        from backend.config import settings
+        from backend.app.core.config import settings
         aid = account(db)
         first = store(db, aid, make_message(mid='<ctx-a@example.com>'))
         reply = make_message(mid='<ctx-b@example.com>', reference='<ctx-a@example.com>')
@@ -507,8 +508,8 @@ class TestAgent:
         assert db.get(t['id'])['body']['thread_id'] == tid
 
     def test_agent_cancel_stops(self, db, monkeypatch):
-        import backend.planner as planner
-        from backend.config import settings
+        import backend.app.agent.model_client as planner
+        from backend.app.core.config import settings
         aid = account(db)
         s = create_session(db, SessionInput(account_ids=[aid]))
         t = create_turn(db, s['id'], TurnInput(text='测试'))
@@ -519,8 +520,8 @@ class TestAgent:
         assert 'steps' not in result or len(result.get('steps', [])) == 0
 
     def test_agent_draft_tool_idempotent(self, db, monkeypatch):
-        import backend.planner as planner
-        from backend.config import settings
+        import backend.app.agent.model_client as planner
+        from backend.app.core.config import settings
         aid = account(db)
         mid = store(db, aid, make_message())
         s = create_session(db, SessionInput(account_ids=[aid]))
@@ -632,7 +633,7 @@ class TestAccount:
         assert row['body']['credential_configured'] is True
 
     def test_account_enable_toggle(self, db):
-        from backend.mail_api import enable
+        from backend.app.modules.mail.routes.accounts import enable
         aid = account(db, enabled=False)
         result = enable(aid, type('T', (), {'enabled': True})(), db)
         assert result['body']['enabled'] is True
@@ -642,7 +643,7 @@ class TestAccount:
 
 class TestImport:
     def test_import_time_boundary_exclusive_end(self, db, monkeypatch):
-        import backend.mail_ingest as ing
+        import backend.app.modules.mail.ingestion as ing
         aid = account(db)
         class FakeIMAP:
             def select(self, *a, **k): return 'OK', [b'2']
@@ -665,7 +666,7 @@ class TestImport:
     def test_import_pause_resume(self, db):
         aid = account(db)
         ident = db.insert('mail_import', {'account_id': aid, 'start': '2026-01-01T00:00:00+00:00', 'end': '2026-12-31T00:00:00+00:00', 'limit': 100, 'last_uid': 0, 'imported': 0, 'scanned': 0}, scope=aid, status='running')
-        from backend.mail_api import import_action
+        from backend.app.modules.mail.routes.imports import import_action
         import_action(ident, 'pause', db)
         assert db.get(ident)['status'] == 'paused'
         import_action(ident, 'resume', db)
@@ -674,14 +675,14 @@ class TestImport:
     def test_import_cancel(self, db):
         aid = account(db)
         ident = db.insert('mail_import', {'account_id': aid, 'start': '2026-01-01T00:00:00+00:00', 'end': '2026-12-31T00:00:00+00:00', 'limit': 100, 'last_uid': 0, 'imported': 0, 'scanned': 0}, scope=aid, status='running')
-        from backend.mail_api import import_action
+        from backend.app.modules.mail.routes.imports import import_action
         import_action(ident, 'cancel', db)
         assert db.get(ident)['status'] == 'cancelled'
 
     def test_import_completed_cannot_resume(self, db):
         aid = account(db)
         ident = db.insert('mail_import', {'account_id': aid, 'start': '2026-01-01T00:00:00+00:00', 'end': '2026-12-31T00:00:00+00:00', 'limit': 100, 'last_uid': 0, 'imported': 100, 'scanned': 100}, scope=aid, status='completed')
-        from backend.mail_api import import_action
+        from backend.app.modules.mail.routes.imports import import_action
         with pytest.raises(ValueError):
             import_action(ident, 'resume', db)
 
@@ -693,7 +694,7 @@ class TestBacklog:
         aid = account(db)
         key = 'mail-cursor:' + aid + ':INBOX'
         db.insert('mail_cursor', {'account_id': aid, 'validity': '100', 'uid': 10, 'paused': True, 'catchup': {'count': 5}}, id=key)
-        from backend.mail_api import backlog
+        from backend.app.modules.mail.routes.accounts import backlog
         backlog(aid, 'continue', db)
         assert db.get(key)['body'].get('paused') is not True
 
@@ -701,13 +702,13 @@ class TestBacklog:
         aid = account(db)
         key = 'mail-cursor:' + aid + ':INBOX'
         db.insert('mail_cursor', {'account_id': aid, 'validity': '100', 'uid': 10, 'paused': True}, id=key)
-        from backend.mail_api import backlog
+        from backend.app.modules.mail.routes.accounts import backlog
         result = backlog(aid, 'from_now', db)
         assert 'job_id' in result
 
     def test_invalid_backlog_choice_rejected(self, db):
         aid = account(db)
-        from backend.mail_api import backlog
+        from backend.app.modules.mail.routes.accounts import backlog
         with pytest.raises(ValueError):
             backlog(aid, 'invalid', db)
 
@@ -716,7 +717,7 @@ class TestBacklog:
 
 class TestAttachments:
     def test_txt_attachment_extracted(self, db, tmp_path):
-        from backend.mail_attachments import extract
+        from backend.app.modules.mail.attachments import extract
         f = tmp_path / 'test.txt'
         f.write_text('附件文本内容', encoding='utf-8')
         result = extract(str(f), 'txt')
@@ -724,14 +725,14 @@ class TestAttachments:
         assert result['segments'][0]['text'] == '附件文本内容'
 
     def test_unsupported_format_marked(self, db, tmp_path):
-        from backend.mail_attachments import extract
+        from backend.app.modules.mail.attachments import extract
         f = tmp_path / 'test.exe'
         f.write_bytes(b'MZ binary')
         result = extract(str(f), 'exe')
         assert result['status'] == 'unsupported'
 
     def test_oversize_zip_docx(self, db, tmp_path):
-        from backend.mail_attachments import extract
+        from backend.app.modules.mail.attachments import extract
         import zipfile
         f = tmp_path / 'big.docx'
         with zipfile.ZipFile(f, 'w') as z:

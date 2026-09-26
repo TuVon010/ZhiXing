@@ -6,10 +6,10 @@
 
 ## 实现链路
 
-- 页面在 [`MailboxPage.tsx`](../../frontend/src/mail/MailboxPage.tsx)，共享邮箱选择、分页与打开邮件状态由 [`useMailWorkspace.ts`](../../frontend/src/mail/useMailWorkspace.ts) 管理。
-- `GET /mail/messages` 按账号、状态分页，`GET /mail/messages/{id}` 读取详情，`GET /mail/threads/{id}` 展开往来；路由位于 [`mail_api.py`](../../backend/mail_api.py)。服务端对邮件及线程做账号范围检查。
-- IMAP 邮件先由 [`mail_ingest.py`](../../backend/mail_ingest.py) 解析头部、正文、附件元信息并关联线程；存储使用账号、文件夹、UIDVALIDITY、UID 去重，主题相同不会单独合并线程。原文保留，清理后的文本供索引；不执行邮件内容或远端图片。
-- “分析 / 重新分析”提交持久任务，Worker 调用 [`mail_perception.py`](../../backend/mail_perception.py)；结果写入 `mail_message.body.perception`，感知 Trace 可从邮件详情打开。收取、索引、分析是三步，**入库并不等于已经有 Agent 产出**。
+- 页面在 [`MailboxPage.tsx`](../../frontend/src/features/inbox/MailboxPage.tsx)，共享邮箱选择、分页与打开邮件状态由 [`useMailWorkspace.ts`](../../frontend/src/app/workspace/useMailWorkspace.ts) 管理。
+- `GET /mail/messages` 按账号、状态分页，`GET /mail/messages/{id}` 读取详情，`GET /mail/threads/{id}` 展开往来；路由位于 [`router.py`](../../backend/app/modules/mail/router.py)。服务端对邮件及线程做账号范围检查。
+- IMAP 邮件先由 [`ingestion.py`](../../backend/app/modules/mail/ingestion.py) 解析头部、正文、附件元信息并关联线程；存储使用账号、文件夹、UIDVALIDITY、UID 去重，主题相同不会单独合并线程。原文保留，清理后的文本供索引；不执行邮件内容或远端图片。
+- “分析 / 重新分析”提交持久任务，Worker 调用 [`perception.py`](../../backend/app/modules/mail/perception.py)；结果写入 `mail_message.body.perception`，感知 Trace 可从邮件详情打开。收取、索引、分析是三步，**入库并不等于已经有 Agent 产出**。
 
 ## 调试与边界
 

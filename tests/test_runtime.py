@@ -1,11 +1,11 @@
 import json
 import pytest
 from sqlalchemy import text
-from backend.runtime import ingest, work_once, approve, Runtime
-from backend.tools import execute
-from backend.channels import ExternalUnknown
-from backend.policy import decide, suggest, key, risk
-from backend.db import uid
+from backend.app.agent.graph import ingest, work_once, approve, Runtime
+from backend.app.agent.tools import execute
+from backend.app.core.exceptions import ExternalUnknown
+from backend.app.agent.policy import decide, suggest, key, risk
+from backend.app.persistence.store import uid
 
 def input_message(text='待办：整理实验',id='m1'):
     return {'message_id':id,'text':text,'source':'web','conversation_id':'inbox','timestamp':'2026-09-21T10:00:00+08:00'}
@@ -110,7 +110,7 @@ def test_cancelled_run_does_not_resume(db):
         approve(db.list('approval')[0]['id'],{'decision':'approve'},db)
 
 def test_late_approval_between_interrupt_and_worker_release(db,monkeypatch):
-    from backend.runtime import Runtime
+    from backend.app.agent.graph import Runtime
     rid=ingest(input_message('明天下午三点组会'),db)
     original=Runtime.run
     def run(self,*args,**kwargs):

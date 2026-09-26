@@ -2,12 +2,12 @@
 import json
 from datetime import datetime, timezone, timedelta
 import pytest
-from backend.mail_models import MailAccount, SessionInput, TurnInput, DraftInput
-from backend.mail_store import initialize, save_account
-from backend.mail_assistant import create_session, create_turn, draft, submit_draft, run_turn
-from backend.mail_observability import activity, trace, notifications, read_notification, CalendarInput, calendar_action
-from backend.mail_api import followups
-from backend.runtime import ingest, work_once, approve
+from backend.app.modules.mail.schemas import MailAccount, SessionInput, TurnInput, DraftInput
+from backend.app.modules.mail.repository import initialize, save_account
+from backend.app.modules.mail.assistant import create_session, create_turn, draft, submit_draft, run_turn
+from backend.app.observability.mail import activity, trace, notifications, read_notification, CalendarInput, calendar_action
+from backend.app.modules.mail.routes.work_items import followups
+from backend.app.agent.graph import ingest, work_once, approve
 
 
 def account(db,number=1):
@@ -62,7 +62,7 @@ def test_agent_draft_retains_origin_after_edit_and_approval(db):
 
 
 def test_notifications_scoped_read_and_reminder_delivery(db):
-    from backend.worker import tick
+    from backend.app.workers.runner import tick
     aid,other=account(db),account(db,2)
     rid=action(db,aid)
     db.insert('reminder',{'title':'报告到期','due_at':(datetime.now(timezone.utc)-timedelta(minutes=1)).isoformat(),'run_id':rid},scope='web:mail:'+aid)
@@ -90,7 +90,7 @@ def test_calendar_approval_visibility_and_scope(db):
 
 
 def test_busy_mail_queue_does_not_starve_actions(db,monkeypatch):
-    from backend import worker,mail_worker
+    from backend.app.workers import runner as worker, mail_jobs as mail_worker
     calls=[]
     monkeypatch.setattr(worker,'work_once',lambda db:calls.append('action') or True)
     monkeypatch.setattr(mail_worker,'work_once',lambda db:calls.append('mail') or True)
@@ -108,8 +108,9 @@ def test_agent_action_status_rejects_cross_account(db):
 
 def test_import_continues_batches_without_changing_live_cursor(db,monkeypatch):
     from contextlib import contextmanager
-    from backend import mail_ingest,mail_worker
-    from backend.mail_store import enqueue,rows
+    from backend.app.modules.mail import ingestion as mail_ingest
+    from backend.app.workers import mail_jobs as mail_worker
+    from backend.app.modules.mail.repository import enqueue,rows
     aid=account(db);a=db.get(aid);db.update(aid,{**a['body'],'scan_limit':1})
     searches=[]
     class Imap:

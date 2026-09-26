@@ -6,9 +6,9 @@
 
 ## 实现链路
 
-前端 [`AssistantPage.tsx`](../../frontend/src/mail/AssistantPage.tsx) 调用 `/assistant/sessions`、`/assistant/sessions/{id}/turns`；同一页面的证据模式调用 `/search`。Worker 分别处理持久 `assistant` 与 `search` 任务。核心 [`mail_assistant.py`](../../backend/mail_assistant.py) 的 `run_turn()` 最多进行 6 轮决策、3 次检索、约 24,000 输入 Token 预算；每步先保存状态，再调用受控工具，记录审计与证据。会话创建时冻结账号范围、记忆和版本；检索与每个工具都由服务端再次校验账号，不能只相信模型遵守提示词。混合检索仍由 [`mail_rag.py`](../../backend/mail_rag.py) 实现，删除的是重复导航，不是 RAG 能力。
+前端 [`AssistantPage.tsx`](../../frontend/src/features/assistant/AssistantPage.tsx) 调用 `/assistant/sessions`、`/assistant/sessions/{id}/turns`；同一页面的证据模式调用 `/search`。Worker 分别处理持久 `assistant` 与 `search` 任务。核心 [`assistant.py`](../../backend/app/modules/mail/assistant.py) 的 `run_turn()` 最多进行 6 轮决策、3 次检索、约 24,000 输入 Token 预算；每步先保存状态，再调用受控工具，记录审计与证据。会话创建时冻结账号范围、记忆和版本；检索与每个工具都由服务端再次校验账号，不能只相信模型遵守提示词。混合检索仍由 [`retrieval.py`](../../backend/app/modules/mail/retrieval.py) 实现，删除的是重复导航，不是 RAG 能力。
 
-`draft` 工具写本地草稿；`actions` 工具只能提出允许的本地动作，再交给 [`runtime.py`](../../backend/runtime.py) 的审批/执行链。模型调用统一走 [`planner.py`](../../backend/planner.py) 的预算、用量、计价和 Trace。演示模式返回规则性流程，真实模式才调用配置的模型；选中的邮件证据会发送给该模型服务。设计详见 [RAG 与分层记忆](../MAIL_RAG_MEMORY.md)。
+`draft` 工具写本地草稿；`actions` 工具只能提出允许的本地动作，再交给 [`graph.py`](../../backend/app/agent/graph.py) 的审批/执行链。模型调用统一走 [`model_client.py`](../../backend/app/agent/model_client.py) 的预算、用量、计价和 Trace。演示模式返回规则性流程，真实模式才调用配置的模型；选中的邮件证据会发送给该模型服务。设计详见 [RAG 与分层记忆](../MAIL_RAG_MEMORY.md)。
 
 ## 调试提示
 

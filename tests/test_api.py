@@ -2,7 +2,9 @@ from fastapi.testclient import TestClient
 import backend.main as main
 
 def test_api_auth_and_pages(db,monkeypatch):
-    monkeypatch.setattr(main,'store',db)
+    from backend.app.api.routes import automation, system
+    monkeypatch.setattr(automation,'store',db)
+    monkeypatch.setattr(system,'store',db)
     with TestClient(main.app) as client:
         assert client.get('/api/todos').status_code==401
         assert client.get('/api/session').status_code==200
@@ -16,8 +18,10 @@ def test_api_auth_and_pages(db,monkeypatch):
         assert client.get('/api/health',headers={'Host':'attacker.example'}).status_code==403
 
 def test_no_secrets_in_settings(db,monkeypatch):
-    monkeypatch.setattr(main,'store',db)
-    monkeypatch.setattr(main.settings,'model_api_key','private-secret')
+    from backend.app.api.routes import system
+    from backend.app.core.config import settings
+    monkeypatch.setattr(system,'store',db)
+    monkeypatch.setattr(settings,'model_api_key','private-secret')
     with TestClient(main.app) as client:
         client.get('/api/session')
         assert 'private-secret' not in client.get('/api/settings').text

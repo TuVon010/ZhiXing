@@ -1,10 +1,10 @@
 """Synthetic batch-analysis tests. No real mailbox or model is contacted."""
 from email.message import EmailMessage
 
-from backend.mail_models import MailAccount
-from backend.mail_store import save_account, job
-from backend.mail_ingest import store_message
-from backend.mail_perception_queue import BatchRequest, summary, queue_batch
+from backend.app.modules.mail.schemas import MailAccount
+from backend.app.modules.mail.repository import save_account, job
+from backend.app.modules.mail.ingestion import store_message
+from backend.app.modules.mail.perception_queue import BatchRequest, summary, queue_batch
 
 
 def _mail(db, account_id, uid):

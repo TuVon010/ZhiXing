@@ -14,17 +14,17 @@ import sys
 sys.path.insert(0, r'E:\postgraduateLife\intern\myagent')
 
 import pytest
-from backend.db import Store
-from backend.config import settings
-from backend.mail_store import initialize, save_account
-from backend.mail_models import MailAccount, PerceptionResult
-from backend.mail_ingest import store_message
-from backend.mail_perception import perceive, get_perception
-from backend.mail_schedule import (
+from backend.app.persistence.store import Store
+from backend.app.core.config import settings
+from backend.app.modules.mail.repository import initialize, save_account
+from backend.app.modules.mail.schemas import MailAccount, PerceptionResult
+from backend.app.modules.mail.ingestion import store_message
+from backend.app.modules.mail.perception import perceive, get_perception
+from backend.app.modules.mail.calendar import (
     detect_conflicts, create_calendar_candidate,
     list_calendar_candidates, confirm_calendar, _idempotency_key
 )
-from backend.mail_digest import generate_digest, save_digest, get_digest
+from backend.app.modules.mail.digest import generate_digest, save_digest, get_digest
 from email.message import EmailMessage
 from sqlalchemy import text
 import tempfile, os
@@ -45,7 +45,7 @@ def account(db):
     aid = save_account(db, MailAccount(
         name='测试邮箱', address='owner@qq.com', enabled=True, auto_analyze=True
     ))['id']
-    from backend.filtering import DEFAULT_RULES
+    from backend.app.modules.mail.filtering import DEFAULT_RULES
     db.insert('setting', {**DEFAULT_RULES}, id='mail-filter:' + aid)
     return aid
 
@@ -207,7 +207,7 @@ class TestDigest:
         make_message(db, account, subject='项目进度', body='请回复确认', number=1)
         make_message(db, account, subject='通知', body='系统维护通知', number=2)
         # 触发感知
-        from backend.mail_worker import execute_job
+        from backend.app.workers.mail_jobs import execute_job
         with db.engine.connect() as c:
             jobs = c.execute(text("SELECT * FROM mail_jobs WHERE kind='perception'")).mappings().all()
         for job in jobs:
@@ -228,7 +228,7 @@ class TestDigest:
     def test_digest_includes_high_priority(self, db, account):
         """高优先级邮件出现在摘要中。"""
         make_message(db, account, subject='紧急：项目上线', body='请回复确认今晚12点前完成', number=1)
-        from backend.mail_worker import execute_job
+        from backend.app.workers.mail_jobs import execute_job
         with db.engine.connect() as c:
             jobs = c.execute(text("SELECT * FROM mail_jobs WHERE kind='perception'")).mappings().all()
         for job in jobs:

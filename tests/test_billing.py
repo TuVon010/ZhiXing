@@ -7,10 +7,10 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from backend import billing
-from backend.config import settings
-from backend.db import Store
-from backend.planner import model_json
+from backend.app.observability import billing
+from backend.app.core.config import settings
+from backend.app.persistence.store import Store
+from backend.app.agent.model_client import model_json
 
 
 @pytest.fixture
@@ -128,7 +128,7 @@ def test_real_adapter_mocked_http_freezes_price_during_request(configured,monkey
         save(configured,{'input':'100','cached_input':'100','output':'100','peak_enabled':False},1)
         return httpx.Response(200,json={'usage':usage(),'choices':[{'message':{'content':'not json'}}]})
     original=httpx.Client
-    with patch('backend.planner.httpx.Client',side_effect=lambda **kw:original(transport=httpx.MockTransport(handle),**kw)):
+    with patch('backend.app.agent.model_client.httpx.Client',side_effect=lambda **kw:original(transport=httpx.MockTransport(handle),**kw)):
         with pytest.raises(ValueError):
             model_json(configured,[])
     call=configured.list('model_call')[0]
@@ -149,7 +149,8 @@ def test_summary_separates_currencies_and_weighted_cache():
 
 def test_settings_api_auth_validation_and_conflict(configured,monkeypatch):
     import backend.main as main
-    monkeypatch.setattr(main,'store',configured)
+    from backend.app.api.routes import pricing
+    monkeypatch.setattr(pricing,'store',configured)
     with TestClient(main.app) as client:
         assert client.get('/api/pricing').status_code==401
         client.get('/api/session')

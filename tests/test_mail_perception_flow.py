@@ -5,16 +5,18 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from backend import main
-from backend.config import settings
-from backend.mail_api import confirm_perception_todo, confirm_perception_calendar, followups, messages
-from backend.mail_digest import generate_digest
-from backend.mail_ingest import store_message
-from backend.mail_models import MailAccount
-from backend.mail_observability import trace
-from backend.mail_perception import perceive, _store_result
-from backend.mail_schedule import detect_conflicts
-from backend.mail_store import initialize, save_account
-from backend.mail_worker import execute_job
+from backend.app.core.config import settings
+from backend.app.modules.mail.routes.perception import confirm_perception_todo, confirm_perception_calendar
+from backend.app.modules.mail.routes.work_items import followups
+from backend.app.modules.mail.routes.messages import messages
+from backend.app.modules.mail.digest import generate_digest
+from backend.app.modules.mail.ingestion import store_message
+from backend.app.modules.mail.schemas import MailAccount
+from backend.app.observability.mail import trace
+from backend.app.modules.mail.perception import perceive, _store_result
+from backend.app.modules.mail.calendar import detect_conflicts
+from backend.app.modules.mail.repository import initialize, save_account
+from backend.app.workers.mail_jobs import execute_job
 
 
 def account(db, *, auto=False, limit=20):
@@ -55,7 +57,7 @@ def test_feedback_http_contract_and_confirmed_memory(db, monkeypatch):
     aid = account(db)
     mid = message(db, aid, 1)
     perceive(db, mid)
-    monkeypatch.setattr(main, 'store', db)
+    monkeypatch.setattr('backend.app.persistence.store.store', db)
     with TestClient(main.app) as client:
         assert client.get('/api/session').status_code == 200
         path = f'/api/mail/messages/{mid}/perception/feedback'
@@ -95,7 +97,7 @@ def test_live_result_creates_reviewable_work_and_reuses_existing_calendar(db, mo
               scope='web:mail:' + aid)
     assert len(detect_conflicts(db, aid, '2026-09-25T14:30:00+08:00')) == 1
     monkeypatch.setattr(settings, 'mode', 'live')
-    from backend import planner
+    from backend.app.agent import model_client as planner
     seen = []
     def fake_model_json(db, messages, schema, purpose):
         seen.append((planner.trace_run.get(), purpose))

@@ -1,0 +1,23 @@
+from pathlib import Path
+from typing import Literal
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# config.py lives at backend/app/core; the repository root is three levels up.
+ROOT = Path(__file__).resolve().parents[3]
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='ZHIXING_', env_file=ROOT / '.env', extra='ignore',env_ignore_empty=True)
+    mode: Literal['demo','live'] = 'demo'
+    data_dir: str = str(ROOT / 'data')
+    model_base_url: str = 'https://api.deepseek.com/v1'
+    model_name: str = ''
+    model_api_key: str = ''
+    model_timeout: int = Field(default=60,ge=1,le=600)
+    model_daily_calls: int = Field(default=100,ge=1,le=10000)
+    model_input_price: float | None = Field(default=None,ge=0,le=1000000000,allow_inf_nan=False)
+    model_output_price: float | None = Field(default=None,ge=0,le=1000000000,allow_inf_nan=False)
+    mail_address: str = ''
+    mail_password: str = ''
+
+settings = Settings()

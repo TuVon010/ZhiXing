@@ -11,13 +11,13 @@
 from datetime import datetime, timezone
 from email.message import EmailMessage
 import pytest
-from backend.mail_store import initialize, save_account, rows
-from backend.mail_models import (
+from backend.app.modules.mail.repository import initialize, save_account, rows
+from backend.app.modules.mail.schemas import (
     MailAccount, PerceptionResult, PerceptionFeedback,
     PerceivedTodo, PerceivedEvent,
 )
-from backend.mail_ingest import store_message
-from backend.mail_perception import (
+from backend.app.modules.mail.ingestion import store_message
+from backend.app.modules.mail.perception import (
     perceive, apply_feedback, get_perception,
     list_pending_todos, _demo_perceive,
 )
@@ -28,7 +28,7 @@ def account(db):
     aid = save_account(db, MailAccount(
         name='测试邮箱', address='owner@qq.com', enabled=True, auto_analyze=True
     ))['id']
-    from backend.filtering import DEFAULT_RULES
+    from backend.app.modules.mail.filtering import DEFAULT_RULES
     db.insert('setting', {**DEFAULT_RULES}, id='mail-filter:' + aid)
     return aid
 

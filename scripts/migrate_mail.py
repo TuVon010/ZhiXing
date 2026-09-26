@@ -5,8 +5,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 if (ROOT/'data/processes.json').exists():raise SystemExit('请先运行 scripts/stop.ps1')
-from backend.db import store
-from backend.mail_store import migrate
+from backend.app.persistence.store import store
+from backend.app.modules.mail.repository import migrate
 from sqlalchemy import text
 with store.engine.connect() as c:
     exists=c.execute(text('SELECT 1 FROM migrations WHERE version=2')).first()

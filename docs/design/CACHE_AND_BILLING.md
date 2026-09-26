@@ -14,8 +14,8 @@
 
 | 代码位置 | 已有能力 | 本设计补充 |
 | --- | --- | --- |
-| `backend/planner.py::model_json` | 保存完整 usage，按输入价和输出价计算 cost | 规范化缓存字段、供应商信息、价格快照和费用明细 |
-| `backend/tracing.py::detail` | 按 run 汇总主模型用量 | 缓存命中率、已知/未知费用、分币种汇总 |
+| `backend/app/agent/model_client.py::model_json` | 保存完整 usage，按输入价和输出价计算 cost | 规范化缓存字段、供应商信息、价格快照和费用明细 |
+| `backend/app/observability/tracing.py::detail` | 按 run 汇总主模型用量 | 缓存命中率、已知/未知费用、分币种汇总 |
 | `backend/main.py::stats` | 全局用量和费用、Parser 命中率 | 时间过滤、缓存统计覆盖率、取消最近 10000 条截断式财务统计 |
 | `eval/run.py` | 离线/真实规划评测及平均费用 | 输出缓存用量、计费覆盖率、单任务完整模型开销 |
 | 前端 Trace / 设置 | 模型调用、usage、简单价格配置 | 价格规则、缓存与费用解释、规则版本和估算标签 |
@@ -105,7 +105,7 @@ Parser 是本地确定性解析成功而跳过主规划模型，与供应商缓�
 
 ## 6. 价格规则：独立于模型调用代码
 
-新增 `backend/billing.py` 负责选择价格、生成 Decimal 明细。模型名、币种、时段和历史版本属于配置数据，不散落在调用函数中。
+新增 `backend/app/observability/billing.py` 负责选择价格、生成 Decimal 明细。模型名、币种、时段和历史版本属于配置数据，不散落在调用函数中。
 
 ### 6.1 价格表的身份
 

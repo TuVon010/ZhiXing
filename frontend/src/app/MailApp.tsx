@@ -1,0 +1,295 @@
+import { BillingSummary } from "../features/settings/PricingSettings";
+import "../styles/mail.css";
+import { MailTrace } from "../features/activity/MailTrace";
+import { MailActivity } from "../features/activity/MailActivity";
+import { MailCalendar } from "../features/calendar/MailCalendar";
+import { WorkspaceContext } from "./workspace/context";
+import { useMailWorkspace } from "./workspace/useMailWorkspace";
+import { pretty, blankAccount, type Api, type Row } from "../shared/mail";
+import { MailboxPage } from "../features/inbox/MailboxPage";
+import { AccountsPage } from "../features/accounts/AccountsPage";
+import { AssistantPage } from "../features/assistant/AssistantPage";
+import { FollowupsPage } from "../features/work-items/FollowupsPage";
+import { DraftsPage } from "../features/drafts/DraftsPage";
+import { ImportsPage } from "../features/imports/ImportsPage";
+import { MemoryPage } from "../features/memory/MemoryPage";
+import { SettingsPage } from "../features/settings/SettingsPage";
+import { RecordsPage } from "../features/records/RecordsPage";
+import { HomePage } from "../features/home/HomePage";
+export function MailApp({ api }: { api: Api }) {
+  const workspace = useMailWorkspace(api);
+  const {
+    page,
+    accounts,
+    account,
+    setAccount,
+    setOffset,
+    config,
+    error,
+    setError,
+    notice,
+    setOpened,
+    setAccountForm,
+    selected,
+    setSelected,
+    setSession,
+    setTurns,
+    trace,
+    setTrace,
+    imports,
+    memory,
+    loadAccounts,
+    refresh,
+    act,
+    navigate,
+    unread,
+    ready,
+    showTest,
+    setShowTest,
+  } = workspace;
+  const nav = [
+    ["home", "首页"],
+    ["inbox", "收件箱"],
+    ["followups", "待办与跟进"],
+    ["activity", "Trace 与运行"],
+    ["notifications", "通知与提醒"],
+    ["calendar", "日程"],
+    ["assistant", "邮件 Agent"],
+    ["drafts", "回复草稿"],
+    ["filter", "过滤箱"],
+    ["imports", "收取与导入"],
+    ["accounts", "邮箱账号"],
+    ["memory", "记忆"],
+    ["settings", "设置与计价"],
+    ["records", "记录管理"],
+  ];
+  return (
+    <WorkspaceContext.Provider value={workspace}>
+      <div className="mail-shell">
+        <aside className="mail-sidebar">
+          <div className="brand">
+            <img src="/zhixing-mark.svg" width="38" alt="知行标志" />
+            <div className="brand-name">
+              知行<small>MAIL AGENT</small>
+            </div>
+          </div>
+          <p className="mail-subtitle">从邮件中，找到下一步。</p>
+          <nav>
+            {[
+              ["邮件", ["home", "inbox", "drafts", "filter"]],
+              [
+                "工作",
+                [
+                  "assistant",
+                  "followups",
+                  "calendar",
+                  "notifications",
+                  "activity",
+                ],
+              ],
+              ["管理", ["accounts", "imports", "memory", "records", "settings"]],
+            ].map(([title, ids]) => (
+              <section className="mail-nav-group" key={String(title)}>
+                <small>{title}</small>
+                {nav
+                  .filter(([id]) => ids.includes(id))
+                  .map(([id, name]) => (
+                    <button
+                      key={id}
+                      className={page === id ? "selected" : ""}
+                      onClick={() => navigate(id)}
+                    >
+                      {name}
+                      {id === "notifications" && unread > 0 && (
+                        <span
+                          className="mail-badge"
+                          aria-label={`${unread} 条未读通知`}
+                        >
+                          {unread > 99 ? "99+" : unread}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+              </section>
+            ))}
+          </nav>
+          <div className="mail-local">● 本地索引 · 人工确认发送</div>
+        </aside>
+        <main className="mail-main">
+          <header>
+            <div>
+              <span className="eyebrow">ZHIXING / PERSONAL MAIL AGENT</span>
+              <h1>{nav.find(([id]) => id === page)?.[1]}</h1>
+            </div>
+            <div className="mail-toolbar">
+              <span>
+                {config.mode === "demo" ? "离线演示模式" : "真实模型模式"}
+              </span>
+              <select
+                aria-label="当前邮箱"
+                value={account}
+                onChange={(e) => {
+                  setAccount(e.target.value);
+                  setOffset(0);
+                  setOpened(null);
+                  setSession("");
+                  setTurns([]);
+                  if (e.target.value) setSelected([e.target.value]);
+                }}
+              >
+                <option value="">统一收件箱</option>
+                {accounts.filter((a) => showTest || !a.body.test_account || a.id === account).map((a) => (
+                  <option value={a.id} key={a.id}>
+                    {a.body.name} · {a.body.address}
+                  </option>
+                ))}
+              </select>
+              <label className="mail-test-toggle"><input type="checkbox" checked={showTest} onChange={(e) => setShowTest(e.target.checked)} />显示测试数据</label>
+              <button onClick={() => void act(() => refresh(), "已刷新")}>
+                刷新
+              </button>
+            </div>
+          </header>
+          {error && (
+            <div role="alert" className="alert">
+              {error}
+              <button onClick={() => setError("")}>×</button>
+            </div>
+          )}
+          {notice && (
+            <div role="status" className="notice">
+              {notice}
+            </div>
+          )}
+          {!ready && (
+            <section className="panel mail-welcome" aria-live="polite">
+              <h2>正在准备本地工作台</h2>
+              <p>正在建立本地会话并读取邮箱配置。</p>
+            </section>
+          )}
+          {ready && !accounts.length && (
+            <section className="panel mail-welcome">
+              <h2>让知行成为你的邮件工作助理</h2>
+              <p>
+                连接多个邮箱，保留来源、查找证据、整理待办。新账号默认暂停，连接测试不会发送邮件。
+              </p>
+              <button
+                onClick={() => {
+                  navigate("accounts");
+                  setAccountForm({ body: { ...blankAccount } });
+                }}
+              >
+                添加邮箱
+              </button>
+              {config.mode === "demo" && (
+                <button
+                  onClick={() =>
+                    void act(async () => {
+                      const r = await api("mail/demo", {});
+                      await loadAccounts();
+                      setAccount(r.account_id);
+                      setSelected([r.account_id]);
+                      await refresh();
+                    }, "已导入明确标记的演示邮件")
+                  }
+                >
+                  导入演示邮件
+                </button>
+              )}
+            </section>
+          )}
+          {ready && <HomePage />}
+          {ready && <MailboxPage />}
+          {ready && <AccountsPage />}
+          {ready && <AssistantPage />}
+          {ready && <FollowupsPage />}
+          {ready && <DraftsPage />}
+          {ready && <ImportsPage />}
+          {ready && <MemoryPage />}
+          {ready && <SettingsPage />}
+          {ready && <RecordsPage />}
+          {ready && trace?.root && (
+            <MailTrace
+              data={trace}
+              onClose={() => setTrace(null)}
+              onRefresh={() =>
+                void act(
+                  async () => setTrace(await api("mail/traces/" + trace.id)),
+                  "已刷新执行结果",
+                )
+              }
+            />
+          )}
+          {ready && ["activity", "notifications"].includes(page) && (
+            <MailActivity
+              key={page}
+              api={api}
+              account={account}
+              notifications={page === "notifications"}
+              onTrace={(id) =>
+                void act(
+                  async () => setTrace(await api("mail/traces/" + id)),
+                  "",
+                )
+              }
+            />
+          )}
+          {ready && page === "calendar" && (
+            <MailCalendar
+              api={api}
+              account={account}
+              onTrace={(id) =>
+                void act(
+                  async () => setTrace(await api("mail/traces/" + id)),
+                  "",
+                )
+              }
+            />
+          )}
+          {ready && trace && !trace.root && (
+            <div className="modal">
+              <section className="panel mail-trace">
+                <div className="mail-sectionbar">
+                  <h2>Agent Trace / 迁移记录</h2>
+                  <button onClick={() => setTrace(null)}>关闭</button>
+                </div>
+                <BillingSummary value={trace.billing} />
+                {trace.runs?.map((r: Row) => (
+                  <p key={r.id}>
+                    {r.body.summary || r.id}
+                    <button
+                      onClick={() =>
+                        void act(
+                          () => api(`mail/legacy/${r.id}/resume`, {}),
+                          "已记录人工迁移复核",
+                        )
+                      }
+                    >
+                      确认恢复此旧运行
+                    </button>
+                  </p>
+                ))}
+                <button
+                  onClick={() => {
+                    const url = URL.createObjectURL(
+                      new Blob([pretty(trace)], { type: "application/json" }),
+                    );
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "zhixing-mail-trace.json";
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  }}
+                >
+                  导出邮件 Trace JSON
+                </button>
+                <pre>{pretty(trace)}</pre>
+              </section>
+            </div>
+          )}
+          <footer>知行 · 邮件是证据，记忆需确认，发送前由用户最终核对。</footer>
+        </main>
+      </div>
+    </WorkspaceContext.Provider>
+  );
+}

@@ -1,0 +1,199 @@
+"""Persistent mail jobs. Interactive work takes priority over indexing."""
+import json
+import os
+import threading
+import time
+from datetime import datetime,timezone,timedelta
+from sqlalchemy import text
+from backend.app.persistence.store import now,encode
+from backend.app.modules.mail.repository import initialize,enqueue,rows,require,secret
+
+
+def queue_rolling_import(db,account_id,reason='scheduled'):
+    account=require(db,account_id,'mail_account')['body']
+    if not account.get('enabled') or not account.get('auto_import_enabled') or account.get('test_account'):
+        return None
+    shanghai=timezone(timedelta(hours=8));end=datetime.now(shanghai);days=account.get('auto_import_days',7)
+    key=f'rolling-import:{account_id}:{end.date().isoformat()}:{days}'
+    try:batch=require(db,key,'mail_import')
+    except KeyError:
+        body={'account_id':account_id,'start':(end-timedelta(days=days)).isoformat(),'end':end.isoformat(),
+              'limit':10000,'analyze_after_import':bool(account.get('auto_analyze')),
+              'last_uid':0,'imported':0,'existing':0,'scanned':0,'analysis_queued':0,
+              'automatic':True,'rolling_days':days,'trigger':reason}
+        db.insert('mail_import',body,id=key,scope=account_id,status='running');batch=require(db,key,'mail_import')
+        db.audit('system','MAIL_ROLLING_IMPORT_CREATED',account_id=account_id,days=days,reason=reason)
+    job_id=enqueue(db,'import',{'import_id':key},account_id,priority=30,dedupe=f'import:{key}:{batch["body"].get("last_uid",0)}')
+    return {'import_id':key,'job_id':job_id}
+
+
+def queue_auto_perception(db,account_id):
+    account=require(db,account_id,'mail_account')['body']
+    if not account.get('enabled') or not account.get('auto_analyze'):return 0
+    cutoff=(datetime.now(timezone.utc)-timedelta(hours=1)).isoformat();hour=datetime.now(timezone.utc).strftime('%Y%m%d%H')
+    with db.engine.connect() as c:
+        used=c.execute(text("SELECT COUNT(*) FROM records WHERE kind='analysis_slot' AND scope=:a AND created_at>=:cutoff"),{'a':account_id,'cutoff':cutoff}).scalar_one()
+        candidates=c.execute(text("""SELECT r.id FROM records r WHERE r.kind='mail_message' AND r.scope=:a
+            AND r.status IN ('active','review') AND json_type(r.body,'$.perception') IS NULL
+            AND NOT EXISTS(SELECT 1 FROM mail_jobs j WHERE j.kind='perception' AND j.account_id=:a
+              AND json_extract(j.payload,'$.message_id')=r.id AND j.status IN ('queued','running'))
+            ORDER BY r.created_at DESC LIMIT :limit"""),{'a':account_id,'limit':max(0,account.get('hourly_analysis_limit',20)-used)}).scalars().all()
+    for message_id in candidates:
+        enqueue(db,'perception',{'message_id':message_id},account_id,priority=40,dedupe=f'perception-auto:{message_id}:{hour}')
+    return len(candidates)
+
+
+def schedule(db):
+    initialize(db)
+    if os.environ.get('ZHIXING_DISABLE_MAIL_NETWORK')=='1':return
+    from backend.app.core.config import settings
+    if settings.mode!='live':return
+    for account in rows(db,'mail_account',limit=1000):
+        if account['body'].get('enabled'):
+            with db.engine.connect() as c:
+                pending=c.execute(text("SELECT 1 FROM mail_jobs WHERE account_id=:a AND kind='sync' AND status IN ('queued','running')"),{'a':account['id']}).first()
+            interval=max(10,int(account['body'].get('poll_interval_seconds',15)))
+            if not pending:enqueue(db,'sync',{},account['id'],priority=20,dedupe='sync:'+account['id']+':'+str(int(time.time()//interval)))
+            queue_rolling_import(db,account['id'])
+            queue_auto_perception(db,account['id'])
+    # 每天生成一次前一天的邮件摘要（Digest）
+    _schedule_daily_digest(db)
+
+
+def _schedule_daily_digest(db):
+    """每天为每个启用的账号生成前一天的邮件摘要。
+
+    使用 digest:last_date marker 记录上次生成的日期，
+    确保每天只生成一次，避免重复。
+    """
+    shanghai_tz = timezone(timedelta(hours=8))
+    yesterday = (datetime.now(shanghai_tz) - timedelta(days=1)).strftime('%Y-%m-%d')
+    # 每账号使用持久队列去重；新启用的账号也能在当天得到摘要。
+    for account in rows(db, 'mail_account', limit=1000):
+        if not account['body'].get('enabled'):
+            continue
+        enqueue(db, 'digest', {'date': yesterday}, account['id'],
+                priority=10, dedupe='digest:' + account['id'] + ':' + yesterday)
+
+
+def execute_job(db,job):
+    payload=json.loads(job['payload']);kind=job['kind'];aid=job['account_id']
+    from backend.app.modules.mail.ingestion import scan
+    if kind=='sync':return scan(db,aid)
+    if kind=='baseline':
+        from backend.app.modules.mail.ingestion import connection,lease,put
+        account=require(db,aid,'mail_account')['body']
+        with lease(db,aid),connection(db,account) as imap:
+            imap.select('INBOX',readonly=True);validity=imap.response('UIDVALIDITY')[1][0].decode()
+            typ,data=imap.uid('search',None,'ALL')
+            if typ!='OK':raise ValueError('无法建立收取基线')
+            put(db,'mail-cursor:'+aid+':INBOX','mail_cursor',{'account_id':aid,'validity':validity,'uid':max([int(v) for v in (data[0] or b'').split()],default=0),'last_poll':now(),'catchup':None})
+        db.audit('system','MAIL_BASELINE_RESET',account_id=aid)
+        return {'baseline':True}
+    if kind=='preview':return scan(db,aid,payload,preview=True)
+    if kind=='import':
+        row=require(db,payload['import_id'],'mail_import')
+        if row['status']!='running':return {'paused':True}
+        result=scan(db,aid,{k:v for k,v in row['body'].items() if k in {'account_id','start','end','limit'}},import_id=row['id'])
+        current=require(db,row['id'],'mail_import')
+        if current['status']=='running':
+            enqueue(db,'import',{'import_id':row['id']},aid,priority=30 if current['body'].get('automatic') else 15,
+                    dedupe=f"import:{row['id']}:{current['body']['last_uid']}")
+        return result
+    if kind=='index':
+        from backend.app.modules.mail.retrieval import index_message
+        return index_message(db,payload['message_id'])
+    if kind=='search':
+        from backend.app.modules.mail.retrieval import search
+        return search(db,payload)
+    if kind=='reindex':
+        from backend.app.modules.mail.retrieval import rebuild_account
+        return rebuild_account(db,aid)
+    if kind=='assistant':
+        from backend.app.modules.mail.assistant import run_turn
+        return run_turn(db,payload['turn_id'])
+    if kind=='analyze':
+        from backend.app.modules.mail.assistant import create_session,create_turn
+        from backend.app.modules.mail.schemas import SessionInput,TurnInput
+        account=require(db,aid,'mail_account')['body'];mail=require(db,payload['message_id'],'mail_message',[aid])
+        if mail['status']!='active' or not account.get('enabled') or not account.get('auto_analyze'):return {'skipped':True}
+        cutoff=(datetime.now(timezone.utc)-timedelta(hours=1)).isoformat()
+        with db.engine.connect() as c:
+            c.exec_driver_sql('BEGIN IMMEDIATE')
+            key='auto-analysis:'+mail['id']
+            previous=c.execute(text('SELECT body FROM records WHERE id=:id'),{'id':key}).first()
+            if previous and json.loads(previous[0]).get('turn_id'):return {'turn_id':json.loads(previous[0])['turn_id']}
+            count=c.execute(text("SELECT COUNT(*) FROM records WHERE kind='analysis_slot' AND scope=:a AND created_at>=:cutoff"),{'a':aid,'cutoff':cutoff}).scalar_one()
+            if not previous:
+                if count>=account['hourly_analysis_limit']:raise ValueError('该账号每小时自动分析预算已用完；可稍后手动重试')
+                db.insert('analysis_slot',{'message_id':mail['id']},id=key,scope=aid,conn=c)
+            c.commit()
+        session=create_session(db,SessionInput(account_ids=[aid],thread_id=mail['body']['thread_id']),new_id='session-'+mail['id'])
+        turn=create_turn(db,session['id'],TurnInput(text='检查本线程是否有尚未记录的明确待办、会议和承诺，先查现有任务避免重复；仅在证据明确时提出本地动作。不要自动发送邮件。'),new_id='turn-'+mail['id'])
+        db.update(key,{'message_id':mail['id'],'turn_id':turn['id']});return {'turn_id':turn['id']}
+    if kind=='perception':
+        from backend.app.modules.mail.perception import perceive
+        mail=require(db,payload['message_id'],'mail_message',[aid])
+        account=require(db,aid,'mail_account')['body']
+        manual=payload.get('manual',False)
+        if not manual and (mail['status'] not in {'active','review'} or not account.get('enabled') or not account.get('auto_analyze')):
+            return {'skipped':'account_disabled_or_message_filtered'}
+        if not manual:
+            cutoff=(datetime.now(timezone.utc)-timedelta(hours=1)).isoformat()
+            slot='perception-slot:'+mail['id']
+            with db.engine.connect() as c:
+                c.exec_driver_sql('BEGIN IMMEDIATE')
+                existing=c.execute(text('SELECT 1 FROM records WHERE id=:id'),{'id':slot}).first()
+                if not existing:
+                    count=c.execute(text("SELECT COUNT(*) FROM records WHERE kind='analysis_slot' AND scope=:a AND created_at>=:cutoff"),{'a':aid,'cutoff':cutoff}).scalar_one()
+                    if count>=account['hourly_analysis_limit']:
+                        c.rollback()
+                        return {'skipped':'hourly_analysis_limit'}
+                    db.insert('analysis_slot',{'message_id':mail['id'],'kind':'perception'},id=slot,scope=aid,conn=c)
+                c.commit()
+        result=perceive(db,mail['id'])
+        from backend.app.modules.mail.digest import generate_and_save_digest
+        generate_and_save_digest(db,aid,datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d'))
+        return result
+    if kind=='digest':
+        from backend.app.modules.mail.digest import generate_and_save_digest
+        return generate_and_save_digest(db, aid, payload.get('date'))
+    if kind=='connection_test':
+        from backend.app.modules.mail.ingestion import connection
+        from backend.app.modules.mail.sending import smtp_connection
+        account=require(db,aid,'mail_account')['body']
+        with connection(db,account) as imap:imap.noop()
+        with smtp_connection(db,account) as smtp:smtp.noop()
+        return {'imap':True,'smtp':True,'sent':False}
+    raise ValueError('未知邮件任务')
+
+
+def work_once(db):
+    initialize(db)
+    with db.engine.connect() as c:
+        c.exec_driver_sql('BEGIN IMMEDIATE')
+        c.execute(text("UPDATE mail_jobs SET status=CASE WHEN attempts<3 THEN 'queued' ELSE 'failed' END WHERE status='running' AND lease<:t"),{'t':time.time()})
+        row=c.execute(text("SELECT * FROM mail_jobs j WHERE status='queued' AND NOT EXISTS(SELECT 1 FROM mail_jobs other WHERE other.scope=j.scope AND other.status='running') ORDER BY priority,created_at,id LIMIT 1")).mappings().first()
+        if not row:c.rollback();return False
+        job=dict(row);c.execute(text("UPDATE mail_jobs SET status='running',lease=:lease,attempts=attempts+1,updated_at=:at WHERE id=:id"),{'lease':time.time()+120,'at':now(),'id':job['id']});c.commit()
+    stopped=threading.Event()
+    def heartbeat():
+        while not stopped.wait(20):
+            with db.engine.begin() as c:c.execute(text("UPDATE mail_jobs SET lease=:lease WHERE id=:id AND status='running'"),{'lease':time.time()+120,'id':job['id']})
+    t=threading.Thread(target=heartbeat,daemon=True);t.start()
+    try:
+        result=execute_job(db,job);status='completed'
+    except Exception as exc:
+        result={'error':type(exc).__name__,'detail':str(exc)[:200] if isinstance(exc,(ValueError,KeyError)) else '连接或处理失败，请检查配置及日志'};status='failed'
+        if job['kind']=='assistant':
+            turn_id=json.loads(job['payload'])['turn_id'];turn=db.get(turn_id)
+            db.update(turn_id,{**turn['body'],'error':result},'failed')
+    finally:stopped.set();t.join()
+    with db.engine.begin() as c:
+        c.execute(text('UPDATE mail_jobs SET status=:status,result=:result,lease=0,updated_at=:at WHERE id=:id'),{'status':status,'result':encode(result),'at':now(),'id':job['id']})
+    if job['account_id']:
+        try:
+            account=require(db,job['account_id'],'mail_account')
+            db.update(account['id'],{**account['body'],'last_job':{'id':job['id'],'kind':job['kind'],'status':status,'at':now(),'error':result.get('error')}})
+        except KeyError:pass
+    return True

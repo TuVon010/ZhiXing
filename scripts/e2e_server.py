@@ -12,11 +12,11 @@ os.environ['ZHIXING_DISABLE_MAIL_NETWORK']='1'
 os.environ['ZHIXING_DATA_DIR']=os.environ.get('ZHIXING_E2E_DATA_DIR',str(root/'.tmp'/('e2e-'+str(time.time_ns()))))
 port=int(os.environ.get('ZHIXING_E2E_PORT','8000'))
 os.environ['ZHIXING_E2E_ORIGIN']=f'http://127.0.0.1:{port}'
-from backend.runtime import work_once
-from backend.mail_worker import work_once as mail_work_once
+from backend.app.agent.graph import work_once
+from backend.app.workers.mail_jobs import work_once as mail_work_once
 from backend.main import app
-from backend.evolution import seed
-from backend.db import store
+from backend.app.agent.evolution import seed
+from backend.app.persistence.store import store
 import uvicorn
 seed(store)
 def loop():

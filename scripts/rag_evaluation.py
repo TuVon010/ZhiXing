@@ -26,10 +26,10 @@ OUTPUT_DIR=prepare_output_dir() if __name__=='__main__' else None
 sys.path.insert(0,str(ROOT))
 os.environ.setdefault('ZHIXING_MAIL_WORKER','1')
 
-from backend.mail_store import initialize, save_account, rows
-from backend.mail_models import MailAccount
-from backend.mail_ingest import store_message
-from backend.mail_rag import index_message, search, load_models, model_version
+from backend.app.modules.mail.repository import initialize, save_account, rows
+from backend.app.modules.mail.schemas import MailAccount
+from backend.app.modules.mail.ingestion import store_message
+from backend.app.modules.mail.retrieval import index_message, search, load_models, model_version
 
 
 EVAL_QUERIES = [
@@ -79,7 +79,7 @@ SYNTHETIC_MAILS = [
 def setup_db(db):
     initialize(db)
     aid = save_account(db, MailAccount(name='评测账号', address='user@example.com', enabled=True))['id']
-    from backend.filtering import DEFAULT_RULES
+    from backend.app.modules.mail.filtering import DEFAULT_RULES
     db.insert('setting', {**DEFAULT_RULES, 'whitelist_senders': ['teacher@example.com', 'boss@example.com', 'lab@example.com', 'hr@example.com', 'colleague@example.com']}, id='mail-filter:' + aid)
     return aid
 
@@ -102,7 +102,7 @@ def seed_mails(db, aid):
 
 def evaluate_search(db, aid, force_keyword=False):
     """运行评测。force_keyword=True 时 mock 模型不可用，纯关键词检索。"""
-    import backend.mail_rag as rag
+    import backend.app.modules.mail.retrieval as rag
     results = []
     original_load = rag.load_models
     if force_keyword:
@@ -169,7 +169,7 @@ def compute_metrics(results):
 
 
 def main():
-    from backend.db import Store
+    from backend.app.persistence.store import Store
     folder=OUTPUT_DIR
     os.environ.pop('ZHIXING_DISABLE_LOCAL_MODELS', None)
     database=folder/'backend-data'/'eval.db';database.parent.mkdir(parents=True,exist_ok=True)

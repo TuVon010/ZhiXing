@@ -2,10 +2,10 @@ from unittest.mock import patch
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from backend.config import settings
-from backend.runtime import ingest, work_once, approve
-from backend.tracing import detail
-from backend.db import Store
+from backend.app.core.config import settings
+from backend.app.agent.graph import ingest, work_once, approve
+from backend.app.observability.tracing import detail
+from backend.app.persistence.store import Store
 import backend.main as api
 
 def message(text='待办：整理材料'):
@@ -21,7 +21,7 @@ def test_model_success_and_failure_stay_in_run_trace(db,monkeypatch,valid):
         return httpx.Response(200,json={'choices':[{'message':{'content':content}}],'usage':{'prompt_tokens':30,'completion_tokens':10,'total_tokens':40}})
     client=httpx.Client
     rid=ingest(message(),db)
-    with patch('backend.planner.httpx.Client',side_effect=lambda **kw:client(transport=httpx.MockTransport(handle),**kw)):
+    with patch('backend.app.agent.model_client.httpx.Client',side_effect=lambda **kw:client(transport=httpx.MockTransport(handle),**kw)):
         work_once(db)
     trace=detail(db,rid)
     assert trace.trace.trace_id==rid
@@ -39,7 +39,8 @@ def test_model_success_and_failure_stay_in_run_trace(db,monkeypatch,valid):
     assert ('MODEL_RESPONSE' if valid else 'MODEL_FAILED') in events
     assert all(r['body']['trace_id']==rid for r in trace.audit)
     assert 'private-test-key' not in trace.model_dump_json()
-    monkeypatch.setattr(api,'store',db)
+    from backend.app.api.routes import automation
+    monkeypatch.setattr(automation,'store',db)
     with TestClient(api.app) as c:
         assert c.get('/api/runs/'+rid).status_code==401
         c.get('/api/session')
@@ -71,7 +72,7 @@ def test_legacy_failed_model_record_is_recovered_from_audit(db):
 
 def test_database_rename_preserves_pending_approval(tmp_path,monkeypatch):
     from scripts.migrate_brand import migrate
-    from backend.runtime import Runtime
+    from backend.app.agent.graph import Runtime
     old=Store(tmp_path/'pulse.db')
     rid=ingest(message('明天下午三点组会'),old)
     work_once(old)

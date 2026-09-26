@@ -1,8 +1,8 @@
 """Legacy records remain readable but cannot bypass multi-mail draft checks."""
 import pytest
 from sqlalchemy import text
-from backend.config import settings
-from backend.tools import execute
+from backend.app.core.config import settings
+from backend.app.agent.tools import execute
 
 
 def test_legacy_send_requires_account_draft_before_ledger(db,monkeypatch):

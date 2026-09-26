@@ -47,7 +47,7 @@ turn、run、model_call 和 audit 具有稳定关联。检索记录关键词、�
 
 ## 工作台与闭环反馈
 
-前端按页面拆分到 `frontend/src/mail/`，`MailApp` 负责导航与页面装配，`useMailWorkspace` 协调当前账号、会话与共享刷新；Trace、运行记录/通知和日程是独立组件。原生表单操作与调试 JSON 分开展示。
+前端按业务能力拆分到 `frontend/src/features/`，`app/MailApp` 负责导航与页面装配，`app/workspace/useMailWorkspace` 协调当前账号、会话与共享刷新；API 客户端和生成类型位于 `shared/api`。Trace、运行记录/通知和日程是独立功能模块。
 
 `mail_observability` 按账号查询运行与通知，将 Agent turn、关联 run、模型调用和审计聚合为一个可导出的 Trace。通知保留来源 run 或业务对象，并支持幂等已读。到期提醒在 Web 通知中心显示，当前没有系统桌面推送。
 

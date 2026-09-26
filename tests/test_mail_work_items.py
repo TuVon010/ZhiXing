@@ -4,11 +4,11 @@ from email.message import EmailMessage
 
 import pytest
 
-from backend.mail_models import MailAccount
-from backend.mail_store import save_account, rows
-from backend.mail_ingest import store_message
-from backend.mail_perception import perceive
-from backend.mail_work_items import todo_decision, calendar_decision, mark_replied
+from backend.app.modules.mail.schemas import MailAccount
+from backend.app.modules.mail.repository import save_account, rows
+from backend.app.modules.mail.ingestion import store_message
+from backend.app.modules.mail.perception import perceive
+from backend.app.modules.mail.work_items import todo_decision, calendar_decision, mark_replied
 
 
 def _mail(db, account, text_value):
@@ -21,8 +21,8 @@ def _mail(db, account, text_value):
 
 
 def test_high_confidence_evidence_auto_creates_only_local_todo(db, monkeypatch):
-    from backend.config import settings
-    import backend.planner as planner
+    from backend.app.core.config import settings
+    import backend.app.agent.model_client as planner
     aid = save_account(db, MailAccount(name='测试', address='owner@example.com'))['id']
     shanghai = timezone(timedelta(hours=8))
     local_now = datetime.now(shanghai)
@@ -62,8 +62,8 @@ def test_unverified_or_sensitive_action_stays_suggestion():
 
 
 def test_precise_local_calendar_auto_activates_and_creates_reminder(db, monkeypatch):
-    from backend.config import settings
-    import backend.planner as planner
+    from backend.app.core.config import settings
+    import backend.app.agent.model_client as planner
     aid = save_account(db, MailAccount(name='测试', address='owner@example.com'))['id']
     shanghai = timezone(timedelta(hours=8))
     start = (datetime.now(shanghai) + timedelta(days=3)).replace(hour=15, minute=0, second=0, microsecond=0)
@@ -84,9 +84,9 @@ def test_precise_local_calendar_auto_activates_and_creates_reminder(db, monkeypa
 
 
 def test_reply_followup_is_separate_from_todo(db, monkeypatch):
-    from backend.config import settings
-    import backend.planner as planner
-    from backend.mail_api import followup_action
+    from backend.app.core.config import settings
+    import backend.app.agent.model_client as planner
+    from backend.app.modules.mail.routes.work_items import followup_action
     aid = save_account(db, MailAccount(name='测试', address='owner@example.com'))['id']
     ident = _mail(db, aid, '请回复确认是否参加会议。')
     monkeypatch.setattr(settings, 'mode', 'live')
@@ -105,8 +105,8 @@ def test_reply_followup_is_separate_from_todo(db, monkeypatch):
 
 
 def test_scenario_account_is_idempotent_and_cannot_enable_remote_sync(db):
-    from backend.mail_scenarios import seed, ACCOUNT_ID
-    from backend.mail_api import enable, sync, Toggle
+    from backend.app.modules.mail.scenarios import seed, ACCOUNT_ID
+    from backend.app.modules.mail.routes.accounts import enable, sync, Toggle
     first = seed(db)
     second = seed(db)
     assert first['total'] == 14 and first['created'] == 14
@@ -120,7 +120,7 @@ def test_scenario_account_is_idempotent_and_cannot_enable_remote_sync(db):
 
 
 def test_meeting_and_reply_do_not_duplicate_todo_and_deadline_event(db):
-    from backend.mail_perception import _create_todo_candidates, _create_calendar_candidates
+    from backend.app.modules.mail.perception import _create_todo_candidates, _create_calendar_candidates
     aid = save_account(db, MailAccount(name='测试', address='owner@example.com'))['id']
     ident = _mail(db, aid, '请参加明天15:00至16:00的组会。请回复是否参加。')
     quote = '请参加明天15:00至16:00的组会。'
@@ -141,13 +141,13 @@ def test_meeting_and_reply_do_not_duplicate_todo_and_deadline_event(db):
 
 
 def test_scenario_send_requires_approval_and_never_uses_smtp(db, monkeypatch):
-    from backend.config import settings
-    from backend.mail_scenarios import seed, ACCOUNT_ID
-    from backend.mail_models import DraftInput
-    from backend.mail_assistant import draft, submit_draft
-    from backend.runtime import work_once, approve
-    from backend.tools import execute
-    import backend.mail_send as sender
+    from backend.app.core.config import settings
+    from backend.app.modules.mail.scenarios import seed, ACCOUNT_ID
+    from backend.app.modules.mail.schemas import DraftInput
+    from backend.app.modules.mail.assistant import draft, submit_draft
+    from backend.app.agent.graph import work_once, approve
+    from backend.app.agent.tools import execute
+    import backend.app.modules.mail.sending as sender
 
     seed(db)
     mail = next(x for x in rows(db, 'mail_message', [ACCOUNT_ID], limit=30)
@@ -167,8 +167,8 @@ def test_scenario_send_requires_approval_and_never_uses_smtp(db, monkeypatch):
 
 
 def test_thread_time_correction_stays_reviewable(db):
-    from backend.mail_scenarios import seed, ACCOUNT_ID
-    from backend.mail_schedule import create_calendar_candidate, confirm_calendar
+    from backend.app.modules.mail.scenarios import seed, ACCOUNT_ID
+    from backend.app.modules.mail.calendar import create_calendar_candidate, confirm_calendar
     seed(db)
     messages = {x['body'].get('scenario_name'): x['id'] for x in rows(db, 'mail_message', [ACCOUNT_ID], limit=30)}
     first = create_calendar_candidate(db, ACCOUNT_ID, messages['明确会议'],

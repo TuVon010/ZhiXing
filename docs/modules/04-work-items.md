@@ -6,9 +6,9 @@
 
 ## 实现链路
 
-[`FollowupsPage.tsx`](../../frontend/src/mail/FollowupsPage.tsx) 从 `GET /mail/followups` 读取 `todo`、`mail_followup`、`calendar`、`reminder`。模型在 [`mail_perception.py`](../../backend/mail_perception.py) 生成结构化提案，服务端 [`mail_work_items.py`](../../backend/mail_work_items.py) 再核对引用原文、时间、分类、风险词和置信度。明确且低风险的本地待办自动 `active`；模糊项保留 `candidate`。回复确认不会重复变 Todo，参会优先归日程，截止时间优先归待办提醒。
+[`FollowupsPage.tsx`](../../frontend/src/features/work-items/FollowupsPage.tsx) 从 `GET /mail/followups` 读取 `todo`、`mail_followup`、`calendar`、`reminder`。模型在 [`perception.py`](../../backend/app/modules/mail/perception.py) 生成结构化提案，服务端 [`work_items.py`](../../backend/app/modules/mail/work_items.py) 再核对引用原文、时间、分类、风险词和置信度。明确且低风险的本地待办自动 `active`；模糊项保留 `candidate`。回复确认不会重复变 Todo，参会优先归日程，截止时间优先归待办提醒。
 
-本地完成/重新打开走 `POST /mail/todos/{id}/{operation}`；邮件跟进处理走 `POST /mail/followups/{id}/{operation}`；候选确认与忽略走 `/mail/perception/todos/...` 或 `/mail/perception/calendars/...`。这些本地可逆操作直接生效，删除进入本地回收站并可恢复。真正发送回复仍需在草稿页由用户最终确认。每日摘要见 [`mail_digest.py`](../../backend/mail_digest.py)，生成时复用已感知结果。
+本地完成/重新打开走 `POST /mail/todos/{id}/{operation}`；邮件跟进处理走 `POST /mail/followups/{id}/{operation}`；候选确认与忽略走 `/mail/perception/todos/...` 或 `/mail/perception/calendars/...`。这些本地可逆操作直接生效，删除进入本地回收站并可恢复。真正发送回复仍需在草稿页由用户最终确认。每日摘要见 [`digest.py`](../../backend/app/modules/mail/digest.py)，生成时复用已感知结果。
 
 ## 调试提示
 

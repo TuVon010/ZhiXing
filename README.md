@@ -71,20 +71,20 @@
 
 ```text
 backend/
-  mail_api.py            邮件核心接口
-  mail_observability.py  运行查询、Trace 聚合与工作台接口
-  mail_ingest.py         IMAP、游标、线程和过滤
-  mail_rag.py            FTS5、Qdrant、嵌入与重排序
-  mail_assistant.py      Agent 循环、记忆快照和草稿
-  mail_send.py           指定账号的确认发送
-  mail_worker.py        邮件持久任务
-  runtime.py / tools.py  授权确认、执行与幂等账本
+  main.py / worker.py     部署兼容入口
+  app/core/               配置、本地安全边界与共享异常
+  app/persistence/        SQLite Store 与事务
+    app/api/                系统级路由和应用装配
+    app/agent/              LangGraph、决策、工具、策略与模型调用
+    app/integrations/       IMAP、SMTP 等外部协议适配器
+    app/modules/mail/       邮件、RAG、感知、草稿和工作项
+  app/observability/      Trace、模型用量与计价
+  app/workers/            调度器和持久邮件任务
 frontend/src/
-  MailApp.tsx            工作台装配与分组导航
-  mail/                  页面组件、状态协调与共享类型
-  MailTrace.tsx          可导出的执行时间线
-  MailActivity.tsx       运行记录与通知
-  MailCalendar.tsx       日程管理
+  app/                    工作台装配和跨页面状态
+  features/               按首页、收件箱、Agent、草稿等业务拆分
+  shared/                 API 客户端、OpenAPI 类型和共享类型
+  styles/                 全局与工作台样式
 scripts/                 安装、启停、备份、迁移和评测
 tests/                  后端与故障恢复回归
 ```
@@ -113,6 +113,7 @@ tests/                  后端与故障恢复回归
 - [后端模块职责](backend/README.md) · [脚本分类](scripts/README.md) · [测试地图](tests/README.md)
 
 - [工作台使用、代码地图与调试实验](docs/WORKSPACE_GUIDE.md)
+- [代码结构与开发规范](docs/CODE_STRUCTURE.md) · [后端代码地图](backend/README.md) · [前端代码地图](frontend/README.md)
 - [系统架构](docs/ARCHITECTURE.md) · [多邮箱配置](docs/MAIL_SETUP.md)
 - [RAG 与分层记忆](docs/MAIL_RAG_MEMORY.md) · [计价与缓存统计](docs/PRICING.md)
 - [测试报告](docs/TESTING_MAIL_AGENT.md) · [测试研究留档](docs/MAIL_TESTING.md)

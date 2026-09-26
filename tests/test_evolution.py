@@ -1,6 +1,6 @@
 import pytest
-from backend.evolution import candidate, evaluate, shadow, publish, parse_rules, parser_plan
-from backend.schemas import ActionPlan
+from backend.app.agent.evolution import candidate, evaluate, shadow, publish, parse_rules, parser_plan
+from backend.app.agent.schemas import ActionPlan
 
 RULES={'pattern':r'待办：(?P<title>.+)','plan':{'summary':'任务','actions':[{'tool':'create_todo','args':{'title':'{title}'}}]}}
 
@@ -49,14 +49,14 @@ def test_plan_rejects_cycle_and_unknown_tool():
 
 def test_skill_candidate_eval_and_content_hash_gate(db,monkeypatch):
     import json
-    import backend.planner
-    from backend.evolution import seed
+    import backend.app.agent.model_client
+    from backend.app.agent.evolution import seed
     seed(db)
     samples(db,'holdout',20,True)
     def fake_model(db,messages,*args):
         message=json.loads(messages[1]['content'])
         return {'summary':'task','actions':[{'tool':'create_todo','args':{'title':message['text'].split('：',1)[1]}}]}
-    monkeypatch.setattr(backend.planner,'model_json',fake_model)
+    monkeypatch.setattr(backend.app.agent.model_client,'model_json',fake_model)
     ident=candidate(db,'skill','tasks',content='从明确前缀提取任务')
     assert evaluate(db,ident)['passed']
     publish(db,ident)

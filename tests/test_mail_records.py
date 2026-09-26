@@ -4,14 +4,15 @@ from pathlib import Path
 
 import pytest
 
-from backend.mail_api import messages, followups
-from backend.mail_ingest import store_message
-from backend.mail_models import MailAccount
-from backend.mail_observability import activity, notifications, trace
-from backend.mail_records import (overview, list_records, trash_record, restore_record,
+from backend.app.modules.mail.routes.messages import messages
+from backend.app.modules.mail.routes.work_items import followups
+from backend.app.modules.mail.ingestion import store_message
+from backend.app.modules.mail.schemas import MailAccount
+from backend.app.observability.mail import activity, notifications, trace
+from backend.app.modules.mail.records import (overview, list_records, trash_record, restore_record,
                                   hide_activity, unhide_activity, backup_legacy)
-from backend.mail_store import initialize, save_account
-from backend.runtime import work_once, approve, ingest
+from backend.app.modules.mail.repository import initialize, save_account
+from backend.app.agent.graph import work_once, approve, ingest
 
 
 def account(db, number=1):

@@ -8,7 +8,7 @@
 
 ## 实现链路
 
-[`ImportsPage.tsx`](../../frontend/src/mail/ImportsPage.tsx) 对应 `/mail/imports/preview`、`/mail/imports`、`/mail/imports/{id}/{operation}`、`/mail/accounts/{id}/perception/summary` 和 `/perception/batch`。持久 `mail_jobs` 由 [`mail_worker.py`](../../backend/mail_worker.py) 租约领取；IMAP 扫描、服务端收件时间过滤、UID 游标和导入批次状态在 [`mail_ingest.py`](../../backend/mail_ingest.py)。批量分析队列与去重在 [`mail_perception_queue.py`](../../backend/mail_perception_queue.py)。
+[`ImportsPage.tsx`](../../frontend/src/features/imports/ImportsPage.tsx) 对应 `/mail/imports/preview`、`/mail/imports`、`/mail/imports/{id}/{operation}`、`/mail/accounts/{id}/perception/summary` 和 `/perception/batch`。持久 `mail_jobs` 由 [`mail_jobs.py`](../../backend/app/workers/mail_jobs.py) 租约领取；IMAP 扫描、服务端收件时间过滤、UID 游标和导入批次状态在 [`ingestion.py`](../../backend/app/modules/mail/ingestion.py)。批量分析队列与去重在 [`perception_queue.py`](../../backend/app/modules/mail/perception_queue.py)。
 
 实时收取、滚动补齐与手工历史导入使用不同控制：首次连接从现在建立实时游标，不回扫全部历史；滚动补齐按账号每天一次，手工导入使用用户指定范围；断线补读有时间和总量上限，剩余由用户选择。默认每轮扫描数量、轮询和每小时自动分析额度在邮箱账号设置；全局模型预算另行限制。模型分析会把邮件文本发送至配置的模型服务，可能产生费用。
 

@@ -43,12 +43,12 @@ def main():
     output=ROOT/'artifacts'/'mail-evaluations'/datetime.now().strftime('%Y%m%d-%H%M%S')
     output.mkdir(parents=True,exist_ok=False)
     os.environ['ZHIXING_DATA_DIR']=str(output/'data')
-    from backend.db import Store
-    from backend.mail_store import initialize,save_account
-    from backend.mail_models import MailAccount
-    from backend.mail_ingest import store_message
-    from backend.mail_rag import load_models,index_message,search,model_manifest,rebuild_account
-    from backend.filtering import DEFAULT_RULES
+    from backend.app.persistence.store import Store
+    from backend.app.modules.mail.repository import initialize,save_account
+    from backend.app.modules.mail.schemas import MailAccount
+    from backend.app.modules.mail.ingestion import store_message
+    from backend.app.modules.mail.retrieval import load_models,index_message,search,model_manifest,rebuild_account
+    from backend.app.modules.mail.filtering import DEFAULT_RULES
     data=cases();(output/'cases.json').write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8')
     print('Evidence:',output,flush=True)
     manifest={'verification':'real_local_embedding_and_reranker','external_mail_verified':False,'main_model_verified':False,

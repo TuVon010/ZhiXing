@@ -6,7 +6,7 @@
 
 ## 实现链路
 
-[`MemoryPage.tsx`](../../frontend/src/mail/MemoryPage.tsx) 调 `POST /mail/memory` 创建 `memory` 候选，`POST /review/{id}/{publish|reject|suspend}` 处理状态。感知纠偏由 [`mail_perception.py`](../../backend/mail_perception.py) 的 `_learn_from_feedback()` 产生候选。Agent 创建会话时 [`mail_assistant.py`](../../backend/mail_assistant.py) 的 `memory_snapshot()` 读取已发布、在账号范围内的记忆并冻结到运行快照；之后修改记忆不回写已开始的运行。感知也只读取发布状态的偏好并限制上下文长度。
+[`MemoryPage.tsx`](../../frontend/src/features/memory/MemoryPage.tsx) 调 `POST /mail/memory` 创建 `memory` 候选，`POST /review/{id}/{publish|reject|suspend}` 处理状态。感知纠偏由 [`perception.py`](../../backend/app/modules/mail/perception.py) 的 `_learn_from_feedback()` 产生候选。Agent 创建会话时 [`assistant.py`](../../backend/app/modules/mail/assistant.py) 的 `memory_snapshot()` 读取已发布、在账号范围内的记忆并冻结到运行快照；之后修改记忆不回写已开始的运行。感知也只读取发布状态的偏好并限制上下文长度。
 
 数据库是主存储；可读记忆快照与知识索引属于不同层。记忆用于影响后续处理方式，邮件知识库用于查具体事实，短期线程上下文用于当前会话。详细设计见 [RAG 与分层记忆](../MAIL_RAG_MEMORY.md)。
 

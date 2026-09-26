@@ -6,7 +6,7 @@
 
 ## 实现链路
 
-[`RecordsPage.tsx`](../../frontend/src/mail/RecordsPage.tsx) 调 `/mail/records/overview`、`/list`、`/{id}/trash`、`/{id}/restore`、`/{id}/hide`、`/{id}/unhide` 和 `/legacy/backup`，路由与限制在 [`mail_records.py`](../../backend/mail_records.py)。邮件移入回收站后不应继续出现在检索上下文；恢复活动邮件会重排索引。未提交草稿可回收，已审批或已发送草稿保留审计；已发布记忆要先撤销；活动待办、日程、提醒的删除仍生成审批动作。运行只隐藏 UI，不删 Trace 或审计。
+[`RecordsPage.tsx`](../../frontend/src/features/records/RecordsPage.tsx) 调 `/mail/records/overview`、`/list`、`/{id}/trash`、`/{id}/restore`、`/{id}/hide`、`/{id}/unhide` 和 `/legacy/backup`，路由与限制在 [`records.py`](../../backend/app/modules/mail/records.py)。邮件移入回收站后不应继续出现在检索上下文；恢复活动邮件会重排索引。未提交草稿可回收，已确认或已发送草稿保留审计；已发布记忆要先撤销。待办、日程和提醒属于本地可逆记录，可直接进入回收站。运行只隐藏 UI，不删 Trace 或审计。
 
 旧资料备份使用 SQLite 在线快照，同时备份业务库和 checkpoint；它不等于跨机器完整恢复包，凭证的 DPAPI 限制仍在。常规整库备份与恢复另见 [迁移与恢复](../MAIL_MIGRATION.md)。记录管理测试见 [`tests/test_mail_records.py`](../../tests/test_mail_records.py)。
 

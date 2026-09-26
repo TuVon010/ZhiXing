@@ -11,14 +11,14 @@ ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 folder=ROOT/'artifacts'/'mail-recovery'/datetime.now().strftime('%Y%m%d-%H%M%S');folder.mkdir(parents=True)
 os.environ.update(ZHIXING_MODE='demo',ZHIXING_MAIL_ADDRESS='',ZHIXING_MAIL_WORKER='1',ZHIXING_DATA_DIR=str(folder/'source'))
 os.environ.pop('ZHIXING_DISABLE_LOCAL_MODELS',None)
-from backend.db import Store
-from backend.mail_store import initialize,save_account,migrate
-from backend.mail_models import MailAccount,DraftInput
-from backend.mail_ingest import store_message
-from backend.mail_rag import rebuild_account,search
-from backend.mail_assistant import draft,submit_draft
-from backend.runtime import work_once,approve
-from backend.filtering import DEFAULT_RULES
+from backend.app.persistence.store import Store
+from backend.app.modules.mail.repository import initialize,save_account,migrate
+from backend.app.modules.mail.schemas import MailAccount,DraftInput
+from backend.app.modules.mail.ingestion import store_message
+from backend.app.modules.mail.retrieval import rebuild_account,search
+from backend.app.modules.mail.assistant import draft,submit_draft
+from backend.app.agent.graph import work_once,approve
+from backend.app.modules.mail.filtering import DEFAULT_RULES
 db=Store(folder/'source'/'zhixing.db');initialize(db)
 aid=save_account(db,MailAccount(name='恢复演练',address='synthetic@qq.com',enabled=True))['id']
 db.insert('setting',{**DEFAULT_RULES,'whitelist_senders':['author@example.com']},id='mail-filter:'+aid)
@@ -28,7 +28,7 @@ d=draft(db,DraftInput(account_id=aid,to=['author@example.com'],subject='实验�
 rid=submit_draft(db,d['id'],1)['run_id'];work_once(db)
 assert db.get(rid)['status']=='waiting_approval'
 index=rebuild_account(db,aid)
-from backend.mail_rag import _close_vector_store
+from backend.app.modules.mail.retrieval import _close_vector_store
 _close_vector_store(db)
 backup=folder/'backup';backup.mkdir()
 for source in db.path.parent.glob('*.db'):

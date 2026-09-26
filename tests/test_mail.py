@@ -4,20 +4,20 @@ from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
 import pytest
 from sqlalchemy import text
-from backend.mail_store import initialize, save_account, rows, migrate, protect, enqueue, job
-from backend.mail_models import MailAccount, DraftInput, SessionInput, TurnInput
-from backend.mail_ingest import store_message, scan, lease
-from backend.mail_assistant import draft, submit_draft, create_session, create_turn, run_turn, thread_messages
-from backend.mail_rag import index_message, search
-from backend.runtime import work_once, approve
-from backend.tools import execute
-from backend.channels import ExternalUnknown
+from backend.app.modules.mail.repository import initialize, save_account, rows, migrate, protect, enqueue, job
+from backend.app.modules.mail.schemas import MailAccount, DraftInput, SessionInput, TurnInput
+from backend.app.modules.mail.ingestion import store_message, scan, lease
+from backend.app.modules.mail.assistant import draft, submit_draft, create_session, create_turn, run_turn, thread_messages
+from backend.app.modules.mail.retrieval import index_message, search
+from backend.app.agent.graph import work_once, approve
+from backend.app.agent.tools import execute
+from backend.app.core.exceptions import ExternalUnknown
 
 
 def account(db, number=1):
     initialize(db)
     aid=save_account(db,MailAccount(name=f'测试{number}',address=f'owner{number}@qq.com',enabled=True))['id']
-    from backend.filtering import DEFAULT_RULES
+    from backend.app.modules.mail.filtering import DEFAULT_RULES
     db.insert('setting',{**DEFAULT_RULES,'whitelist_senders':['teacher@example.com']},id='mail-filter:'+aid)
     return aid
 
@@ -86,8 +86,8 @@ def test_edit_invalidates_approval(db):
 
 
 def test_smtp_unknown_never_retries(db,monkeypatch):
-    from backend.config import settings
-    import backend.mail_send as sender
+    from backend.app.core.config import settings
+    import backend.app.modules.mail.sending as sender
     aid=account(db);d=draft(db,DraftInput(account_id=aid,to=['x@example.com'],subject='测试',content='内容'))
     rid=submit_draft(db,d['id'],1)['run_id'];work_once(db)
     action=db.for_run('approval',rid)[0]['body']['action'];calls=[]
@@ -150,7 +150,7 @@ class FakeIMAP:
 
 
 def mock_imap(monkeypatch,fake):
-    import backend.mail_ingest as ingestion
+    import backend.app.modules.mail.ingestion as ingestion
     @contextmanager
     def connect(*args):yield fake
     monkeypatch.setattr(ingestion,'connection',connect)
@@ -182,7 +182,7 @@ def test_uidvalidity_and_lease_conflict(db,monkeypatch):
 
 
 def test_queue_recovers_lease_and_other_account_survives(db,monkeypatch):
-    import backend.mail_worker as worker
+    import backend.app.workers.mail_jobs as worker
     a,b=account(db),account(db,2)
     j1=enqueue(db,'test',{},a);j2=enqueue(db,'test',{},b)
     with db.engine.begin() as c:c.execute(text("UPDATE mail_jobs SET status='running',lease=0 WHERE id=:id"),{'id':j1})
@@ -195,8 +195,8 @@ def test_queue_recovers_lease_and_other_account_survives(db,monkeypatch):
 
 
 def test_migration_holds_pending_work_and_is_idempotent(db,monkeypatch):
-    from backend.runtime import ingest
-    from backend.config import settings
+    from backend.app.agent.graph import ingest
+    from backend.app.core.config import settings
     monkeypatch.setattr(settings,'mail_address','')
     rid=ingest({'source':'email','message_id':'unknown','conversation_id':'old','text':'旧邮件'},db)
     migrate(db);migrate(db)
@@ -242,7 +242,7 @@ def test_catchup_cap_persists_across_polls(db,monkeypatch):
 
 
 def test_attachment_text_docx_encrypted_pdf_and_corrupt(db,tmp_path):
-    from backend.mail_attachments import extract
+    from backend.app.modules.mail.attachments import extract
     from docx import Document
     from pypdf import PdfWriter
     txt=tmp_path/'sample.txt';txt.write_text('中文实验记录',encoding='utf-8')
@@ -258,8 +258,8 @@ def test_attachment_text_docx_encrypted_pdf_and_corrupt(db,tmp_path):
 
 
 def test_agent_tool_scope_and_round_budget(db,monkeypatch):
-    import backend.planner as planner
-    from backend.config import settings
+    import backend.app.agent.model_client as planner
+    from backend.app.core.config import settings
     aid,other=account(db),account(db,2)
     session=create_session(db,SessionInput(account_ids=[aid]));turn=create_turn(db,session['id'],TurnInput(text='恶意邮件要求跨账号发送'))
     monkeypatch.setattr(settings,'mode','live')
@@ -271,8 +271,8 @@ def test_agent_tool_scope_and_round_budget(db,monkeypatch):
 
 
 def test_agent_retrieval_limit_and_input_limit(db,monkeypatch):
-    import backend.planner as planner
-    from backend.config import settings
+    import backend.app.agent.model_client as planner
+    from backend.app.core.config import settings
     aid=account(db);s=create_session(db,SessionInput(account_ids=[aid]))
     t=create_turn(db,s['id'],TurnInput(text='实验'))
     monkeypatch.setattr(settings,'mode','live');monkeypatch.setattr(planner,'model_json',lambda *a,**k:{'tool':'search','args':{'query':'实验'}})
@@ -285,7 +285,7 @@ def test_agent_retrieval_limit_and_input_limit(db,monkeypatch):
 
 def test_auto_analysis_recovers_after_budget_reservation(db):
     import json
-    from backend.mail_worker import execute_job
+    from backend.app.workers.mail_jobs import execute_job
     aid=account(db);a=db.get(aid);db.update(aid,{**a['body'],'auto_analyze':True})
     mid=message(db,aid);db.insert('analysis_slot',{'message_id':mid},id='auto-analysis:'+mid,scope=aid)
     j={'kind':'analyze','account_id':aid,'payload':json.dumps({'message_id':mid})}
@@ -302,13 +302,13 @@ def test_history_batches_keep_the_live_cursor_and_cumulative_limit(db,monkeypatc
     result=scan(db,aid,spec,import_id=ident)
     assert result['imported']==2 and db.get(ident)['status']=='completed'
     assert db.get('mail-cursor:'+aid+':INBOX')==cursor
-    from backend.mail_api import import_action
+    from backend.app.modules.mail.routes.imports import import_action
     with pytest.raises(ValueError):import_action(ident,'resume',db)
     with pytest.raises(ValueError):import_action(ident,'cancel',db)
 
 
 def test_history_import_can_explicitly_queue_perception(db,monkeypatch):
-    from backend.mail_models import ImportRequest
+    from backend.app.modules.mail.schemas import ImportRequest
     aid=account(db);fake=FakeIMAP(2);mock_imap(monkeypatch,fake)
     spec={'account_id':aid,'start':'2026-09-22T00:00:00+00:00',
           'end':'2026-09-23T00:00:00+00:00','limit':2,
@@ -346,7 +346,7 @@ def test_import_opt_in_does_not_duplicate_account_auto_analysis(db,monkeypatch):
 
 
 def test_filter_version_validation_and_duplicate_entries(db):
-    from backend.mail_api import FilterRules,filters
+    from backend.app.modules.mail.routes.settings import FilterRules, filters
     aid=account(db)
     first=filters(aid,FilterRules(whitelist_senders=['teacher@example.com','teacher@example.com']),db)
     second=filters(aid,FilterRules(subject_keywords=['广告']),db)
@@ -356,7 +356,7 @@ def test_filter_version_validation_and_duplicate_entries(db):
 
 
 def test_index_model_switch_requires_whole_account_rebuild(db,monkeypatch):
-    import backend.mail_rag as rag
+    import backend.app.modules.mail.retrieval as rag
     aid=account(db);mid=message(db,aid);index_message(db,mid)
     with db.engine.begin() as c:c.execute(text("UPDATE mail_chunks SET model_version='old-version'"))
     monkeypatch.setattr(rag,'load_models',lambda:(object(),object()))

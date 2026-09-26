@@ -6,9 +6,9 @@
 
 ## 实现链路
 
-[`MailboxPage.tsx`](../../frontend/src/mail/MailboxPage.tsx) 复用阅读组件，根据页面状态查询 `GET /mail/messages?status=filtered`。IMAP 收取时先由 [`filtering.py`](../../backend/filtering.py) 和 [`mail_ingest.py`](../../backend/mail_ingest.py) 应用账号规则，白名单优先，记录过滤原因；默认过滤邮件不进入 Agent 上下文和知识检索。AI 感知的高垃圾评分只有在较高自评置信度、没有白名单保护，也没有明确待办、日程或回复需求等保护信号时，才会把当前本地邮件转为 `filtered`；分数不是校准概率。
+[`MailboxPage.tsx`](../../frontend/src/features/inbox/MailboxPage.tsx) 复用阅读组件，根据页面状态查询 `GET /mail/messages?status=filtered`。IMAP 收取时先由 [`filtering.py`](../../backend/app/modules/mail/filtering.py) 和 [`ingestion.py`](../../backend/app/modules/mail/ingestion.py) 应用账号规则，白名单优先，记录过滤原因；默认过滤邮件不进入 Agent 上下文和知识检索。AI 感知的高垃圾评分只有在较高自评置信度、没有白名单保护，也没有明确待办、日程或回复需求等保护信号时，才会把当前本地邮件转为 `filtered`；分数不是校准概率。
 
-恢复走 `POST /mail/messages/{id}/state`，纠偏走 `POST /mail/messages/{id}/perception/feedback`。恢复后重新排队建索引；纠偏还会产生**待确认**的偏好记忆，不会直接污染后续模型上下文。被过滤状态会使检索和 Agent 证据过滤失效。相关实现见 [`mail_perception.py`](../../backend/mail_perception.py) 与 [`mail_rag.py`](../../backend/mail_rag.py)；规则回归见 [`tests/test_filtering.py`](../../tests/test_filtering.py)（若定位测试时以 `tests/` 中实际文件为准）。
+恢复走 `POST /mail/messages/{id}/state`，纠偏走 `POST /mail/messages/{id}/perception/feedback`。恢复后重新排队建索引；纠偏还会产生**待确认**的偏好记忆，不会直接污染后续模型上下文。被过滤状态会使检索和 Agent 证据过滤失效。相关实现见 [`perception.py`](../../backend/app/modules/mail/perception.py) 与 [`retrieval.py`](../../backend/app/modules/mail/retrieval.py)；规则回归见 [`tests/test_filtering.py`](../../tests/test_filtering.py)（若定位测试时以 `tests/` 中实际文件为准）。
 
 ## 调试提示
 
