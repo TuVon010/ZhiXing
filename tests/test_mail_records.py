@@ -58,7 +58,8 @@ def test_mail_trash_restore_and_account_isolation(db):
     assert mid not in [r['id'] for r in messages(aid, 'inbox', 50, 0, db)['items']]
     assert list_records('mail_message', aid, True, 30, 0, db)['total'] == 1
     assert restore_record(mid, db)['status'] == original
-    assert mid in [r['id'] for r in messages(aid, 'inbox', 50, 0, db)['items']]
+    restored_box = 'inbox' if original == 'active' else 'filterbox'
+    assert mid in [r['id'] for r in messages(aid, restored_box, 50, 0, db)['items']]
 
 
 def test_notification_and_draft_can_be_recovered_but_sent_draft_cannot_be_trashed(db):

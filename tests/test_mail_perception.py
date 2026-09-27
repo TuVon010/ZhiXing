@@ -187,10 +187,31 @@ class TestFeedback:
         perceive(db, mid)
         before = len(rows(db, 'memory', [aid]))
         apply_feedback(db, PerceptionFeedback(
-            message_id=mid, category='work', note='这封邮件其实是工作相关'
+            message_id=mid, category='work', note='这封邮件其实是工作相关',
+            remember=True,
         ))
         after = len(rows(db, 'memory', [aid]))
         assert after > before
+
+    def test_feedback_does_not_learn_without_explicit_choice(self, db):
+        aid = account(db)
+        mid = make_message(db, aid, subject='限时优惠', body='促销')
+        perceive(db, mid)
+        before = len(rows(db, 'memory', [aid]))
+        apply_feedback(db, PerceptionFeedback(message_id=mid, category='work'))
+        assert len(rows(db, 'memory', [aid])) == before
+
+    def test_feedback_override_survives_reanalysis(self, db):
+        aid = account(db)
+        mid = make_message(db, aid, subject='系统通知：账单已生成', body='您的本月账单已生成')
+        perceive(db, mid)
+        apply_feedback(db, PerceptionFeedback(message_id=mid, category='work', priority='high'))
+        result = perceive(db, mid)
+        stored = db.get(mid)['body']
+        assert result['category'] == 'work'
+        assert result['priority'] == 'high'
+        assert stored['perception_model']['category'] == 'notification'
+        assert stored['perception_overrides'] == {'category': 'work', 'priority': 'high'}
 
     def test_feedback_priority(self, db):
         aid = account(db)

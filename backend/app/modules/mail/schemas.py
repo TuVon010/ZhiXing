@@ -243,7 +243,7 @@ class PerceptionFeedback(BaseModel):
     用户对感知结果的纠偏反馈。
 
     用户可以纠正分类、优先级、垃圾评分等。
-    反馈会写入记忆层，下次感知时参考。
+    纠正默认只覆盖当前邮件；只有用户明确选择时才生成记忆候选。
     """
     model_config = ConfigDict(extra='forbid')
 
@@ -258,3 +258,5 @@ class PerceptionFeedback(BaseModel):
     needs_reply: bool | None = None
     # 用户备注（可选，用于学习偏好）
     note: str = Field(default='', max_length=500)
+    # 是否把本次纠正提炼成待确认的长期偏好
+    remember: bool = False

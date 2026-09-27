@@ -1,0 +1,41 @@
+import { test, expect } from '@playwright/test';
+
+test('邮件可在收件箱、归档箱和回收站之间恢复', async ({ page }, info) => {
+  test.setTimeout(60000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByText('离线演示模式', { exact: true })).toBeVisible();
+  const seeded = await page.evaluate(async () => {
+    const response = await fetch('/api/mail/test-scenarios', { method: 'POST', headers: { 'X-ZhiXing-Local': '1', 'Content-Type': 'application/json' }, body: '{}' });
+    return { ok: response.ok, text: await response.text() };
+  });
+  expect(seeded.ok, seeded.text).toBeTruthy();
+  await page.reload();
+  const toggle = page.getByLabel('显示测试数据');
+  if (!(await toggle.isChecked())) await toggle.check();
+  await page.getByLabel('当前邮箱').selectOption('mail-agent-scenarios-v1');
+  await page.locator('nav').getByRole('button', { name: '收件箱', exact: true }).click();
+  const row = page.locator('.mail-row').first();
+  await expect(row).toBeVisible();
+  const subject = (await row.locator('strong').innerText()).trim();
+  await row.click();
+  await page.locator('.mail-more-actions summary').click();
+  await page.locator('.mail-more-actions').getByRole('button', { name: '归档', exact: true }).click();
+  await page.locator('nav').getByRole('button', { name: '归档箱', exact: true }).click();
+  const archived = page.locator('.mail-row').filter({ hasText: subject });
+  await expect(archived).toBeVisible();
+  await archived.click();
+  await page.getByRole('button', { name: '恢复到收件箱', exact: true }).click();
+  await page.locator('nav').getByRole('button', { name: '收件箱', exact: true }).click();
+  await page.locator('.mail-row').filter({ hasText: subject }).click();
+  await page.locator('.mail-more-actions summary').click();
+  await page.locator('.mail-more-actions').getByRole('button', { name: '移入回收站', exact: true }).click();
+  await page.locator('nav').getByRole('button', { name: '回收站', exact: true }).click();
+  const trashed = page.locator('.mail-row').filter({ hasText: subject });
+  await expect(trashed).toBeVisible();
+  await trashed.click();
+  await page.getByRole('button', { name: '恢复邮件', exact: true }).click();
+  await page.screenshot({ path: info.outputPath('mailbox-state-flow.png'), fullPage: true });
+  expect(errors).toEqual([]);
+});

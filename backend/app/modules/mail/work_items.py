@@ -124,6 +124,21 @@ def ensure_reply_followup(db, account_id, message_id, result):
     return db.get(ident)
 
 
+def reconcile_reply_followup(db, account_id, message_id, result):
+    """Keep the derived reply follow-up aligned with the effective perception."""
+    if result.get('needs_reply') and result.get('spam_score', 1) < 0.5:
+        return ensure_reply_followup(db, account_id, message_id, result)
+    ident = 'mail-followup:' + message_id
+    try:
+        row = require(db, ident, 'mail_followup', ['web:mail:' + account_id])
+    except KeyError:
+        return None
+    if row['status'] in {'active', 'waiting'}:
+        db.update(ident, {**row['body'], 'resolved_at': now(),
+                         'resolution': 'user_perception_correction'}, 'resolved')
+    return db.get(ident)
+
+
 def mark_replied(db, message_id, draft_id):
     if not message_id:
         return

@@ -1,6 +1,6 @@
 """Application services for inbox queries and local message state changes."""
 
-from backend.app.modules.mail.repositories.messages import list_inbox, move_chunks_to_thread
+from backend.app.modules.mail.repositories.messages import list_inbox, list_mailbox, move_chunks_to_thread
 from backend.app.modules.mail.repository import enqueue, require, rows
 from backend.app.persistence.store import now
 
@@ -35,6 +35,16 @@ def list_messages(
             view=view,
             category=category,
             sort=sort,
+            limit=limit,
+            offset=offset,
+        )
+    elif status in {"archived", "trashed", "filtered", "review", "filterbox"}:
+        statuses = ("filtered", "review") if status == "filterbox" else (status,)
+        items = list_mailbox(
+            db,
+            statuses=statuses,
+            account_id=account_id,
+            include_test=include_test,
             limit=limit,
             offset=offset,
         )

@@ -5,7 +5,7 @@
 | 分组 | 页面文档 | 核心对象 |
 | --- | --- | --- |
 | 首页 | [今日工作台](00-home.md) | 今日读模型、Agent 快捷问答、守护状态 |
-| 邮件 | [收件箱](01-inbox.md) · [回复草稿](02-drafts.md) · [过滤箱](03-filter-box.md) | `mail_message`、`mail_draft`、过滤状态 |
+| 邮件 | [收件箱](01-inbox.md) · [回复草稿](02-drafts.md) · [垃圾与过滤](03-filter-box.md) · [归档与回收站](03-mailboxes.md) | `mail_message`、`mail_draft`、邮件状态 |
 | 工作 | [待办与跟进](04-work-items.md) · [Trace 与运行](06-activity.md) · [通知与提醒](07-notifications.md) · [日程](08-calendar.md) | Todo、跟进、Run、Reminder |
 | 工作 | [邮件 Agent](09-assistant.md) | 会话、工具步骤、检索证据 |
 | 管理 | [收取与导入](11-imports.md) · [邮箱账号](12-accounts.md) · [记忆](13-memory.md) · [设置与计价](14-settings-pricing.md) · [记录管理](15-records.md) | 账号、游标、批次、记忆、计价、回收站 |

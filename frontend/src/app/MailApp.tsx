@@ -56,7 +56,9 @@ export function MailApp({ api }: { api: Api }) {
     ["calendar", "日程"],
     ["assistant", "邮件 Agent"],
     ["drafts", "回复与草稿"],
-    ["filter", "过滤箱"],
+    ["archive", "归档箱"],
+    ["filter", "垃圾与过滤"],
+    ["trash", "回收站"],
     ["imports", "收取与导入"],
     ["accounts", "邮箱账号"],
     ["memory", "记忆"],
@@ -76,7 +78,7 @@ export function MailApp({ api }: { api: Api }) {
           <p className="mail-subtitle">从邮件中，找到下一步。</p>
           <nav>
             {[
-              ["邮件", ["home", "inbox", "drafts", "filter"]],
+              ["邮件", ["home", "inbox", "drafts", "archive", "filter", "trash"]],
               [
                 "工作",
                 [

@@ -61,12 +61,12 @@ def test_feedback_http_contract_and_confirmed_memory(db, monkeypatch):
     with TestClient(main.app) as client:
         assert client.get('/api/session').status_code == 200
         path = f'/api/mail/messages/{mid}/perception/feedback'
-        response = client.post(path, headers={'X-ZhiXing-Local': '1'}, json={'category': 'personal'})
+        response = client.post(path, headers={'X-ZhiXing-Local': '1'}, json={'category': 'personal', 'remember': True})
         assert response.status_code == 200
         assert response.json()['category'] == 'personal'
         memories = db.list('memory', scope=aid)
         assert len(memories) == 1 and memories[0]['status'] == 'candidate'
-        assert client.post(path, headers={'X-ZhiXing-Local': '1'}, json={'category': 'personal'}).status_code == 200
+        assert client.post(path, headers={'X-ZhiXing-Local': '1'}, json={'category': 'personal', 'remember': True}).status_code == 200
         assert len(db.list('memory', scope=aid)) == 1
         assert client.post(path, headers={'X-ZhiXing-Local': '1'}, json={'spam_score': 0.9}).status_code == 200
         assert db.get(mid)['status'] == 'filtered'

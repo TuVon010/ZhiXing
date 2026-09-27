@@ -95,8 +95,14 @@ export function useMailWorkspace(api: Api) {
   async function refresh(target = page) {
     if (target === "home")
       setHome(await api(`mail/home?include_test=${showTest}${account ? "&account_id=" + encodeURIComponent(account) : ""}`));
-    if (["inbox", "filter"].includes(target)) {
-      const suffix = target === "filter" ? "&status=filtered" : "&status=inbox";
+    if (["inbox", "archive", "filter", "trash"].includes(target)) {
+      const mailboxStatus: Record<string, string> = {
+        inbox: "inbox",
+        archive: "archived",
+        filter: "filterbox",
+        trash: "trashed",
+      };
+      const suffix = "&status=" + mailboxStatus[target];
       setList(
         (
           await api(

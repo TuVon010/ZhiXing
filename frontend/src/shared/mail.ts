@@ -13,6 +13,7 @@ export const label: Record<string, string> = {
   candidate: "待确认",
   dismissed: "已忽略",
   archived: "本地归档",
+  trashed: "回收站",
   legacy: "历史资料",
   draft: "草稿",
   submitted: "发送处理中",

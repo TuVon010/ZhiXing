@@ -18,7 +18,9 @@ def list_inbox(
     offset: int,
 ) -> list[dict]:
     """Query inbox summaries with server-enforced scope, filters and ordering."""
-    query = "SELECT * FROM records WHERE kind='mail_message' AND status IN ('active','review','archived')"
+    # A mailbox is a state projection.  Keeping this predicate strict prevents
+    # archived/review messages from silently leaking back into the inbox.
+    query = "SELECT * FROM records WHERE kind='mail_message' AND status='active'"
     params: dict = {"limit": limit, "offset": offset}
     if account_id:
         query += " AND scope=:account_id"
@@ -62,6 +64,32 @@ def list_inbox(
         found = connection.execute(
             text(f"{query} ORDER BY {order} LIMIT :limit OFFSET :offset"), params
         ).mappings().all()
+    return [{**dict(row), "body": json.loads(row["body"])} for row in found]
+
+
+def list_mailbox(
+    db,
+    *,
+    statuses: tuple[str, ...],
+    account_id: str | None,
+    include_test: bool,
+    limit: int,
+    offset: int,
+) -> list[dict]:
+    """List one logical mailbox while preserving account and test-data scope."""
+    placeholders = ",".join(f":status_{index}" for index in range(len(statuses)))
+    query = f"SELECT * FROM records WHERE kind='mail_message' AND status IN ({placeholders})"
+    params: dict = {f"status_{index}": value for index, value in enumerate(statuses)}
+    params.update({"limit": limit, "offset": offset})
+    if account_id:
+        query += " AND scope=:account_id"
+        params["account_id"] = account_id
+    elif not include_test:
+        query += " AND scope IN (SELECT id FROM records WHERE kind='mail_account' AND coalesce(json_extract(body,'$.test_account'),0)=0)"
+    received = "coalesce(json_extract(body,'$.received_at'),created_at)"
+    query += f" ORDER BY {received} DESC,id LIMIT :limit OFFSET :offset"
+    with db.engine.connect() as connection:
+        found = connection.execute(text(query), params).mappings().all()
     return [{**dict(row), "body": json.loads(row["body"])} for row in found]
 
 

@@ -158,20 +158,19 @@ def perceive(db, message_id: str) -> dict:
     result.model_version = settings.model_name or ''
     result.perceived_at = now()
 
-    # 存储结果
-    _store_result(db, message_id, result.model_dump())
+    # 保存模型原始判断，再叠加已经确认的人工纠正。重新分析不会覆盖用户选择。
+    serial = _store_result(db, message_id, result.model_dump(mode='json'))
 
     # 模型只提案；可核对的本地动作由确定性策略自动保存。
-    serial = result.model_dump(mode='json')
-    if result.todos:
+    if serial.get('todos'):
         _create_todo_candidates(db, account_id, message_id, serial['todos'], serial, body)
 
     # 自动创建日程候选（带冲突检测和幂等，不自动发布）
-    if result.calendar_events:
+    if serial.get('calendar_events'):
         _create_calendar_candidates(db, account_id, message_id, serial['calendar_events'], serial, body)
 
-    from backend.app.modules.mail.work_items import ensure_reply_followup
-    ensure_reply_followup(db, account_id, message_id, serial)
+    from backend.app.modules.mail.work_items import reconcile_reply_followup
+    reconcile_reply_followup(db, account_id, message_id, serial)
     if serial.get('priority')=='high' or serial.get('needs_reply'):
         notification_id='mail-attention:'+message_id
         try:require(db,notification_id,'notification')
@@ -180,7 +179,7 @@ def perceive(db, message_id: str) -> dict:
                       'content':serial.get('summary') or body.get('subject',''),'message_id':message_id},
                       id=notification_id,scope='web:mail:'+account_id,status='pending')
 
-    return result.model_dump()
+    return serial
 
 
 def _demo_perceive(db, message_id: str, body: dict) -> dict:
@@ -264,26 +263,29 @@ def _demo_perceive(db, message_id: str, body: dict) -> dict:
         perceived_at=now(),
     )
 
-    _store_result(db, message_id, result.model_dump())
-    serial = result.model_dump(mode='json')
-    if result.todos:
+    serial = _store_result(db, message_id, result.model_dump(mode='json'))
+    if serial.get('todos'):
         _create_todo_candidates(db, body['account_id'], message_id, serial['todos'], serial, body)
-    from backend.app.modules.mail.work_items import ensure_reply_followup
-    ensure_reply_followup(db, body['account_id'], message_id, serial)
+    from backend.app.modules.mail.work_items import reconcile_reply_followup
+    reconcile_reply_followup(db, body['account_id'], message_id, serial)
     if serial.get('priority')=='high' or serial.get('needs_reply'):
         notification_id='mail-attention:'+message_id
         try:require(db,notification_id,'notification')
         except KeyError:
             db.insert('notification',{'title':'重要邮件','content':serial.get('summary') or body.get('subject',''),
                       'message_id':message_id},id=notification_id,scope='web:mail:'+body['account_id'],status='pending')
-    return result.model_dump()
+    return serial
 
 
-def _store_result(db, message_id: str, result: dict):
-    """将感知结果存储到邮件记录的 body.perception 字段中。"""
+def _store_result(db, message_id: str, result: dict) -> dict:
+    """Store the model result and return the effective result after user overrides."""
     message = require(db, message_id, 'mail_message')
-    body = message['body']
-    body['perception'] = result
+    body = dict(message['body'])
+    overrides = dict(body.get('perception_overrides') or {})
+    effective = {**result, **overrides}
+    body['perception_model'] = result
+    body['perception_overrides'] = overrides
+    body['perception'] = effective
     # 白名单及明确待办/日程优先保护；模型自报分数不是校准概率。
     from backend.app.modules.mail.filtering import _match_sender, DEFAULT_RULES
     try:
@@ -291,14 +293,15 @@ def _store_result(db, message_id: str, result: dict):
     except KeyError:
         rules = DEFAULT_RULES
     protected = (_match_sender(body.get('sender', ''), rules.get('whitelist_senders', []))
-                 or result.get('needs_reply') or result.get('todos') or result.get('calendar_events'))
-    if (result.get('spam_score', 0) >= 0.9 and result.get('confidence', 0) >= 0.85
+                 or effective.get('needs_reply') or effective.get('todos') or effective.get('calendar_events'))
+    if (effective.get('spam_score', 0) >= 0.9 and effective.get('confidence', 0) >= 0.85
             and not protected and message['status'] == 'active'):
         body['filter'] = {**body.get('filter', {}), 'reason': 'AI 高分疑似垃圾',
-                          'ai_spam_score': result['spam_score'], 'ai_confidence': result['confidence']}
+                          'ai_spam_score': effective['spam_score'], 'ai_confidence': effective['confidence']}
         db.update(message_id, body, 'filtered')
     else:
         db.update(message_id, body, message['status'])
+    return effective
 
 
 def _create_todo_candidates(db, account_id: str, message_id: str, todos: list,
@@ -373,49 +376,58 @@ def apply_feedback(db, feedback: PerceptionFeedback) -> dict:
     """
     处理用户对感知结果的纠偏。
 
-    1. 更新邮件记录中的感知结果
-    2. 将纠偏写入记忆（作为用户偏好候选）
+    1. 保存独立于模型结果的人工覆盖值
+    2. 用户明确选择时，将纠偏写入记忆候选
     3. 返回更新后的感知结果
     """
     initialize(db)
     message = require(db, feedback.message_id, 'mail_message')
-    body = message['body']
-    perception = body.get('perception', {})
-    previous = perception.copy()
+    body = dict(message['body'])
+    previous = dict(body.get('perception') or {})
+    model_result = dict(body.get('perception_model') or previous)
+    overrides = dict(body.get('perception_overrides') or {})
 
     # 应用纠偏
     if feedback.category is not None:
-        perception['category'] = feedback.category
+        overrides['category'] = feedback.category
     if feedback.spam_score is not None:
-        perception['spam_score'] = feedback.spam_score
+        overrides['spam_score'] = feedback.spam_score
     if feedback.priority is not None:
-        perception['priority'] = feedback.priority
+        overrides['priority'] = feedback.priority
     if feedback.needs_reply is not None:
-        perception['needs_reply'] = feedback.needs_reply
+        overrides['needs_reply'] = feedback.needs_reply
 
+    perception = {**model_result, **overrides}
     perception['user_feedback'] = {
         'at': now(),
         'note': feedback.note,
+        'remember_requested': feedback.remember,
     }
+    body['perception_model'] = model_result
+    body['perception_overrides'] = overrides
     body['perception'] = perception
 
     status = message['status']
     if feedback.spam_score is not None:
-        if feedback.spam_score < 0.5 and status == 'filtered':
+        if feedback.spam_score < 0.5 and status in {'filtered', 'review'}:
             status = 'active'
         elif feedback.spam_score >= 0.8 and status in {'active', 'review'}:
             status = 'filtered'
             body['filter'] = {**body.get('filter', {}), 'reason': '用户手动标记垃圾'}
     db.update(feedback.message_id, body, status)
-    if status == 'active' and message['status'] == 'filtered':
+    if status == 'active' and message['status'] in {'filtered', 'review'}:
         from backend.app.modules.mail.repository import enqueue
         enqueue(db, 'index', {'message_id': feedback.message_id}, message['scope'],
                 priority=30, dedupe='feedback-index:' + feedback.message_id)
 
-    # 将纠偏写入记忆候选
-    _learn_from_feedback(db, message['scope'], feedback, previous, body)
+    from backend.app.modules.mail.work_items import reconcile_reply_followup
+    reconcile_reply_followup(db, message['scope'], feedback.message_id, perception)
+
+    if feedback.remember:
+        _learn_from_feedback(db, message['scope'], feedback, previous, body)
     db.audit('user', 'MAIL_PERCEPTION_FEEDBACK', message_id=feedback.message_id,
-             old=previous, new=perception, status=status)
+             old=previous, new=perception, overrides=overrides,
+             remember=feedback.remember, status=status)
 
     return perception
 

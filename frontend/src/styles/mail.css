@@ -188,6 +188,59 @@
 .mail-main .actions {
   flex-wrap: wrap;
 }
+.mail-detail-actions { margin: 14px 0 18px; }
+.mail-state-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid #d8e4d4;
+  border-radius: 10px;
+  background: #f1f6ee;
+}
+.mail-state-banner.warning { background: #fff8e8; border-color: #ead8aa; }
+.mail-state-banner.danger { background: #fdf0eb; border-color: #ebcfc2; }
+.mail-state-banner strong,
+.mail-state-banner small { display: block; }
+.mail-state-banner small { margin-top: 4px; color: #76806f; }
+.mail-state-banner .actions { margin: 0; }
+.mail-more-actions { position: relative; margin: 0 !important; }
+.mail-more-actions > summary {
+  list-style: none;
+  border: 1px solid #d8dfd4;
+  border-radius: 7px;
+  padding: 9px 14px;
+  background: white;
+  color: #314334;
+  font-size: 13px;
+}
+.mail-more-actions > summary::-webkit-details-marker { display: none; }
+.mail-more-actions > div {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 150px;
+  padding: 7px;
+  border: 1px solid #dfe5dc;
+  border-radius: 9px;
+  background: white;
+  box-shadow: 0 10px 28px rgba(45,65,48,.12);
+}
+.mail-more-actions > div button { width: 100%; text-align: left; margin: 2px 0; }
+.mail-agent-empty,
+.mail-thread-insight {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid #dce6d8;
+  border-radius: 10px;
+  background: #f6f9f4;
+}
+.mail-agent-empty p { margin: 6px 0 12px; color: #758071; }
+.mail-thread-insight { background: #eef5e9; }
+.mail-thread-insight .mail-sectionbar { margin-bottom: 8px; }
 .mail-welcome {
   background: #eaf1e4 !important;
 }
@@ -680,4 +733,18 @@
 }
 .mail-perception-feedback button:hover {
   background: #f1f5f9;
+}
+.mail-correction { margin-top: 12px; }
+.mail-correction-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 12px;
+}
+.mail-correction-grid label { color: #61705f; }
+.mail-correction-grid select { display: block; width: 100%; margin-top: 5px; }
+.mail-memory-choice { display: flex; align-items: center; margin: 14px 0 6px; }
+.mail-correction > p { color: #7c8878; font-size: 12px; }
+@media (max-width: 760px) {
+  .mail-state-banner { align-items: flex-start; flex-direction: column; }
+  .mail-correction-grid { grid-template-columns: 1fr; }
 }
