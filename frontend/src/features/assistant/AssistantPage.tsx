@@ -12,13 +12,16 @@ export function AssistantPage() {
     session, setSession, turns, setTurns, setTrace, sessions, act, openMail, ask, api,
   } = useWorkspace();
   const [mode, setMode] = useState<"answer" | "search_only">("answer");
+  const [editingSession, setEditingSession] = useState("");
+  const [titleDraft, setTitleDraft] = useState("");
   const sessionLoad = useRef(0);
   const scopeNames = (ids: string[]) => ids.map((id) =>
     accounts.find((account: any) => account.id === id)?.body.name || id.slice(0, 8)).join("、");
   const evidenceFor = (turn: any) => {
     const cited = new Set(turn.body.citations || []);
     const evidence = turn.body.evidence || [];
-    return turn.body.mode === "search_only" ? evidence : evidence.filter((item: any) => cited.has(item.id));
+    return turn.body.mode === "search_only" || turn.status === "budget_exceeded"
+      ? evidence : evidence.filter((item: any) => cited.has(item.id));
   };
   const examples = useMemo(() => [
     "最近有哪些需要我回复的邮件？",
@@ -28,7 +31,8 @@ export function AssistantPage() {
 
   const newConversation = () => {
     sessionLoad.current++;
-    setSession(""); setTurns([]); setTrace(null); setOpened(null);
+    setSession(""); setTurns([]); setTrace(null); setOpened(null); setQuery("");
+    setEditingSession("");
   };
   const loadSession = (id: string) => {
     const request = ++sessionLoad.current;
@@ -44,6 +48,16 @@ export function AssistantPage() {
     setPage("inbox"); void openMail(messageId);
   };
   const submit = () => void ask(mode);
+  const renameSession = (id: string) => {
+    const title = titleDraft.trim();
+    if (!title) return;
+    void act(() => api(`assistant/sessions/${id}/rename`, { title }), "会话已重命名", "assistant")
+      .then((result) => { if (result) setEditingSession(""); });
+  };
+  const deleteSession = (id: string) => {
+    void act(() => api(`mail/records/${id}/trash`, {}), "会话已移入回收站，可在记录管理恢复", "assistant")
+      .then((result) => { if (result && session === id) newConversation(); });
+  };
 
   if (page !== "assistant") return null;
   return <section className="assistant-workspace">
@@ -51,13 +65,29 @@ export function AssistantPage() {
       <button className="primary assistant-new" onClick={newConversation}>＋ 新建会话</button>
       <small className="assistant-list-title">历史会话</small>
       {!sessions.length && <div className="empty">还没有问答记录。</div>}
-      {sessions.map((item: any) => <button key={item.id}
-        className={`assistant-session ${session === item.id ? "selected" : ""}`}
-        onClick={() => loadSession(item.id)}>
-        <strong>{item.body.title || "新会话"}</strong>
-        <span>{scopeNames(item.body.account_ids || [])}</span>
-        <small>{time(item.body.last_turn_at || item.updated_at)}</small>
-      </button>)}
+      {sessions.map((item: any) => <div key={item.id}
+        className={`assistant-session ${session === item.id ? "selected" : ""}`}>
+        {editingSession === item.id ? <form className="assistant-session-edit" onSubmit={(event) => {
+          event.preventDefault(); renameSession(item.id);
+        }}>
+          <input aria-label="会话名称" autoFocus maxLength={80} value={titleDraft}
+            onChange={(event) => setTitleDraft(event.target.value)} />
+          <div><button type="submit" disabled={busy || !titleDraft.trim()}>保存</button>
+            <button type="button" onClick={() => setEditingSession("")}>取消</button></div>
+        </form> : <>
+          <button className="assistant-session-open" onClick={() => loadSession(item.id)}>
+            <strong>{item.body.title || "新会话"}</strong>
+            <span>{scopeNames(item.body.account_ids || [])}</span>
+            <small>{time(item.body.last_turn_at || item.updated_at)}</small>
+          </button>
+          <div className="assistant-session-actions">
+            <button aria-label={`重命名会话：${item.body.title || "新会话"}`}
+              onClick={() => { setEditingSession(item.id); setTitleDraft(item.body.title || ""); }}>重命名</button>
+            <button aria-label={`删除会话：${item.body.title || "新会话"}`} disabled={busy}
+              onClick={() => deleteSession(item.id)}>删除</button>
+          </div>
+        </>}
+      </div>)}
     </aside>
 
     <div className="assistant-chat">
@@ -97,7 +127,7 @@ export function AssistantPage() {
                 <p className="mail-answer">{turn.body.answer || "正在检索相关邮件并整理答案…"}</p>
                 {turn.body.error && <pre>{pretty(turn.body.error)}</pre>}
                 {evidence.length > 0 && <div className="assistant-evidence-list">
-                  <strong>回答依据 · {evidence.length} 条</strong>
+                  <strong>{turn.status === "budget_exceeded" ? "已找到的邮件线索" : "回答依据"} · {evidence.length} 条</strong>
                   {evidence.map((item: any) => <button key={item.id} className="assistant-evidence"
                     onClick={() => showSource(item.message_id)}>
                     <span><b>{item.subject || "原邮件"}</b><small>{item.sender || item.location} · {time(item.received_at)}</small></span>

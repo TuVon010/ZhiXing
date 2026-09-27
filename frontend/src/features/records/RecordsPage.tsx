@@ -5,8 +5,8 @@ import { label } from "../../shared/mail";
 const kinds = [
   ["mail_message", "邮件"], ["mail_draft", "草稿"], ["todo", "待办"],
   ["calendar", "日程"], ["reminder", "提醒"], ["notification", "通知"],
-  ["memory", "记忆"], ["assistant_session", "Agent 会话"],
-  ["run", "动作运行"], ["assistant_turn", "Agent 轮次"],
+  ["memory", "记忆"], ["assistant_session", "检索会话"],
+  ["run", "动作运行"], ["assistant_turn", "问答轮次"],
   ["legacy_message", "旧项目来源记录"],
 ] as const;
 type RecordSummary = {
@@ -31,7 +31,7 @@ export function RecordsPage() {
     if (page !== "records") return;
     let active = true;
     const query = new URLSearchParams({ kind, limit: "30", offset: String(offset) });
-    if (account && kind !== "legacy_message") query.set("account_id", account);
+    if (account && !["legacy_message", "assistant_session", "assistant_turn", "run"].includes(kind)) query.set("account_id", account);
     if (trashed && kind !== "legacy_message") query.set("trashed", "true");
     void Promise.all([api("mail/records/overview"), api("mail/records/list?" + query)])
       .then(([summary, list]) => {

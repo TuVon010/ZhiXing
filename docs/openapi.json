@@ -1977,6 +1977,53 @@
         }
       }
     },
+    "/api/assistant/sessions/{ident}/rename": {
+      "post": {
+        "summary": "Rename Session",
+        "operationId": "rename_session_api_assistant_sessions__ident__rename_post",
+        "parameters": [
+          {
+            "name": "ident",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ident"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionTitle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/assistant/sessions/{ident}/turns": {
       "post": {
         "summary": "Turn",
@@ -5453,6 +5500,21 @@
           "account_ids"
         ],
         "title": "SessionInput"
+      },
+      "SessionTitle": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "SessionTitle"
       },
       "ThreadLink": {
         "properties": {

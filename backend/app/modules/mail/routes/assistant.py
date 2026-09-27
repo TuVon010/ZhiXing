@@ -67,6 +67,15 @@ def sessions(db=Depends(database)):
     return assistant_service.list_sessions(db)
 
 
+class SessionTitle(BaseModel):
+    title: str = Field(min_length=1, max_length=80)
+
+
+@router.post("/assistant/sessions/{ident}/rename")
+def rename_session(ident: str, body: SessionTitle, db=Depends(database)):
+    return assistant_service.rename_session(db, ident, body.title)
+
+
 @router.post("/assistant/sessions/{ident}/turns")
 def turn(ident: str, body: TurnInput, db=Depends(database)):
     from backend.app.modules.mail.assistant import create_turn

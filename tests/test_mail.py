@@ -2,6 +2,7 @@
 from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
+import json
 import pytest
 from sqlalchemy import text
 from backend.app.modules.mail.repository import initialize, save_account, rows, migrate, protect, enqueue, job
@@ -11,6 +12,8 @@ from backend.app.modules.mail.assistant import draft, submit_draft, create_sessi
 from backend.app.observability.mail import trace
 from backend.app.modules.mail.retrieval import index_message, search, _select_diverse_results
 from backend.app.modules.mail.services.assistant import get_session
+from backend.app.modules.mail.services.assistant import rename_session, list_sessions
+from backend.app.modules.mail.records import trash_record, restore_record
 from backend.app.agent.graph import work_once, approve
 from backend.app.agent.tools import execute
 from backend.app.core.exceptions import ExternalUnknown
@@ -182,6 +185,61 @@ def test_retrieval_collapses_duplicate_and_overlapping_chunks():
     assert selected==['a','d']
     assert {item['id'] for item in duplicates['a']}=={'b','c'}
     assert stats=={'input':4,'selected':2,'suppressed':2}
+
+
+def test_agent_repairs_invalid_time_and_compacts_followup_context(db,monkeypatch):
+    import backend.app.agent.model_client as planner
+    from backend.app.core.config import settings
+    aid=account(db);mid=message(db,aid,body='请提交实验报告并核对任务。'*500)
+    index_message(db,mid)
+    session=create_session(db,SessionInput(account_ids=[aid]))
+    turn=create_turn(db,session['id'],TurnInput(text='最近导师有什么任务吗'))
+    calls=[]
+    def decide(_db,messages,*args,**kwargs):
+        calls.append(messages)
+        if len(calls)==1:
+            return {'tool':'search','args':{'query':'实验报告','start':'2020-0','sender':'导师'}}
+        return {'tool':'answer','answer':'请核对实验报告任务','citations':[mid+'-chunk-0']}
+    monkeypatch.setattr(settings,'mode','live')
+    monkeypatch.setattr(planner,'model_json',decide)
+    result=run_turn(db,turn['id'])
+    assert db.get(turn['id'])['status']=='completed'
+    assert result['searches']==1 and len(calls)==2
+    assert 'warnings' in result['steps'][0]['result']
+    sent=json.loads(calls[1][1]['content'])
+    assert len(sent['evidence'][0]['text'])<=700
+    assert sent['steps'][0]['result']['matches']>0
+
+
+def test_agent_replays_saved_decision_after_budget_and_shows_partial_evidence(db):
+    from backend.app.modules.mail.assistant import evidence_message
+    aid=account(db);mid=message(db,aid)
+    session=create_session(db,SessionInput(account_ids=[aid]))
+    saved=create_turn(db,session['id'],TurnInput(text='已经决定'))
+    db.update(saved['id'],{**saved['body'],'input_tokens':24000,
+        'pending_decision':{'tool':'answer','answer':'已处理保存的决策','citations':[]}})
+    run_turn(db,saved['id'])
+    assert db.get(saved['id'])['status']=='completed'
+    pending=create_turn(db,session['id'],TurnInput(text='预算中断'))
+    source=evidence_message(db.get(mid))
+    db.update(pending['id'],{**pending['body'],'input_tokens':23999,'evidence':[source]})
+    result=run_turn(db,pending['id'])
+    assert db.get(pending['id'])['status']=='budget_exceeded'
+    assert result['stop_reason']=='input_token_limit'
+    assert result['evidence'][0]['message_id']==mid
+    assert '邮件线索' in result['answer']
+
+
+def test_assistant_session_can_be_renamed_trashed_and_restored(db):
+    aid=account(db);session=create_session(db,SessionInput(account_ids=[aid]))
+    ident=session['id']
+    assert rename_session(db,ident,'  导师任务  ')['body']['title']=='导师任务'
+    assert list_sessions(db)['items'][0]['id']==ident
+    trash_record(ident,db=db)
+    assert not list_sessions(db)['items']
+    with pytest.raises(ValueError):get_session(db,ident)
+    restore_record(ident,db=db)
+    assert get_session(db,ident)['session']['body']['title']=='导师任务'
 
 
 class FakeIMAP:
