@@ -9,7 +9,8 @@ from backend.app.modules.mail.schemas import MailAccount, DraftInput, SessionInp
 from backend.app.modules.mail.ingestion import store_message, scan, lease
 from backend.app.modules.mail.assistant import draft, submit_draft, create_session, create_turn, run_turn, thread_messages, suggest_reply
 from backend.app.observability.mail import trace
-from backend.app.modules.mail.retrieval import index_message, search
+from backend.app.modules.mail.retrieval import index_message, search, _select_diverse_results
+from backend.app.modules.mail.services.assistant import get_session
 from backend.app.agent.graph import work_once, approve
 from backend.app.agent.tools import execute
 from backend.app.core.exceptions import ExternalUnknown
@@ -149,6 +150,38 @@ def test_demo_agent_records_retrieval_and_sources(db):
     assert [s['tool'] for s in result['body']['steps']]==['search','answer']
     assert result['body']['citations'] and db.for_run('audit',t['id'])
     assert (db.path.parent/'memory-snapshots'/t['id']/'USER.md').exists()
+
+
+def test_assistant_session_is_titled_chronological_and_search_is_persistent(db):
+    aid=account(db);mid=message(db,aid);index_message(db,mid)
+    session=create_session(db,SessionInput(account_ids=[aid]))
+    first=create_turn(db,session['id'],TurnInput(text='查找实验报告原文',mode='search_only'))
+    run_turn(db,first['id'])
+    second=create_turn(db,session['id'],TurnInput(text='其中最紧急的是什么'))
+    cited=db.get(first['id'])['body']['citations'][0]
+    followup=db.get(second['id'])['body']
+    db.update(second['id'],{**followup,'pending_decision':{'tool':'answer','answer':'周五前提交实验报告','citations':[cited]}})
+    run_turn(db,second['id'])
+    detail=get_session(db,session['id'])
+    assert detail['session']['body']['title']=='查找实验报告原文'
+    assert [item['id'] for item in detail['turns']]==[first['id'],second['id']]
+    saved=db.get(first['id'])
+    assert saved['status']=='completed' and saved['body']['evidence']
+    assert saved['body']['citations']==[item['id'] for item in saved['body']['evidence']]
+    assert db.get(second['id'])['body']['citations']==[cited]
+
+
+def test_retrieval_collapses_duplicate_and_overlapping_chunks():
+    lookup={
+        'a':{'message_id':'m1','thread_id':'t1','location':'正文 1','content':'请在周五提交实验报告并附上图表','content_hash':'same'},
+        'b':{'message_id':'m2','thread_id':'t2','location':'引用','content':'请在周五提交实验报告并附上图表','content_hash':'same'},
+        'c':{'message_id':'m1','thread_id':'t1','location':'正文 2','content':'请在周五提交实验报告并附上图表。收到后回复。','content_hash':'other'},
+        'd':{'message_id':'m3','thread_id':'t3','location':'正文','content':'下周一参加组会','content_hash':'unique'},
+    }
+    selected,duplicates,stats=_select_diverse_results(['a','b','c','d'],lookup)
+    assert selected==['a','d']
+    assert {item['id'] for item in duplicates['a']}=={'b','c'}
+    assert stats=={'input':4,'selected':2,'suppressed':2}
 
 
 class FakeIMAP:

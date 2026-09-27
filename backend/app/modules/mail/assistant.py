@@ -51,8 +51,12 @@ def create_turn(db,session_id,value:TurnInput,new_id=None):
              'policy':1,'trust':[r['id'] for r in db.list('trust',status='published')],
              'embedding':model_version(),'reranker':model_manifest().get('reranker',{}).get('revision')}
     ident=db.insert('assistant_turn',{'session_id':session_id,'account_ids':accounts,'thread_id':session.get('thread_id'),
-        'text':value.text,'memory_snapshot':snapshot,'versions':version,'steps':[],'input_tokens':0,'searches':0,'evidence':[],
+        'text':value.text,'mode':value.mode,'memory_snapshot':snapshot,'versions':version,'steps':[],'input_tokens':0,'searches':0,'evidence':[],
         'answer':None,'citations':[],'runtime_version':2},status='queued',scope=session_id,id=new_id)
+    if not session.get('title'):
+        session['title'] = value.text.strip().replace('\n', ' ')[:32]
+    session['last_turn_at'] = now()
+    db.update(session_id, session)
     folder=db.path.parent/'memory-snapshots'/ident;folder.mkdir(parents=True)
     (folder/'USER.md').write_text(snapshot['user_md'],encoding='utf-8');(folder/'MEMORY.md').write_text(snapshot['memory_md'],encoding='utf-8')
     enqueue(db,'assistant',{'turn_id':ident},scope=session_id,priority=0,dedupe='turn:'+ident)
@@ -211,7 +215,9 @@ def suggest_reply(db, ident):
 
 def evidence_message(row):
     b=row['body']
-    return {'id':row['id'],'account_id':row['scope'],'message_id':row['id'],'thread_id':b['thread_id'],'text':b.get('subject','')+'\n'+b.get('text','')[:3000],'location':'邮件正文','received_at':b['received_at']}
+    return {'id':row['id'],'account_id':row['scope'],'message_id':row['id'],'thread_id':b['thread_id'],
+            'subject':b.get('subject','无主题'),'sender':b.get('sender_display') or b.get('sender',''),
+            'text':b.get('subject','')+'\n'+b.get('text','')[:3000],'location':'邮件正文','received_at':b['received_at']}
 
 
 def run_turn(db,ident):
@@ -224,8 +230,36 @@ def run_turn(db,ident):
     evidence={e['id']:e for e in b.get('evidence',[])}
     if b.get('thread_id'):
         for mail in thread_messages(db,b['thread_id'],accounts)[-6:]:evidence[mail['id']]=evidence_message(mail)
-    previous=rows(db,'assistant_turn',status='completed',limit=100)
-    history=[{'text':r['body']['text'],'answer':r['body'].get('answer')} for r in previous if r['body']['session_id']==b['session_id']][:4]
+    previous=[r for r in rows(db,'assistant_turn',[b['session_id']],limit=100)
+              if r['id'] != ident
+              and r['status'] in {'completed','clarification'}]
+    recent=list(reversed(previous[:4]))
+    history=[{'text':r['body']['text'],'answer':r['body'].get('answer')} for r in recent]
+    # Follow-up questions can refer to the previous answer's sources. Revalidate
+    # every carried source because filtering or trashing revokes visibility.
+    if recent:
+        prior=recent[-1]['body']
+        cited=set(prior.get('citations') or [])
+        for item in prior.get('evidence',[]):
+            if item.get('id') not in cited:
+                continue
+            try:
+                source=require(db,item['message_id'],'mail_message',accounts)
+            except (KeyError,ValueError):
+                continue
+            if source['status'] in {'active','archived','legacy'}:
+                evidence[item['id']]=item
+    if b.get('mode') == 'search_only':
+        result=search(db,{'account_ids':accounts,'query':b['text']},b['versions']['embedding'])
+        evidence={item['id']:item for item in result['evidence']}
+        step={'round':1,'tool':'search','args':{'query':b['text']},'result':result}
+        b.update(answer=(f"找到 {len(evidence)} 组相关邮件证据，请打开来源核对。" if evidence else "没有找到相关邮件。可以更换关键词或确认邮箱范围。"), citations=list(evidence),
+                 evidence=list(evidence.values()), searches=1,
+                 steps=[{**step,'result':json.dumps(result,ensure_ascii=False,default=str)[:5000]}])
+        db.audit(ident,'MAIL_RETRIEVAL',**result)
+        db.audit(ident,'MAIL_AGENT_STEP',**step)
+        db.update(ident,b,'completed')
+        return b
     for turn in range(len(b['steps']),6):
         if db.get(ident)['status']=='cancelled':return {'cancelled':True}
         evidence={key:e for key,e in evidence.items() if require(db,e['message_id'],'mail_message',accounts)['status'] in {'active','archived','legacy'}}

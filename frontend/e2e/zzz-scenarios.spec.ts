@@ -5,6 +5,7 @@ test('14 封合成邮件贯通账号隔离、感知、跟进和 Trace', async ({
   await page.goto('/');
   await page.locator('nav').getByRole('button', { name: '邮箱账号', exact: true }).click();
   await page.getByRole('button', { name: '创建 Agent 测试邮箱（14 封）' }).click();
+  await expect(page.getByLabel('当前邮箱')).toHaveValue('mail-agent-scenarios-v1');
   const account = await page.request.get('/api/mail/accounts');
   const testAccount = (await account.json()).items.find((item: any) => item.body.test_account);
   expect(testAccount).toBeTruthy();
@@ -19,11 +20,11 @@ test('14 封合成邮件贯通账号隔离、感知、跟进和 Trace', async ({
   await page.locator('nav').getByRole('button', { name: '待办与跟进', exact: true }).click();
   await expect(page.getByRole('tab', { name: /邮件跟进/ })).toBeVisible();
   await page.getByRole('tab', { name: /邮件跟进/ }).click();
-  await expect(page.getByRole('button', { name: '起草回复' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'AI 起草' }).first()).toBeVisible();
   await page.locator('nav').getByRole('button', { name: '收件箱', exact: true }).click();
   await page.locator('.mail-row').first().click();
   await expect(page.getByRole('heading', { name: 'AI 感知结果' })).toBeVisible();
-  await page.getByRole('button', { name: '查看感知 Trace' }).click();
+  await page.getByRole('button', { name: '查看 Trace', exact: true }).click();
   await expect(page.getByRole('heading', { name: '邮件感知 Trace' })).toBeVisible();
   await page.screenshot({ path: info.outputPath('synthetic-agent-flow.png'), fullPage: true });
 });

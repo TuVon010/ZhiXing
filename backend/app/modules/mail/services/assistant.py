@@ -36,9 +36,10 @@ def list_sessions(db) -> dict:
 
 
 def get_session(db, session_id: str) -> dict:
+    turns = rows(db, "assistant_turn", [session_id])
     return {
         "session": require(db, session_id, "assistant_session"),
-        "turns": rows(db, "assistant_turn", [session_id]),
+        "turns": list(reversed(turns)),
     }
 
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Api, Row } from "../../shared/mail";
 export function useMailWorkspace(api: Api) {
   const stored = (key: string, fallback: string) => localStorage.getItem("zhixing." + key) || fallback;
@@ -22,8 +22,7 @@ export function useMailWorkspace(api: Api) {
     [draftForm, setDraftForm] = useState<any>(null),
     [query, setQuery] = useState(""),
     [selected, setSelected] = useState<string[]>(() => { try { return JSON.parse(stored("agentAccounts", "[]")); } catch { return []; } }),
-    [searchResult, setSearchResult] = useState<any>(null),
-    [session, setSession] = useState(""),
+    [session, setSession] = useState(() => stored("assistantSession", "")),
     [turns, setTurns] = useState<Row[]>([]),
     [trace, setTrace] = useState<any>(null),
     [rules, setRules] = useState("");
@@ -36,6 +35,7 @@ export function useMailWorkspace(api: Api) {
   const [ready, setReady] = useState(false),
     [sessions, setSessions] = useState<Row[]>([]);
   const [unread, setUnread] = useState(0);
+  const sessionRef = useRef(session);
   const [showTest, setShowTest] = useState(() => stored("showTest", "false") === "true"),
     [inboxSort, setInboxSort] = useState(() => stored("inboxSort", "smart")),
     [inboxView, setInboxView] = useState(() => stored("inboxView", "all")),
@@ -44,6 +44,7 @@ export function useMailWorkspace(api: Api) {
   useEffect(() => localStorage.setItem("zhixing.page", page), [page]);
   useEffect(() => localStorage.setItem("zhixing.account", account), [account]);
   useEffect(() => localStorage.setItem("zhixing.agentAccounts", JSON.stringify(selected)), [selected]);
+  useEffect(() => { sessionRef.current = session; localStorage.setItem("zhixing.assistantSession", session); }, [session]);
   useEffect(() => localStorage.setItem("zhixing.showTest", String(showTest)), [showTest]);
   useEffect(() => localStorage.setItem("zhixing.inboxSort", inboxSort), [inboxSort]);
   useEffect(() => localStorage.setItem("zhixing.inboxView", inboxView), [inboxView]);
@@ -116,8 +117,20 @@ export function useMailWorkspace(api: Api) {
         (await api("mail/drafts" + (account ? "?account_id=" + account : "")))
           .items,
       );
-    if (target === "assistant")
+    if (target === "assistant") {
       setSessions((await api("assistant/sessions")).items);
+      if (session && !turns.length) {
+        try {
+          const detail = await api("assistant/sessions/" + session);
+          if (sessionRef.current === session) {
+            setSelected(detail.session.body.account_ids);
+            setTurns(detail.turns);
+          }
+        } catch {
+          if (sessionRef.current === session) setSession("");
+        }
+      }
+    }
     if (target === "accounts") await loadAccounts();
     if (target === "imports")
       setImports(
@@ -263,7 +276,7 @@ export function useMailWorkspace(api: Api) {
       limit: range.limit,
     };
   }
-  async function ask() {
+  async function ask(mode: "answer" | "search_only" = "answer") {
     await act(async () => {
       if (!selected.length) throw new Error("请选择允许检索的邮箱");
       let sid = session;
@@ -274,17 +287,18 @@ export function useMailWorkspace(api: Api) {
         });
         sid = s.id;
         setSession(sid);
+        sessionRef.current = sid;
       }
       const turn = await api(`assistant/sessions/${sid}/turns`, {
         text: query,
+        mode,
       });
       setQuery("");
-      setTurns((t) => [turn, ...t]);
+      if (sessionRef.current === sid) setTurns((t) => [...t, turn]);
       for (let i = 0; i < 240; i++) {
         const detail = await api("assistant/turns/" + turn.id);
-        setTurns((t) => t.map((r) => (r.id === turn.id ? detail.turn : r)));
+        if (sessionRef.current === sid) setTurns((t) => t.map((r) => (r.id === turn.id ? detail.turn : r)));
         if (!["queued", "running"].includes(detail.turn.status)) {
-          setTrace(await api("mail/traces/" + turn.id));
           return;
         }
         await new Promise((r) => setTimeout(r, 500));
@@ -338,8 +352,6 @@ export function useMailWorkspace(api: Api) {
     setQuery,
     selected,
     setSelected,
-    searchResult,
-    setSearchResult,
     session,
     setSession,
     turns,

@@ -741,6 +741,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mail/drafts/{ident}/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suggest Draft Reply */
+        post: operations["suggest_draft_reply_api_mail_drafts__ident__suggest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/mail/drafts/{ident}/send": {
         parameters: {
             query?: never;
@@ -1979,7 +1996,7 @@ export interface components {
          * @description 用户对感知结果的纠偏反馈。
          *
          *     用户可以纠正分类、优先级、垃圾评分等。
-         *     反馈会写入记忆层，下次感知时参考。
+         *     纠正默认只覆盖当前邮件；只有用户明确选择时才生成记忆候选。
          */
         PerceptionFeedback: {
             /** Message Id */
@@ -1997,6 +2014,11 @@ export interface components {
              * @default
              */
             note: string;
+            /**
+             * Remember
+             * @default false
+             */
+            remember: boolean;
         };
         /** PlannedAction */
         PlannedAction: {
@@ -2211,6 +2233,12 @@ export interface components {
         TurnInput: {
             /** Text */
             text: string;
+            /**
+             * Mode
+             * @default answer
+             * @enum {string}
+             */
+            mode: "answer" | "search_only";
         };
         /** ValidationError */
         ValidationError: {
@@ -3678,6 +3706,37 @@ export interface operations {
                 "application/json": components["schemas"]["DraftInput"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_draft_reply_api_mail_drafts__ident__suggest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ident: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

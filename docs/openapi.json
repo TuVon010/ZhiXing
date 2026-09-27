@@ -1842,6 +1842,43 @@
         }
       }
     },
+    "/api/mail/drafts/{ident}/suggest": {
+      "post": {
+        "summary": "Suggest Draft Reply",
+        "operationId": "suggest_draft_reply_api_mail_drafts__ident__suggest_post",
+        "parameters": [
+          {
+            "name": "ident",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ident"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/mail/drafts/{ident}/send": {
       "post": {
         "summary": "Confirm Send",
@@ -4828,12 +4865,17 @@
             "maxLength": 500,
             "title": "Note",
             "default": ""
+          },
+          "remember": {
+            "type": "boolean",
+            "title": "Remember",
+            "default": false
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "PerceptionFeedback",
-        "description": "用户对感知结果的纠偏反馈。\n\n用户可以纠正分类、优先级、垃圾评分等。\n反馈会写入记忆层，下次感知时参考。"
+        "description": "用户对感知结果的纠偏反馈。\n\n用户可以纠正分类、优先级、垃圾评分等。\n纠正默认只覆盖当前邮件；只有用户明确选择时才生成记忆候选。"
       },
       "PlannedAction": {
         "properties": {
@@ -5543,6 +5585,15 @@
             "maxLength": 10000,
             "minLength": 1,
             "title": "Text"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "answer",
+              "search_only"
+            ],
+            "title": "Mode",
+            "default": "answer"
           }
         },
         "type": "object",

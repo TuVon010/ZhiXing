@@ -116,6 +116,7 @@ class SessionInput(BaseModel):
 
 class TurnInput(BaseModel):
     text: str = Field(min_length=1,max_length=10000)
+    mode: Literal['answer', 'search_only'] = 'answer'
 
 
 class EvidenceRef(BaseModel):

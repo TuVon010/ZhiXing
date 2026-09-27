@@ -54,7 +54,7 @@ export function MailApp({ api }: { api: Api }) {
     ["activity", "Trace 与运行"],
     ["notifications", "通知与提醒"],
     ["calendar", "日程"],
-    ["assistant", "邮件 Agent"],
+    ["assistant", "邮件智能检索助手"],
     ["drafts", "回复与草稿"],
     ["archive", "归档箱"],
     ["filter", "垃圾与过滤"],

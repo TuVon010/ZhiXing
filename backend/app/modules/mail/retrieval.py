@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import threading
 import time
+from difflib import SequenceMatcher
 from datetime import timezone
 from sqlalchemy import text,bindparam
 from backend.app.modules.mail.repository import initialize,require,validate_accounts
@@ -151,6 +152,47 @@ def chunks(value,model=None):
     return [tokenizer.decode(ids[i:i+320],skip_special_tokens=True) for i in range(0,len(ids),272)]
 
 
+def _normalized_content(value):
+    """Normalize whitespace and punctuation spacing for result de-duplication."""
+    return re.sub(r'\W+','',value or '').lower()
+
+
+def _select_diverse_results(ordered,lookup,limit=8):
+    """Keep useful source diversity while collapsing repeated/overlapping chunks.
+
+    A mail can contain duplicated quoted history and adjacent chunks overlap by
+    design. Returning all of them wastes the Agent context and makes the user
+    believe that one fact has several independent sources.
+    """
+    selected=[];exact={};duplicates={};message_counts={};thread_counts={};suppressed=0
+    for cid in ordered:
+        row=lookup[cid];normalized=_normalized_content(row.get('content'))
+        key=hashlib.sha256(normalized.encode()).hexdigest()
+        source={'id':cid,'message_id':row['message_id'],'thread_id':row['thread_id'],'location':row['location']}
+        if key in exact:
+            duplicates.setdefault(exact[key],[]).append(source);suppressed+=1;continue
+        near=None
+        for kept in selected:
+            other=lookup[kept]
+            if other['thread_id']!=row['thread_id']:continue
+            left=_normalized_content(other.get('content'));right=normalized
+            if not left or not right:continue
+            shorter=min(len(left),len(right));longer=max(len(left),len(right))
+            contained=shorter/max(longer,1)>=.72 and (left in right or right in left)
+            if contained or SequenceMatcher(None,left,right,autojunk=False).ratio()>=.9:
+                near=kept;break
+        if near:
+            duplicates.setdefault(near,[]).append(source);suppressed+=1;continue
+        message=row['message_id'];thread=row['thread_id']
+        if message_counts.get(message,0)>=2 or thread_counts.get(thread,0)>=3:
+            suppressed+=1;continue
+        selected.append(cid);exact[key]=cid
+        message_counts[message]=message_counts.get(message,0)+1
+        thread_counts[thread]=thread_counts.get(thread,0)+1
+        if len(selected)>=limit:break
+    return selected,duplicates,{'input':len(ordered),'selected':len(selected),'suppressed':suppressed}
+
+
 def index_message(db,ident,attachment_root=None):
     initialize(db);row=require(db,ident,'mail_message');b=row['body']
     if row['status'] not in {'active','archived','legacy'}:return {'skipped':True}
@@ -259,7 +301,7 @@ def search(db,request,frozen_version=None):
     words=list(dict.fromkeys(tokens(q.query).split()))[:40]
     if words:
         match=' OR '.join('"'+w.replace('"','""')+'"' for w in words)
-        sql=text('SELECT c.*,bm25(mail_fts) AS rank FROM mail_fts JOIN mail_chunks c ON c.id=mail_fts.chunk_id JOIN records r ON r.id=c.message_id WHERE mail_fts MATCH :match AND '+clause+' ORDER BY rank,c.id LIMIT 40').bindparams(bindparam('accounts',expanding=True))
+        sql=text("SELECT c.*,json_extract(r.body,'$.subject') AS subject,json_extract(r.body,'$.sender_display') AS sender_display,bm25(mail_fts) AS rank FROM mail_fts JOIN mail_chunks c ON c.id=mail_fts.chunk_id JOIN records r ON r.id=c.message_id WHERE mail_fts MATCH :match AND "+clause+' ORDER BY rank,c.id LIMIT 40').bindparams(bindparam('accounts',expanding=True))
         with db.engine.connect() as conn:
             found=conn.execute(sql,{**args,'match':match}).mappings().all()
         for row in found:lookup[row['id']]=dict(row);keyword.append(row['id'])
@@ -281,7 +323,7 @@ def search(db,request,frozen_version=None):
                   if client.collection_exists(_VECTOR_COLLECTION) else [])
             ids=[hit.payload['chunk_id'] for hit in hits if hit.payload and hit.payload.get('chunk_id')]
             if ids:
-                sql=text('SELECT c.* FROM mail_chunks c JOIN records r ON r.id=c.message_id WHERE c.id IN :ids AND '+clause+" AND r.status IN ('active','archived','legacy') AND c.model_version=:version").bindparams(bindparam('accounts',expanding=True),bindparam('ids',expanding=True))
+                sql=text("SELECT c.*,json_extract(r.body,'$.subject') AS subject,json_extract(r.body,'$.sender_display') AS sender_display FROM mail_chunks c JOIN records r ON r.id=c.message_id WHERE c.id IN :ids AND "+clause+" AND r.status IN ('active','archived','legacy') AND c.model_version=:version").bindparams(bindparam('accounts',expanding=True),bindparam('ids',expanding=True))
                 with db.engine.connect() as conn:found=conn.execute(sql,{**args,'version':version,'ids':ids}).mappings().all()
                 by_id={r['id']:dict(r) for r in found}
                 for hit in hits:
@@ -306,11 +348,15 @@ def search(db,request,frozen_version=None):
             with _lock:rank=reranker.predict([(q.query,lookup[k]['content']) for k in ordered])
             ordered=[k for _,k in sorted(zip(map(float,rank),ordered),reverse=True)]
         except Exception as exc:degraded=True;reason='重排序不可用：'+type(exc).__name__
+    selected_ids,duplicate_sources,dedup=_select_diverse_results(ordered,lookup)
     evidence=[]
-    for cid in ordered[:8]:
+    for cid in selected_ids:
         r=lookup[cid]
-        evidence.append({'id':cid,'account_id':r['account_id'],'message_id':r['message_id'],'thread_id':r['thread_id'],'text':r['content'],'location':r['location'],'received_at':r['received_at']})
+        evidence.append({'id':cid,'account_id':r['account_id'],'message_id':r['message_id'],'thread_id':r['thread_id'],
+            'subject':r.get('subject') or '无主题','sender':r.get('sender_display') or r.get('sender') or '',
+            'text':r['content'],'location':r['location'],'received_at':r['received_at'],'content_hash':r.get('content_hash'),
+            'duplicate_sources':duplicate_sources.get(cid,[])})
     return {'mode':'keyword' if q.mode!='keyword' and not dense else q.mode,'requested_mode':q.mode,'degraded':degraded,'reason':reason,
             'model_version':version,'reranker_version':model_manifest().get('reranker',{}).get('revision'),
-            'evidence':evidence,'rankings':{'keyword':keyword,'vector':dense,'fusion':fusion,'final':ordered[:8]},
+            'evidence':evidence,'rankings':{'keyword':keyword,'vector':dense,'fusion':fusion,'final':selected_ids},'dedup':dedup,
             'latency_ms':round((time.monotonic()-started)*1000),'account_ids':accounts}

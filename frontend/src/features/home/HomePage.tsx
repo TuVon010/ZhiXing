@@ -13,10 +13,10 @@ const relativeSync = (value?: string) => {
 };
 
 export function HomePage() {
-  const { page, home, accounts, selected, setSelected, query, setQuery, turns, busy,
+  const { page, home, accounts, selected, setSelected, setSession, setTurns, query, setQuery, turns, busy,
     ask, navigate, openMail, act, api } = useWorkspace();
   if (page !== "home") return null;
-  const latest = turns[0];
+  const latest = turns.at(-1);
   const hour = new Date().getHours();
   const greeting = hour < 11 ? "早上好" : hour < 14 ? "中午好" : hour < 19 ? "下午好" : "晚上好";
   const status = home?.account_status || [];
@@ -111,14 +111,16 @@ export function HomePage() {
       <div><span className="eyebrow">ASK ZHIXING</span><h3>从邮件和记忆中继续追问</h3></div>
       <div className="mail-scope">
         {accounts.filter((a: any) => !a.body.test_account).map((a: any) => <label key={a.id}>
-          <input type="checkbox" checked={selected.includes(a.id)} onChange={(e) =>
-            setSelected(e.target.checked ? [...selected, a.id] : selected.filter((id: string) => id !== a.id))} />{a.body.name}
+          <input type="checkbox" checked={selected.includes(a.id)} onChange={(e) => {
+            setSelected(e.target.checked ? [...selected, a.id] : selected.filter((id: string) => id !== a.id));
+            setSession(""); setTurns([]);
+          }} />{a.body.name}
         </label>)}
       </div>
       <div className="home-ask-row"><input aria-label="首页 Agent 问题" value={query} onChange={(e) => setQuery(e.target.value)}
         placeholder="例如：导师最近对实验结果有什么要求？" />
         <button className="primary" disabled={busy || !query.trim() || !selected.length} onClick={() => void ask()}>询问</button></div>
-      {latest?.body?.answer && <div className="home-answer"><strong>Agent</strong><p>{latest.body.answer}</p><button onClick={() => navigate("assistant")}>进入完整会话</button></div>}
+      {latest?.body?.answer && <div className="home-answer"><strong>知行</strong><p>{latest.body.answer}</p><button onClick={() => navigate("assistant")}>进入邮件智能检索助手</button></div>}
     </section>
   </>;
 }
