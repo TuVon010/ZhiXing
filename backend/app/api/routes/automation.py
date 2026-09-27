@@ -1,16 +1,12 @@
 """Generic Agent runs, review, evolution and record collection endpoints."""
-import json
-from fastapi import APIRouter, HTTPException, Request, Response, Query
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import text
-from backend.app.core.config import settings
-from backend.app.persistence.store import store, now, uid
+from backend.app.persistence.store import store, uid
 from backend.app.agent.schemas import NormalizedMessage, Approval, ActionPlan, PlannedAction
 from backend.app.agent.graph import ingest, approve
+from backend.app.agent.service import command_run, reconcile_action
 from backend.app.agent import evolution
 from backend.app.observability.tracing import RunDetail, detail as trace_detail
-from backend.app.observability import billing
 
 router = APIRouter()
 @router.post('/api/messages')
@@ -26,25 +22,7 @@ def run_detail(id:str):
 
 @router.post('/api/runs/{id}/{operation}')
 def run_command(id:str,operation:str):
-    row=store.get(id)
-    if row['kind']!='run':
-        raise ValueError('不是运行记录')
-    if operation=='cancel':
-        store.update(id,status='cancelled')
-        store.audit(id,'WORKFLOW_CANCELLED',status='cancelled')
-        for a in store.list('approval',status='pending',limit=10000):
-            if a['body']['run_id']==id:
-                store.update(a['id'],status='cancelled')
-    elif operation=='retry' and row['status']=='failed':
-        with store.engine.begin() as c:
-            store.update(id,status='queued',conn=c)
-            c.execute(text("UPDATE jobs SET status='queued',lease_until=0 WHERE run_id=:id AND status='failed'"),{'id':id})
-        store.audit(id,'WORKFLOW_RETRY_REQUESTED')
-    elif operation=='replay':
-        return {'id':ingest({**row['body']['message'],'message_id':uid()},replay=True)}
-    else:
-        raise ValueError('当前状态不支持该操作')
-    return {'ok':True}
+    return command_run(store,id,operation)
 
 @router.post('/api/approvals/{id}')
 def approval(id:str,body:Approval):
@@ -143,30 +121,7 @@ class Reconciliation(BaseModel):
 
 @router.post('/api/reconcile/{id}')
 def reconcile(id:str,body:Reconciliation):
-    from backend.app.persistence.store import encode
-    row=store.get(id)
-    if row['kind']!='run' or row['status'] in {'running','queued','waiting_approval'}:
-        raise ValueError('只能核对已停止的运行')
-    b=row['body'];outcome=b['outcomes'].get(body.action_id,{})
-    if outcome.get('status') not in {'unknown','failed'}:
-        raise ValueError('该动作不需要核对')
-    action=next(a for a in b['actions'] if a['id']==body.action_id)
-    from backend.app.agent.tools import EXTERNAL
-    if action['tool'] not in EXTERNAL:
-        raise ValueError('仅用于外部写入结果核对')
-    result={'status':'completed' if body.executed else 'not_executed','data':{'human_verified':True,'evidence':body.evidence}}
-    with store.engine.begin() as c:
-        changed=c.execute(text("UPDATE ledger SET status=:status,result=:result,updated_at=:at WHERE action_id=:id AND status='executing'"),{'status':result['status'],'result':encode(result['data']),'at':now(),'id':body.action_id}).rowcount
-        if not changed:
-            raise ValueError('动作已核对或没有外部提交记录')
-        outcomes={**b['outcomes'],body.action_id:result}
-        store.update(id,{**b,'outcomes':outcomes},'completed' if all(o['status']=='completed' for o in outcomes.values()) else 'completed_with_attention',conn=c)
-    store.audit(id,'EXTERNAL_RECONCILED',**body.model_dump())
-    if not body.executed:
-        fresh={**action,'id':'0','depends_on':[]}
-        m={**b['message'],'message_id':uid(),'text':'人工核对确认未执行，重新申请：'+action['tool']}
-        return {'retry_run_id':ingest(m,explicit_plan={'summary':'人工核对后重新申请','actions':[fresh]})}
-    return {'ok':True}
+    return reconcile_action(store,id,body)
 
 @router.get('/api/{collection}')
 def listing(collection:str,limit:int=Query(50,ge=1,le=200),offset:int=Query(0,ge=0),status:str|None=None):

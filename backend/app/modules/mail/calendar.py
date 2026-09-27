@@ -11,11 +11,15 @@
 3. 候选状态为 'candidate'，需要用户确认后才变为 'active'
 """
 import hashlib
-import json
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import text
 from backend.app.persistence.store import now, uid
 from backend.app.modules.mail.repository import require, initialize
+from backend.app.modules.mail.repositories.calendar import (
+    active_sourced_calendars,
+    calendar_rows_for_conflicts,
+    move_to_workspace_scope,
+    perception_candidates,
+)
 
 
 def _parse_iso(time_str: str) -> datetime | None:
@@ -53,23 +57,13 @@ def detect_conflicts(db, account_id: str, start: str, end: str | None = None,
     if not end_dt or end_dt <= start_dt:
         end_dt = start_dt + timedelta(hours=1)
 
-    with db.engine.connect() as c:
-        rows = c.execute(
-            text("""
-                SELECT id, body FROM records
-                WHERE kind='calendar'
-                  AND scope IN (:account_id,:workspace)
-                  AND status IN ('active', 'candidate')
-                  AND json_extract(body, '$.start') IS NOT NULL
-            """),
-            {'account_id': account_id, 'workspace': 'web:mail:' + account_id}
-        ).mappings().all()
+    rows = calendar_rows_for_conflicts(db,account_id)
 
     conflicts = []
     for row in rows:
         if exclude_id and row['id'] == exclude_id:
             continue
-        body = row['body'] if isinstance(row['body'], dict) else __import__('json').loads(row['body'])
+        body = row['body']
         event_start = _parse_iso(body.get('start'))
         event_end = _parse_iso(body.get('end'))
         if not event_start:
@@ -110,14 +104,10 @@ def _prior_thread_events(db, account_id: str, message_id: str, start: str) -> li
     thread_id = message['body'].get('thread_id')
     if not thread_id:
         return []
-    with db.engine.connect() as c:
-        rows = c.execute(text("""
-            SELECT id, body FROM records WHERE kind='calendar' AND status='active'
-            AND scope=:scope AND json_extract(body,'$.source_message') IS NOT NULL
-        """), {'scope': 'web:mail:' + account_id}).mappings().all()
+    rows = active_sourced_calendars(db,account_id)
     related = []
     for row in rows:
-        body = json.loads(row['body'])
+        body = row['body']
         source_id = body.get('source_message')
         if source_id == message_id or body.get('start') == start:
             continue
@@ -220,21 +210,7 @@ def create_calendar_candidate(db, account_id: str, message_id: str,
 def list_calendar_candidates(db, account_id: str) -> list[dict]:
     """列出感知生成的日程候选（等待用户确认）。"""
     initialize(db)
-    with db.engine.connect() as c:
-        rows = c.execute(
-            text("""
-                SELECT id, body, created_at FROM records
-                WHERE kind='calendar'
-                  AND status='candidate'
-                  AND scope IN (:account_id,:workspace)
-                  AND json_extract(body, '$.source')='perception'
-                ORDER BY json_extract(body, '$.start') ASC
-                LIMIT 50
-            """),
-            {'account_id': account_id, 'workspace': 'web:mail:' + account_id}
-        ).mappings().all()
-    return [{**dict(r), 'body': json.loads(r['body']) if isinstance(r['body'], str) else r['body']}
-            for r in rows]
+    return perception_candidates(db,account_id)
 
 
 def confirm_calendar(db, calendar_id: str, account_id: str) -> dict:
@@ -263,9 +239,7 @@ def confirm_calendar(db, calendar_id: str, account_id: str) -> dict:
 
     db.update(calendar_id, body, 'active')
     if item['scope'] == account_id:
-        with db.engine.begin() as c:
-            c.execute(text('UPDATE records SET scope=:scope WHERE id=:id'),
-                      {'scope': 'web:mail:' + account_id, 'id': calendar_id})
+        move_to_workspace_scope(db,calendar_id,account_id)
     sync_calendar_reminder(db,calendar_id)
 
     replaced = []

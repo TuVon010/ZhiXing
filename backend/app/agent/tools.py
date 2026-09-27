@@ -1,9 +1,14 @@
 import re
 from datetime import datetime
-from sqlalchemy import text
 from backend.app.core.exceptions import ExternalUnknown
 from backend.app.core.config import settings
-from backend.app.persistence.store import encode, now
+from backend.app.agent.repository import (
+    cancel_source_reminders,
+    complete_ledger,
+    find_ledger,
+    reserve_ledger,
+)
+from backend.app.persistence.transactions import begin_immediate
 
 EXTERNAL = {'send_email'}
 
@@ -38,8 +43,8 @@ def execute(db, action, run_id, scope, dry_run=False):
     if tool == 'send_email' and settings.mode != 'demo' and not args.get('draft_id'):
         raise ValueError('旧版直接发送已停用；请在邮箱工作台创建草稿并提交审批')
     with db.engine.connect() as c:
-        c.exec_driver_sql('BEGIN IMMEDIATE')
-        row = c.execute(text('SELECT * FROM ledger WHERE action_id=:id'),{'id':aid}).mappings().first()
+        begin_immediate(c)
+        row = find_ledger(c,aid)
         if row:
             import json
             c.rollback()
@@ -51,10 +56,10 @@ def execute(db, action, run_id, scope, dry_run=False):
             run=db.get(run_id,c)
             accounts=run['body']['message'].get('metadata',{}).get('mail_accounts',[])
             check_draft(db,args,accounts,conn=c)
-        c.execute(text("INSERT INTO ledger VALUES(:id,'executing',NULL,:at)"),{'id':aid,'at':now()})
+        reserve_ledger(c,aid)
         if tool not in EXTERNAL:
             result = local_tool(db,tool,args,run_id,scope,c)
-            c.execute(text("UPDATE ledger SET status='completed',result=:result,updated_at=:at WHERE action_id=:id"),{'result':encode(result),'at':now(),'id':aid})
+            complete_ledger(c,aid,result)
             c.commit()
             return result
         c.commit()
@@ -71,7 +76,7 @@ def execute(db, action, run_id, scope, dry_run=False):
                 from backend.app.modules.mail.sending import send
                 result=send(db,args,aid)
         with db.engine.begin() as c:
-            c.execute(text("UPDATE ledger SET status='completed',result=:result,updated_at=:at WHERE action_id=:id"),{'result':encode(result),'at':now(),'id':aid})
+            complete_ledger(c,aid,result)
         return result
     except Exception:
         # Keep the reservation on every external failure. Retrying requires human reconciliation.
@@ -102,9 +107,6 @@ def local_tool(db,tool,args,run_id,scope,conn):
         db.update(item['id'],{**item['body'],**allowed,'sync_status':'local'},status,conn)
         if tool=='delete_item' and item['kind'] in {'todo','calendar'}:
             source='source_todo' if item['kind']=='todo' else 'source_calendar'
-            conn.execute(text("""UPDATE records SET status='cancelled',updated_at=:at
-                WHERE kind='reminder' AND scope=:scope AND status='active'
-                AND json_extract(body,:path)=:id"""),
-                {'at':now(),'scope':item['scope'],'path':'$.'+source,'id':item['id']})
+            cancel_source_reminders(conn,item['scope'],source,item['id'])
         return {'id':item['id'],'status':status}
     return {'content':args['content']}

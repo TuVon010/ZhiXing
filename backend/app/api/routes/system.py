@@ -1,16 +1,10 @@
 """Session, health, live refresh and runtime settings endpoints."""
-import json
-from fastapi import APIRouter, HTTPException, Request, Response, Query
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
-from sqlalchemy import text
+from pydantic import BaseModel
 from backend.app.core.config import settings
-from backend.app.persistence.store import store, now, uid
-from backend.app.agent.schemas import NormalizedMessage, Approval, ActionPlan, PlannedAction
-from backend.app.agent.graph import ingest, approve
-from backend.app.agent import evolution
-from backend.app.observability.tracing import RunDetail, detail as trace_detail
-from backend.app.observability import billing
+from backend.app.persistence.store import store
+from backend.app.observability.repository import change_revision, record_counts
 from backend.app.core.security import SESSION_TOKEN
 
 router = APIRouter()
@@ -36,11 +30,7 @@ async def stream(request:Request):
     async def events():
         last=None
         while not await request.is_disconnected():
-            with store.engine.connect() as c:
-                revision=c.execute(text("""SELECT max(updated_at),count(*) FROM records WHERE kind IN
-                    ('run','assistant_turn','mail_message','todo','calendar','reminder','mail_followup','notification','mail_draft')""")).first()
-                jobs=c.execute(text("SELECT max(updated_at),count(*) FROM mail_jobs")).first()
-            signature=json.dumps([list(revision),list(jobs)])
+            signature=change_revision(store)
             if signature!=last:
                 yield 'data: '+json.dumps({'event':'refresh'})+'\n\n';last=signature
             else:
@@ -72,13 +62,12 @@ def save_settings(body:LocalSettings):
 @router.get('/api/stats')
 def stats():
     import statistics
-    with store.engine.connect() as c:
-        counts=c.execute(text('SELECT kind,status,count(*) AS count FROM records GROUP BY kind,status')).mappings().all()
+    counts=record_counts(store)
     runs=store.list('run',limit=10000)
     durations=[r['body']['duration_ms'] for r in runs if r['body'].get('duration_ms') is not None]
     calls=store.list('model_call',limit=10000)
     usages=[r['body'].get('usage',{}) for r in calls]
     observations=store.list('parser_observation',limit=10000)
-    return {'counts':[dict(r) for r in counts],'average_latency_ms':statistics.mean(durations) if durations else None,'model_calls':len(calls),'tokens':sum(u.get('total_tokens',0) for u in usages),'cost':None,'billing':billing_summary(),'parser_hit_rate':sum(bool(r['body']['hit']) for r in observations)/len(observations) if observations else None}
+    return {'counts':counts,'average_latency_ms':statistics.mean(durations) if durations else None,'model_calls':len(calls),'tokens':sum(u.get('total_tokens',0) for u in usages),'cost':None,'billing':billing_summary(),'parser_hit_rate':sum(bool(r['body']['hit']) for r in observations)/len(observations) if observations else None}
 
 

@@ -304,10 +304,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Home
-         * @description Action-oriented home read model; all derived items retain their source ids.
-         */
+        /** Home */
         get: operations["home_api_mail_home_get"];
         put?: never;
         post?: never;
@@ -755,7 +752,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm Send
-         * @description A user's final click authorizes exactly this frozen draft version.
+         * @description Authorize exactly one frozen draft version from a user's final click.
          */
         post: operations["confirm_send_api_mail_drafts__ident__send_post"];
         delete?: never;
@@ -909,16 +906,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Perception
-         * @description 获取一封邮件的感知结果。
-         */
+        /** Get Perception */
         get: operations["get_perception_api_mail_messages__ident__perception_get"];
         put?: never;
-        /**
-         * Request Perception
-         * @description 用户显式分析或重试；仍受全局模型调用预算限制。
-         */
+        /** Request Perception */
         post: operations["request_perception_api_mail_messages__ident__perception_post"];
         delete?: never;
         options?: never;
@@ -935,10 +926,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Perception Feedback
-         * @description 用户对感知结果的纠偏反馈，会写入记忆供下次感知参考。
-         */
+        /** Perception Feedback */
         post: operations["perception_feedback_api_mail_messages__ident__perception_feedback_post"];
         delete?: never;
         options?: never;
@@ -953,10 +941,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Perception Todos
-         * @description 列出感知生成的待办候选（等待用户确认）。
-         */
+        /** List Perception Todos */
         get: operations["list_perception_todos_api_mail_perception_todos_get"];
         put?: never;
         post?: never;
@@ -975,10 +960,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Confirm Perception Todo
-         * @description 确认感知生成的待办，将其从 candidate 变为 active。
-         */
+        /** Confirm Perception Todo */
         post: operations["confirm_perception_todo_api_mail_perception_todos__ident__confirm_post"];
         delete?: never;
         options?: never;
@@ -995,10 +977,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Dismiss Perception Todo
-         * @description 忽略感知生成的待办。
-         */
+        /** Dismiss Perception Todo */
         post: operations["dismiss_perception_todo_api_mail_perception_todos__ident__dismiss_post"];
         delete?: never;
         options?: never;
@@ -1013,10 +992,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Perception Calendars
-         * @description 列出感知生成的日程候选（等待用户确认），包含冲突检测信息。
-         */
+        /** List Perception Calendars */
         get: operations["list_perception_calendars_api_mail_perception_calendars_get"];
         put?: never;
         post?: never;
@@ -1035,10 +1011,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Confirm Perception Calendar
-         * @description 确认感知生成的日程候选，将其从 candidate 变为 active。确认时再次检测冲突。
-         */
+        /** Confirm Perception Calendar */
         post: operations["confirm_perception_calendar_api_mail_perception_calendars__ident__confirm_post"];
         delete?: never;
         options?: never;
@@ -1055,10 +1028,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Dismiss Perception Calendar
-         * @description 忽略感知生成的日程候选。
-         */
+        /** Dismiss Perception Calendar */
         post: operations["dismiss_perception_calendar_api_mail_perception_calendars__ident__dismiss_post"];
         delete?: never;
         options?: never;
@@ -1073,10 +1043,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Digest
-         * @description 获取邮件动态摘要。date 格式 YYYY-MM-DD，默认今天。
-         */
+        /** Get Digest */
         get: operations["get_digest_api_mail_digest_get"];
         put?: never;
         post?: never;
@@ -1095,10 +1062,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Generate Digest Now
-         * @description 立即生成指定日期的邮件摘要（手动触发）。
-         */
+        /** Generate Digest Now */
         post: operations["generate_digest_now_api_mail_digest_generate_post"];
         delete?: never;
         options?: never;
@@ -3113,12 +3077,12 @@ export interface operations {
             query?: {
                 account_id?: string | null;
                 status?: string | null;
+                limit?: number;
+                offset?: number;
                 sort?: string;
                 view?: string;
                 category?: string;
                 include_test?: boolean;
-                limit?: number;
-                offset?: number;
             };
             header?: never;
             path?: never;

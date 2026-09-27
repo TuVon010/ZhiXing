@@ -1,19 +1,22 @@
 """Local record management. Legacy data is inventoried, never inferred to be test data."""
-import json
 import sqlite3
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import text
-
+from backend.app.api.dependencies import get_store
+from backend.app.modules.mail.repositories.records import (
+    cancel_linked_reminders,
+    has_active_turn,
+    list_rows,
+    overview_counts,
+)
 from backend.app.modules.mail.repository import enqueue, require
 
 router = APIRouter(prefix='/mail/records')
 
 
 def database():
-    from backend.app.persistence.store import store
-    return store
+    return get_store()
 
 
 MANAGED = {'mail_message', 'mail_draft', 'todo', 'calendar', 'reminder',
@@ -22,22 +25,9 @@ KINDS = MANAGED | {'run', 'assistant_turn'}
 
 
 def overview(db):
-    with db.engine.connect() as c:
-        counts = {kind: count for kind, count in c.execute(text(
-            "SELECT kind,COUNT(*) FROM records WHERE status!='trashed' GROUP BY kind"))}
-        old_messages = c.execute(text("""SELECT COUNT(*) FROM records WHERE kind='message'
-            AND json_extract(body,'$.source') IN ('email','demo')""")).scalar_one()
-        old_runs = c.execute(text("""SELECT COUNT(*) FROM records WHERE kind='run'
-            AND json_extract(body,'$.message.source') IN ('email','demo')""")).scalar_one()
-        old_pending = c.execute(text("""SELECT COUNT(*) FROM records WHERE kind='run'
-            AND status IN ('queued','running','waiting_approval')
-            AND json_extract(body,'$.message.source') IN ('email','demo')""")).scalar_one()
-        current_mail = c.execute(text("SELECT COUNT(*) FROM records WHERE kind='mail_message' AND status!='trashed'")).scalar_one()
-        trash = c.execute(text("SELECT COUNT(*) FROM records WHERE status='trashed'")).scalar_one()
-    return {'current_mail_messages': current_mail, 'legacy_messages': old_messages,
-            'legacy_runs': old_runs, 'legacy_pending_runs': old_pending,
-            'trash': trash, 'counts': counts,
-            'legacy_note': '旧 email 来源没有可靠的测试/真实标记；旧资料保留且不自动清理。'}
+    return overview_counts(db) | {
+        'legacy_note': '旧 email 来源没有可靠的测试/真实标记；旧资料保留且不自动清理。'
+    }
 
 
 @router.get('/overview')
@@ -53,47 +43,10 @@ def list_records(kind: str, account_id: str = '', trashed: bool = False,
         raise ValueError('不支持管理该记录类型')
     if account_id:
         require(db, account_id, 'mail_account')
-    if kind == 'legacy_message':
-        clause = "kind='message' AND json_extract(body,'$.source') IN ('email','demo')"
-        args = {}
-    else:
-        clause = 'kind=:kind'
-        args = {'kind': kind}
-        if kind in {'todo','calendar','reminder','notification'}:
-            clause += " AND scope LIKE 'web:mail:%'"
-        elif kind == 'run':
-            clause += " AND json_array_length(json_extract(body,'$.message.metadata.mail_accounts'))>0"
-        elif kind == 'memory':
-            clause += " AND (scope='global' OR scope IN (SELECT id FROM records WHERE kind='mail_account'))"
-        if account_id:
-            if kind in {'todo','calendar','reminder','notification'}:
-                clause += ' AND scope IN (:account,:workspace)'
-                args.update(account=account_id, workspace='web:mail:' + account_id)
-            elif kind == 'assistant_session':
-                clause += " AND EXISTS (SELECT 1 FROM json_each(json_extract(body,'$.account_ids')) WHERE value=:account)"
-                args['account'] = account_id
-            elif kind in {'run','assistant_turn'}:
-                clause += " AND EXISTS (SELECT 1 FROM json_each(CASE WHEN kind='run' THEN json_extract(body,'$.message.metadata.mail_accounts') ELSE json_extract(body,'$.account_ids') END) WHERE value=:account)"
-                args['account'] = account_id
-            elif kind == 'memory':
-                clause += ' AND scope IN (:account,:global_scope)'
-                args.update(account=account_id, global_scope='global')
-            else:
-                clause += ' AND scope=:account'
-                args['account'] = account_id
-    if kind != 'legacy_message':
-        if kind in {'todo','calendar','reminder'}:
-            clause += " AND status IN ('trashed','deleted')" if trashed else " AND status NOT IN ('trashed','deleted')"
-        else:
-            clause += " AND status='trashed'" if trashed else " AND status!='trashed'"
-    args.update(limit=limit, offset=offset)
-    with db.engine.connect() as c:
-        total = c.execute(text('SELECT COUNT(*) FROM records WHERE ' + clause), args).scalar_one()
-        records = c.execute(text('SELECT id,kind,status,scope,body,created_at FROM records WHERE '
-                                 + clause + ' ORDER BY created_at DESC,id LIMIT :limit OFFSET :offset'), args).mappings().all()
+    total, records = list_rows(db,kind,account_id,trashed,limit,offset)
     items = []
     for row in records:
-        body = json.loads(row['body'])
+        body = row['body']
         title = (body.get('subject') or body.get('title') or body.get('text')
                  or body.get('content') or body.get('name') or row['id'])
         if kind == 'legacy_message':
@@ -120,9 +73,7 @@ def trash_record(ident: str, db=Depends(database)):
     if row['kind'] == 'memory' and row['scope'] != 'global':
         require(db,row['scope'],'mail_account')
     if row['kind'] == 'assistant_session':
-        with db.engine.connect() as c:
-            pending = c.execute(text("SELECT 1 FROM records WHERE kind='assistant_turn' AND scope=:id AND status IN ('queued','running') LIMIT 1"), {'id': ident}).first()
-        if pending:
+        if has_active_turn(db,ident):
             raise ValueError('会话仍有运行中的任务')
     if row['kind'] in {'todo','calendar','reminder'}:
         if not row['scope'].startswith('web:mail:'):
@@ -132,11 +83,7 @@ def trash_record(ident: str, db=Depends(database)):
     db.update(ident, {**row['body'], '_record_previous_status': row['status']}, 'trashed')
     if row['kind'] in {'todo','calendar'}:
         source = 'source_todo' if row['kind'] == 'todo' else 'source_calendar'
-        with db.engine.begin() as c:
-            c.execute(text("""UPDATE records SET status='cancelled'
-                WHERE kind='reminder' AND scope=:scope AND status='active'
-                AND json_extract(body,:path)=:id"""),
-                {'scope':row['scope'],'path':'$.'+source,'id':ident})
+        cancel_linked_reminders(db,row['scope'],source,ident)
     db.audit('system', 'MAIL_RECORD_TRASHED', record_id=ident, record_kind=row['kind'])
     return {'status': 'trashed', 'id': ident}
 

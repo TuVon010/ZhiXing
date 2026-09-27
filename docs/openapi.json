@@ -612,7 +612,6 @@
     "/api/mail/home": {
       "get": {
         "summary": "Home",
-        "description": "Action-oriented home read model; all derived items retain their source ids.",
         "operationId": "home_api_mail_home_get",
         "parameters": [
           {
@@ -1025,6 +1024,29 @@
             }
           },
           {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
             "name": "sort",
             "in": "query",
             "required": false,
@@ -1062,29 +1084,6 @@
               "type": "boolean",
               "default": false,
               "title": "Include Test"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 200,
-              "minimum": 1,
-              "default": 50,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "default": 0,
-              "title": "Offset"
             }
           }
         ],
@@ -1846,7 +1845,7 @@
     "/api/mail/drafts/{ident}/send": {
       "post": {
         "summary": "Confirm Send",
-        "description": "A user's final click authorizes exactly this frozen draft version.",
+        "description": "Authorize exactly one frozen draft version from a user's final click.",
         "operationId": "confirm_send_api_mail_drafts__ident__send_post",
         "parameters": [
           {
@@ -2274,7 +2273,6 @@
     "/api/mail/messages/{ident}/perception": {
       "get": {
         "summary": "Get Perception",
-        "description": "获取一封邮件的感知结果。",
         "operationId": "get_perception_api_mail_messages__ident__perception_get",
         "parameters": [
           {
@@ -2310,7 +2308,6 @@
       },
       "post": {
         "summary": "Request Perception",
-        "description": "用户显式分析或重试；仍受全局模型调用预算限制。",
         "operationId": "request_perception_api_mail_messages__ident__perception_post",
         "parameters": [
           {
@@ -2348,7 +2345,6 @@
     "/api/mail/messages/{ident}/perception/feedback": {
       "post": {
         "summary": "Perception Feedback",
-        "description": "用户对感知结果的纠偏反馈，会写入记忆供下次感知参考。",
         "operationId": "perception_feedback_api_mail_messages__ident__perception_feedback_post",
         "parameters": [
           {
@@ -2396,7 +2392,6 @@
     "/api/mail/perception/todos": {
       "get": {
         "summary": "List Perception Todos",
-        "description": "列出感知生成的待办候选（等待用户确认）。",
         "operationId": "list_perception_todos_api_mail_perception_todos_get",
         "parameters": [
           {
@@ -2435,7 +2430,6 @@
     "/api/mail/perception/todos/{ident}/confirm": {
       "post": {
         "summary": "Confirm Perception Todo",
-        "description": "确认感知生成的待办，将其从 candidate 变为 active。",
         "operationId": "confirm_perception_todo_api_mail_perception_todos__ident__confirm_post",
         "parameters": [
           {
@@ -2473,7 +2467,6 @@
     "/api/mail/perception/todos/{ident}/dismiss": {
       "post": {
         "summary": "Dismiss Perception Todo",
-        "description": "忽略感知生成的待办。",
         "operationId": "dismiss_perception_todo_api_mail_perception_todos__ident__dismiss_post",
         "parameters": [
           {
@@ -2511,7 +2504,6 @@
     "/api/mail/perception/calendars": {
       "get": {
         "summary": "List Perception Calendars",
-        "description": "列出感知生成的日程候选（等待用户确认），包含冲突检测信息。",
         "operationId": "list_perception_calendars_api_mail_perception_calendars_get",
         "parameters": [
           {
@@ -2550,7 +2542,6 @@
     "/api/mail/perception/calendars/{ident}/confirm": {
       "post": {
         "summary": "Confirm Perception Calendar",
-        "description": "确认感知生成的日程候选，将其从 candidate 变为 active。确认时再次检测冲突。",
         "operationId": "confirm_perception_calendar_api_mail_perception_calendars__ident__confirm_post",
         "parameters": [
           {
@@ -2588,7 +2579,6 @@
     "/api/mail/perception/calendars/{ident}/dismiss": {
       "post": {
         "summary": "Dismiss Perception Calendar",
-        "description": "忽略感知生成的日程候选。",
         "operationId": "dismiss_perception_calendar_api_mail_perception_calendars__ident__dismiss_post",
         "parameters": [
           {
@@ -2626,7 +2616,6 @@
     "/api/mail/digest": {
       "get": {
         "summary": "Get Digest",
-        "description": "获取邮件动态摘要。date 格式 YYYY-MM-DD，默认今天。",
         "operationId": "get_digest_api_mail_digest_get",
         "parameters": [
           {
@@ -2675,7 +2664,6 @@
     "/api/mail/digest/generate": {
       "post": {
         "summary": "Generate Digest Now",
-        "description": "立即生成指定日期的邮件摘要（手动触发）。",
         "operationId": "generate_digest_now_api_mail_digest_generate_post",
         "parameters": [
           {

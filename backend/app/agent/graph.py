@@ -10,12 +10,22 @@ import json
 import sqlite3
 import time
 from pathlib import Path
-from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import interrupt, Command
 from langgraph.checkpoint.sqlite import SqliteSaver
-from backend.app.persistence.store import store, uid, now, encode
+from backend.app.persistence.store import store, uid, now
+from backend.app.agent.repository import (
+    claim_workflow_job,
+    enqueue_workflow,
+    extend_workflow_lease,
+    fail_workflow_job,
+    find_record_by_dedupe,
+    finish_workflow_job,
+    mark_waiting_when_approval_pending,
+    resume_workflow,
+)
+from backend.app.persistence.transactions import begin_immediate
 from backend.app.agent.schemas import NormalizedMessage, ZhiXingState, Approval, ActionPlan
 from backend.app.agent.model_client import plan, trace_run
 from backend.app.agent.policy import decide, risk, key, suspend, suggest
@@ -40,14 +50,13 @@ def ingest(message, db=store, explicit_plan=None, replay=False, frozen_versions=
                 prepare(c,rid)
             mid = db.insert('message',m,scope=scope,dedupe=dedupe,conn=c)
             db.insert('run',{'message':m,'message_record_id':mid,'versions':versions,'explicit_plan':explicit_plan,'outcomes':{},'replay':replay},status='queued',scope=scope,id=rid,conn=c)
-            c.execute(text("INSERT INTO jobs(id,run_id,scope,status,created_at) VALUES(:id,:run,:scope,'queued',:at)"),{'id':uid(),'run':rid,'scope':scope,'at':now()})
+            enqueue_workflow(c,uid(),rid,scope)
     except IntegrityError:
-        with db.engine.connect() as c:
-            row = c.execute(text('SELECT id FROM records WHERE dedupe=:key'),{'key':dedupe}).first()
-        if not row:
+        message_id = find_record_by_dedupe(db,dedupe)
+        if not message_id:
             raise
         for run in db.list('run',limit=10000):
-            if run['body']['message_record_id']==row[0]:
+            if run['body']['message_record_id']==message_id:
                 return run['id']
         raise ValueError('事件存在但运行记录缺失')
     db.audit(rid,'MESSAGE_RECEIVED',source=m['source'])
@@ -56,7 +65,7 @@ def ingest(message, db=store, explicit_plan=None, replay=False, frozen_versions=
 def approve(approval_id, payload, db=store):
     command = Approval.model_validate(payload)
     with db.engine.connect() as c:
-        c.exec_driver_sql('BEGIN IMMEDIATE')
+        begin_immediate(c)
         row = db.get(approval_id,c)
         if row['kind'] != 'approval':
             raise ValueError('不是审批记录')
@@ -84,7 +93,7 @@ def approve(approval_id, payload, db=store):
             return {'status':'pending','version':b['version']+1}
         db.update(approval_id,{**b,'decision':command.decision},'approved' if command.decision=='approve' else 'rejected',conn=c)
         decision_id = db.insert('decision',{'approval_id':approval_id,'key':key(b['action']),'risk':risk(b['action']),'decision':command.decision,'action_id':b['action']['id'],'result':'pending'},conn=c)
-        c.execute(text("UPDATE jobs SET status=CASE WHEN status='running' THEN 'running' ELSE 'queued' END,resume=:resume WHERE run_id=:run"),{'run':b['run_id'],'resume':encode({'approval_id':approval_id,'decision_id':decision_id})})
+        resume_workflow(c,b['run_id'],{'approval_id':approval_id,'decision_id':decision_id})
         db.update(b['run_id'],status='queued',conn=c)
         c.commit()
     db.audit(b['run_id'],'APPROVAL_DECIDED',approval_id=approval_id,decision=command.decision)
@@ -235,10 +244,7 @@ class Runtime:
         snapshot=self.graph.get_state(config)
         if snapshot.next:
             # Do not overwrite a decision concurrently submitted just after interrupt.
-            with self.db.engine.begin() as c:
-                pending=c.execute(text("SELECT COUNT(*) FROM records WHERE kind='approval' AND status='pending' AND json_extract(body,'$.run_id')=:run"),{'run':rid}).scalar_one()
-                if pending:
-                    self.db.update(rid,status='waiting_approval',conn=c)
+            pending=mark_waiting_when_approval_pending(self.db,rid)
             if pending:
                 self.db.audit(rid,'WORKFLOW_PAUSED',status='waiting_approval')
             return 'waiting' if pending else 'queued'
@@ -247,20 +253,13 @@ class Runtime:
 def work_once(db=store):
     import threading
     timestamp=time.time()
-    with db.engine.connect() as c:
-        c.exec_driver_sql('BEGIN IMMEDIATE')
-        c.execute(text("UPDATE jobs SET status='queued' WHERE status='running' AND lease_until<:t"),{'t':timestamp})
-        job=c.execute(text("SELECT * FROM jobs j WHERE status='queued' AND NOT EXISTS(SELECT 1 FROM jobs other WHERE other.scope=j.scope AND other.status='running') ORDER BY created_at LIMIT 1")).mappings().first()
-        if not job:
-            c.rollback(); return False
-        job=dict(job)
-        c.execute(text("UPDATE jobs SET status='running',lease_until=:lease,attempts=attempts+1 WHERE id=:id"),{'id':job['id'],'lease':timestamp+120})
-        c.commit()
+    job=claim_workflow_job(db,timestamp)
+    if not job:
+        return False
     stop=threading.Event()
     def heartbeat():
         while not stop.wait(30):
-            with db.engine.begin() as c:
-                c.execute(text("UPDATE jobs SET lease_until=:lease WHERE id=:id AND status='running'"),{'id':job['id'],'lease':time.time()+120})
+            extend_workflow_lease(db,job['id'],time.time()+120)
     thread=threading.Thread(target=heartbeat,daemon=True);thread.start()
     rt=Runtime(db)
     try:
@@ -268,15 +267,11 @@ def work_once(db=store):
             status='done'
         else:
             status=rt.run(job['run_id'],json.loads(job['resume']) if job['resume'] else None)
-        with db.engine.begin() as c:
-            current=c.execute(text('SELECT resume FROM jobs WHERE id=:id'),{'id':job['id']}).scalar_one()
-            new_resume=current if current!=job['resume'] else None
-            c.execute(text("UPDATE jobs SET status=:status,lease_until=0,resume=:resume WHERE id=:id AND status='running'"),{'id':job['id'],'status':'queued' if new_resume else status,'resume':new_resume})
+        finish_workflow_job(db,job,status)
     except Exception as e:
         db.audit(job['run_id'],'WORKFLOW_FAILED',error=type(e).__name__,detail=str(e)[:500])
         db.update(job['run_id'],status='failed')
-        with db.engine.begin() as c:
-            c.execute(text("UPDATE jobs SET status='failed',lease_until=0 WHERE id=:id"),{'id':job['id']})
+        fail_workflow_job(db,job['id'])
     finally:
         stop.set();thread.join();rt.close()
     return True

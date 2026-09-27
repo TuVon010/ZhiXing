@@ -77,7 +77,7 @@ backend/
     app/api/                系统级路由和应用装配
     app/agent/              LangGraph、决策、工具、策略与模型调用
     app/integrations/       IMAP、SMTP 等外部协议适配器
-    app/modules/mail/       邮件、RAG、感知、草稿和工作项
+    app/modules/mail/       邮件领域；内部按 routes/services/repositories 分层
   app/observability/      Trace、模型用量与计价
   app/workers/            调度器和持久邮件任务
 frontend/src/

@@ -1,16 +1,8 @@
 """Filter rules, review box and classifier evaluation endpoints."""
-import json
-from fastapi import APIRouter, HTTPException, Request, Response, Query
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import text
-from backend.app.core.config import settings
-from backend.app.persistence.store import store, now, uid
-from backend.app.agent.schemas import NormalizedMessage, Approval, ActionPlan, PlannedAction
-from backend.app.agent.graph import ingest, approve
-from backend.app.agent import evolution
-from backend.app.observability.tracing import RunDetail, detail as trace_detail
-from backend.app.observability import billing
+from backend.app.persistence.store import store, uid
+from backend.app.agent.graph import ingest
 
 router = APIRouter()
 class FilterRulesInput(BaseModel):

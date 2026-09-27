@@ -1,22 +1,13 @@
-"""Historical import and persistent background-job endpoints."""
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from sqlalchemy import text
-import json
-from datetime import datetime, timezone, timedelta
-from backend.app.modules.mail.schemas import MailAccount, ImportRequest, SearchRequest, DraftInput, SessionInput, TurnInput, PerceptionFeedback
+"""HTTP adapter for historical imports and persistent background jobs."""
+from fastapi import APIRouter, Depends
+
+from backend.app.api.dependencies import get_store
+from backend.app.modules.mail.schemas import ImportRequest
 from backend.app.modules.mail.perception_queue import BatchRequest, queue_batch, summary as perception_queue_summary
-from backend.app.modules.mail.repository import initialize, rows, require, public_account, save_account, enqueue, job, validate_accounts
-from backend.app.persistence.store import now
+from backend.app.modules.mail.repository import rows, require, enqueue, job
 
 router = APIRouter()
-
-
-def database():
-    """Provide the shared local store while keeping route handlers injectable."""
-    from backend.app.persistence.store import store
-    initialize(store)
-    return store
+database = get_store
 @router.post('/mail/imports/preview')
 def preview(body:ImportRequest,db=Depends(database)):
     if require(db,body.account_id,'mail_account')['body'].get('test_account'):

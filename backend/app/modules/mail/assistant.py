@@ -4,8 +4,9 @@ import json
 from datetime import datetime,timezone
 from pydantic import BaseModel,Field
 from typing import Literal
-from sqlalchemy import text
 from backend.app.persistence.store import now,uid,encode
+from backend.app.persistence.transactions import begin_immediate
+from backend.app.modules.mail.repositories.assistant import invalidate_draft_run, load_thread_messages
 from backend.app.modules.mail.repository import rows,require,validate_accounts,enqueue
 from backend.app.modules.mail.schemas import DraftInput,SessionInput,TurnInput,SearchRequest
 from backend.app.agent.schemas import ActionPlan
@@ -61,9 +62,7 @@ def create_turn(db,session_id,value:TurnInput,new_id=None):
 def thread_messages(db,thread_id,accounts):
     thread=require(db,thread_id,'mail_thread',accounts)
     if thread['body'].get('merged_into'):thread_id=thread['body']['merged_into']
-    with db.engine.connect() as c:
-        data=c.execute(text("SELECT * FROM records WHERE kind='mail_message' AND scope=:a AND json_extract(body,'$.thread_id')=:tid AND status IN ('active','archived','legacy') ORDER BY json_extract(body,'$.received_at'),id"),{'a':thread['scope'],'tid':thread_id}).mappings().all()
-    return [{**dict(r),'body':json.loads(r['body'])} for r in data]
+    return load_thread_messages(db,thread['scope'],thread_id)
 
 
 def draft(db,value:DraftInput,ident=None,new_id=None,source_turn=None):
@@ -87,7 +86,7 @@ def draft(db,value:DraftInput,ident=None,new_id=None,source_turn=None):
     validated=DraftInput.model_validate({k:v for k,v in body.items() if k in DraftInput.model_fields})
     body.update(validated.model_dump())
     with db.engine.connect() as c:
-        c.exec_driver_sql('BEGIN IMMEDIATE')
+        begin_immediate(c)
         if ident:
             old=require(db,ident,'mail_draft',[value.account_id],c)
             if old['body'].get('source_turn'):body['source_turn']=old['body']['source_turn']
@@ -97,8 +96,7 @@ def draft(db,value:DraftInput,ident=None,new_id=None,source_turn=None):
             for rid in approval_runs:
                 run=db.get(rid,c)
                 if run['status']=='running':raise ValueError('发送执行中，不能修改草稿')
-                c.execute(text("UPDATE records SET status='rejected' WHERE kind='approval' AND json_extract(body,'$.run_id')=:rid AND status='pending'"),{'rid':rid})
-                c.execute(text("UPDATE jobs SET status='done' WHERE run_id=:rid"),{'rid':rid})
+                invalidate_draft_run(c,rid)
                 db.update(rid,status='cancelled',conn=c)
             body['version']=value.version+1;db.update(ident,body,'draft',conn=c)
         else:
@@ -245,7 +243,7 @@ def run_turn(db,ident):
         b['steps'].append({**step,'result':json.dumps(result,ensure_ascii=False,default=str)[:5000]})
         b.pop('pending_decision',None);b['evidence']=list(evidence.values())
         with db.engine.connect() as c:
-            c.exec_driver_sql('BEGIN IMMEDIATE')
+            begin_immediate(c)
             if db.get(ident,c)['status']=='cancelled':return {'cancelled':True}
             db.update(ident,b,status,conn=c);c.commit()
         if status!='running':return b

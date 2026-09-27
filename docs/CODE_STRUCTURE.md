@@ -37,9 +37,17 @@ AssistantPage
 
 `Store` 封装 SQLite 连接、事务、通用记录和审计。需要多条写入保持原子性时，应接收同一个连接并在一个事务中完成。不要在前端路由中编写数据库事务。
 
-### `api` 和 `modules/mail/routes`
+### `api` 和 `modules/mail/routes`（Controller）
 
-负责 Pydantic 输入校验、账号范围入口和 HTTP 返回。路由函数不应包含模型 Prompt、IMAP 协议细节或复杂 SQL。系统设置、计价等跨领域接口位于 `api/routes`；邮件接口位于 `modules/mail/routes`。
+负责 Pydantic 输入校验、账号范围入口和 HTTP 返回。路由函数不包含 SQL、模型 Prompt、IMAP 协议细节或业务事务。系统设置、计价等跨领域接口位于 `api/routes`；邮件接口位于 `modules/mail/routes`。
+
+### `modules/mail/services`（Service）
+
+组织一个完整用例，例如首页聚合、账号同步、邮件状态变更、待办完成和 Agent 会话查询。Service 校验业务状态并调用 Repository 或领域函数，不依赖 FastAPI 的 `Request`、`Response` 和 `Depends`。
+
+### `modules/mail/repositories`（Repository）
+
+封装邮件模块的 SQLite 查询和原子写入。普通业务代码通过函数表达意图，例如 `load_dashboard_rows`、`list_inbox` 和 `pending_perception_job`，不在 Service 中拼接 SQL。全文检索、JSON 查询和事务锁等 SQLite 特性在这里显式保留。
 
 ### `modules/mail`
 
@@ -53,7 +61,20 @@ AssistantPage
 
 ### `agent`
 
-`schemas.py` 定义动作和状态；`model_client.py` 是模型调用边界；`policy.py` 判断风险；`graph.py` 负责 LangGraph checkpoint、中断恢复和动作推进；`tools.py` 负责参数校验、执行账本和确定性工具调用。模型不能绕过这一层直接发送邮件。
+`schemas.py` 定义动作和状态；`model_client.py` 是模型调用边界；`policy.py` 判断风险；`graph.py` 负责 LangGraph checkpoint、中断恢复和动作推进；`tools.py` 负责参数校验和确定性工具调用；`repository.py` 封装队列租约、执行账本和恢复所需的原子 SQL。模型不能绕过这一层直接发送邮件。
+
+## 数据访问规则
+
+```text
+Route → Service → Repository → SQLite
+                 ↘ Domain / Agent / Integration
+```
+
+- Route 和 Service 中禁止出现 `SELECT`、`INSERT`、`UPDATE`、`DELETE` 或 `sqlalchemy.text`。
+- 普通增删改查优先复用 `Store`；需要 JSON1、FTS5、聚合查询或原子条件更新时使用 Repository 中的参数化 SQL。
+- Repository 不决定审批、风险和产品流程，只提供持久化语义。
+- 同一业务动作的多项写入必须共享连接或由 Repository 建立明确事务。
+- 不为了隐藏 SQL 创建无意义的一行包装；只在业务层不应理解数据库细节时抽取。
 
 ### `workers`
 
@@ -87,10 +108,11 @@ AssistantPage
 新增“邮件稍后处理”功能时：
 
 1. 在 `modules/mail/schemas.py` 增加输入结构。
-2. 在 `modules/mail/work_items.py` 编写业务用例和状态约束。
-3. 在 `modules/mail/routes/work_items.py` 暴露接口。
-4. 在 `features/work-items` 添加界面。
-5. 用 OpenAPI 重新生成前端类型。
-6. 增加业务规则验证和端到端场景，保留 Trace 与测试归档。
+2. 在 `modules/mail/services/work_items.py` 编写业务用例和状态约束。
+3. 需要专用查询时在 `modules/mail/repositories` 增加 Repository。
+4. 在 `modules/mail/routes/work_items.py` 暴露接口。
+5. 在 `features/work-items` 添加界面。
+6. 用 OpenAPI 重新生成前端类型。
+7. 增加业务规则验证和端到端场景，保留 Trace 与测试归档。
 
 不要把实现直接写入 `app/main.py`、根目录兼容入口或前端 `main.tsx`。
