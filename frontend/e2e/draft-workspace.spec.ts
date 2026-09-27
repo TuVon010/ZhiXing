@@ -25,6 +25,5 @@ test("从收件箱直接进入 AI 回复编辑器并查看生成 Trace", async (
   await page.getByRole("button", { name: "查看生成 Trace", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "运行 Trace" })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "运行 Trace" })).toContainText("生成 AI 回复建议");
-  await page.screenshot({ path: info.outputPath("ai-reply-draft.png"), fullPage: true });
   expect(errors).toEqual([]);
 });

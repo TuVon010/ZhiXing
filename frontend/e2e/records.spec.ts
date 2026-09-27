@@ -18,5 +18,4 @@ test('本地记录可移入回收站并恢复，旧数据可盘点与备份', as
   await expect(page.getByText(/旧邮件来源字段无法证明/)).toBeVisible();
   await page.getByRole('button', { name: '生成旧数据备份' }).click();
   await expect(page.getByRole('status')).toContainText('备份已保存');
-  await page.screenshot({ path: info.outputPath('records-manager.png'), fullPage: true });
 });

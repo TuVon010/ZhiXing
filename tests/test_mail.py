@@ -77,21 +77,17 @@ def test_ai_reply_suggestion_is_editable_traceable_and_never_sent(db):
     assert not db.list('run')
 
 
-def test_send_requires_approval_and_completed_ledger_replays(db):
+def test_final_send_confirmation_and_completed_ledger_replay(db):
     aid=account(db)
     d=draft(db,DraftInput(account_id=aid,to=['teacher@example.com'],subject='结果',content='实验已完成'))
-    rid=submit_draft(db,d['id'],1)['run_id']
-    assert db.get(d['id'])['status']=='approval'
-    with pytest.raises(ValueError):submit_draft(db,d['id'],1)
-    work_once(db);assert db.get(rid)['status']=='waiting_approval'
-    a=db.for_run('approval',rid)[0]
-    with pytest.raises(ValueError):approve(a['id'],{'decision':'edit','args':a['body']['action']['args']},db)
-    approve(a['id'],{'decision':'approve'},db);work_once(db)
+    rid=submit_draft(db,d['id'],1,user_confirmed=True)['run_id']
+    assert db.get(d['id'])['status']=='submitted'
+    work_once(db)
     assert db.get(d['id'])['status']=='simulated'
-    # Crash replay must consult the ledger before checking the now-terminal draft.
-    result=execute(db,a['body']['action'],rid,'web:mail:'+aid)
+    action=db.get(rid)['body']['actions'][0]
+    # Replay consults the ledger before checking the now-terminal draft.
+    result=execute(db,action,rid,'web:mail:'+aid)
     assert result['simulated'] is True
-    with pytest.raises(ValueError):approve(a['id'],{'decision':'approve'},db)
 
 
 def test_edit_invalidates_approval(db):
@@ -108,8 +104,8 @@ def test_smtp_unknown_never_retries(db,monkeypatch):
     from backend.app.core.config import settings
     import backend.app.modules.mail.sending as sender
     aid=account(db);d=draft(db,DraftInput(account_id=aid,to=['x@example.com'],subject='测试',content='内容'))
-    rid=submit_draft(db,d['id'],1)['run_id'];work_once(db)
-    action=db.for_run('approval',rid)[0]['body']['action'];calls=[]
+    rid=submit_draft(db,d['id'],1,user_confirmed=True)['run_id']
+    action={**db.get(rid)['body']['explicit_plan']['actions'][0],'id':rid+'-0','depends_on':[]};calls=[]
     class SMTP:
         def send_message(self,msg):calls.append(msg);raise OSError('lost after DATA')
     @contextmanager
@@ -268,6 +264,19 @@ def test_first_connection_5000_messages_no_download(db,monkeypatch):
     fake.count=5001;assert scan(db,aid)['imported']==1
     assert len(rows(db,'mail_message',[aid]))==1
     assert scan(db,aid)['imported']==0
+
+
+def test_identical_content_with_distinct_uid_remains_distinct_and_retry_is_idempotent(db):
+    aid=account(db)
+    mime=EmailMessage();mime['From']='teacher@example.com';mime['To']='owner1@qq.com'
+    mime['Subject']='相同内容';mime['Message-ID']='<same@example.com>';mime.set_content('完全相同的邮件正文')
+    received='2026-09-22T10:00:00+00:00';raw=mime.as_bytes()
+    first=store_message(db,aid,'100',1,raw,received)
+    second=store_message(db,aid,'100',2,raw,received)
+    retry=store_message(db,aid,'100',2,raw,received)
+    assert first != second
+    assert retry == second
+    assert len(rows(db,'mail_message',[aid])) == 2
 
 
 def test_preview_has_no_cursor_messages_or_agent_jobs(db,monkeypatch):

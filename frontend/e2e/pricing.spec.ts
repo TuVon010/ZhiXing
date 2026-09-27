@@ -22,7 +22,6 @@ test('自定义计价：逐项覆盖、零价、持久化、恢复默认',async(
  await panel.getByRole('button',{name:'保存计价',exact:true}).click();
  await expect(panel.getByTestId('effective-cached_input')).toHaveText('生效：.02 · 默认');
  await expect(panel.getByTestId('effective-output')).toHaveText('生效：5.25 · 自定义');
- await page.screenshot({path:testInfo.outputPath('pricing-custom.png'),fullPage:true});
  await panel.getByRole('button',{name:'恢复默认计价',exact:true}).click();
  await expect(panel.getByRole('status')).toHaveText('已恢复默认计价');
  await expect(panel.getByTestId('effective-output')).toHaveText('生效：4 · 默认');

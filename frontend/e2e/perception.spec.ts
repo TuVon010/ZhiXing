@@ -51,6 +51,5 @@ test('邮件感知、Trace 与可撤销纠偏形成闭环（离线演示）', as
   }).toBe('active');
   await page.locator('nav').getByRole('button', { name: '收件箱', exact: true }).click();
   await expect(page.locator('.mail-row').filter({ hasText: target.body.subject })).toBeVisible();
-  await page.screenshot({ path: info.outputPath('perception-correction.png'), fullPage: true });
   expect(errors).toEqual([]);
 });

@@ -19,6 +19,9 @@ def initialize(db):
         c.exec_driver_sql('CREATE VIRTUAL TABLE IF NOT EXISTS mail_fts USING fts5(chunk_id UNINDEXED, content)')
         c.exec_driver_sql('CREATE TABLE IF NOT EXISTS mail_vectors(content_hash TEXT,model_version TEXT,embedding BLOB,PRIMARY KEY(content_hash,model_version))')
         c.exec_driver_sql('CREATE TABLE IF NOT EXISTS mail_leases(name TEXT PRIMARY KEY,owner TEXT,until REAL)')
+        # Kept for compatibility with databases created by an older release.
+        # Content fingerprints no longer deduplicate IMAP messages: UID identity
+        # is authoritative, and two UIDs may carry identical content.
         c.exec_driver_sql('CREATE TABLE IF NOT EXISTS mail_source_fingerprints(account_id TEXT,folder TEXT,fingerprint TEXT,record_id TEXT,PRIMARY KEY(account_id,folder,fingerprint))')
         columns={row[1] for row in c.exec_driver_sql('PRAGMA table_info(mail_source_fingerprints)')}
         if 'message_id' in columns and 'record_id' not in columns:

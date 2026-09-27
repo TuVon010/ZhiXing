@@ -26,5 +26,4 @@ test('14 封合成邮件贯通账号隔离、感知、跟进和 Trace', async ({
   await expect(page.getByRole('heading', { name: 'AI 感知结果' })).toBeVisible();
   await page.getByRole('button', { name: '查看 Trace', exact: true }).click();
   await expect(page.getByRole('heading', { name: '邮件感知 Trace' })).toBeVisible();
-  await page.screenshot({ path: info.outputPath('synthetic-agent-flow.png'), fullPage: true });
 });

@@ -15,7 +15,6 @@ test('检索问答按会话保存、追问并定位原邮件', async ({ page }, 
   await page.getByRole('button', { name: '发送', exact: true }).click();
   await expect(page.locator('.assistant-evidence').first()).toBeVisible({ timeout: 20000 });
   await expect(page.locator('.assistant-session').first()).toContainText('实验报告修改');
-  await page.screenshot({ path: info.outputPath('search-conversation.png'), fullPage: true });
 
   await page.getByRole('button', { name: '整理回答' }).click();
   await page.getByLabel('邮件问题').fill('其中要求我什么时候完成？');

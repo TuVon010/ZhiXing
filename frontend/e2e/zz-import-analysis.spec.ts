@@ -21,5 +21,4 @@ test('已入库邮件可在导入页显式批量分析并看到产出（离线�
   await page.locator('nav').getByRole('button', { name: '收件箱', exact: true }).click();
   await page.locator('.mail-row').first().click();
   await expect(page.getByRole('heading', { name: 'AI 感知结果' })).toBeVisible();
-  await page.screenshot({ path: info.outputPath('import-analysis.png'), fullPage: true });
 });

@@ -36,6 +36,5 @@ test('邮件可在收件箱、归档箱和回收站之间恢复', async ({ page 
   await expect(trashed).toBeVisible();
   await trashed.click();
   await page.getByRole('button', { name: '恢复邮件', exact: true }).click();
-  await page.screenshot({ path: info.outputPath('mailbox-state-flow.png'), fullPage: true });
   expect(errors).toEqual([]);
 });

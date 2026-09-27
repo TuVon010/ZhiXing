@@ -29,7 +29,6 @@ test('多邮箱工作台、证据检索、草稿变更与 Trace（离线演示�
  await expect(page.getByText('验证新版工作台待办',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'完成',exact:true}).click();
  await expect(page.getByRole('status')).toContainText('已完成本地待办');
- await page.screenshot({path:info.outputPath('draft-review.png'),fullPage:true});
  await page.locator('nav').getByRole('button',{name:'邮箱账号',exact:true}).click();
  for(const [name,address] of [['研究邮箱','research@163.com'],['个人邮箱','personal@qq.com']]){
    await page.getByRole('button',{name:'添加邮箱',exact:true}).click();
@@ -48,6 +47,5 @@ test('多邮箱工作台、证据检索、草稿变更与 Trace（离线演示�
  await expect(page.getByRole('heading',{name:'运行 Trace',exact:true})).toBeVisible();
  const pending=page.waitForEvent('download');await page.getByRole('button',{name:'导出邮件 Trace JSON'}).click();
  await (await pending).saveAs(info.outputPath('mail-trace.json'));
- await page.screenshot({path:info.outputPath('mail-trace.png'),fullPage:true});
  expect(errors).toEqual([]);
 });

@@ -1,6 +1,6 @@
 # 测试与研究留档
 
-scripts/test.ps1 保留命令、源码、依赖、标准输出、后端 JUnit、测试库、原 120 条评测和浏览器报告。浏览器保留截图、录像、Playwright Trace 和业务 Trace。默认合成数据及 mock 外部服务。
+scripts/test.ps1 保留命令、源码、依赖、标准输出、后端 JUnit、测试库、原 120 条评测和浏览器报告。浏览器测试默认只在失败时保留截图和 Playwright Trace；关闭视频录制，避免成功用例产生大体积媒体文件。业务 Trace 仍是产品可观测数据，与 Playwright Trace 分开。默认使用合成数据并模拟外部服务。
 
 scripts/evaluate_mail.py 要求真实本地嵌入与重排序。生成 200 场景，100 优化、100 保留；完整线程和项目不跨集合。每例保存输入、标签、索引结果、四种排名、延迟、Recall@8/nDCG@8。模型失败直接失败，不把关键词降级当成完整 RAG。
 
@@ -8,7 +8,7 @@ scripts/evaluate_mail.py 要求真实本地嵌入与重排序。生成 200 场�
 | --- | --- |
 | artifacts/mail-baseline-20260922 | 重构前用户修改基线及失败重跑 |
 | artifacts/mail-regression-20260923 | 各轮日志、JUnit、测试数据库 |
-| artifacts/mail-browser-* | 截图、录像、Trace、JSON 与测试库 |
+| artifacts/mail-browser-* | 失败截图与 Playwright Trace、JSON/JUnit 报告与隔离测试库 |
 | artifacts/mail-evaluations/* | 200 场景和真实本地检索排名 |
 | artifacts/test-runs/* | 完整工程回归命令和源码快照 |
 | logs/mail-model-* | 下载失败、重试、实际加载日志 |

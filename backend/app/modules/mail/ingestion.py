@@ -101,23 +101,9 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
     cc=[a.lower() for _,a in getaddresses(message.get_all('Cc',[]))]
     declared_at=date_header(str(message.get('Date','')))
     fingerprint=_source_fingerprint(mid,sender_address,subject,body,declared_at,to,cc)
-    with db.engine.begin() as c:
-        existing=c.execute(text('SELECT record_id FROM mail_source_fingerprints WHERE account_id=:a AND folder=:f AND fingerprint=:p'),
-                           {'a':account_id,'f':folder,'p':fingerprint}).first()
-        if existing:return result(existing[0],False)
-        if mid:
-            candidates=c.execute(text("SELECT id,body FROM records WHERE kind='mail_message' AND scope=:a AND json_extract(body,'$.folder')=:f AND json_extract(body,'$.message_id')=:mid"),
-                                 {'a':account_id,'f':folder,'mid':mid}).mappings().all()
-            for candidate in candidates:
-                saved=json.loads(candidate['body'])
-                saved_fingerprint=saved.get('source_fingerprint') or _source_fingerprint(
-                    saved.get('message_id'),saved.get('sender',''),saved.get('subject',''),
-                    saved.get('raw_text') or saved.get('text',''),saved.get('declared_at'),
-                    saved.get('to',[]),saved.get('cc',[]))
-                if saved_fingerprint==fingerprint:
-                    c.execute(text('INSERT OR IGNORE INTO mail_source_fingerprints VALUES(:a,:f,:p,:id)'),
-                              {'a':account_id,'f':folder,'p':fingerprint,'id':candidate['id']})
-                    return result(candidate['id'],False)
+    # Content is not message identity: mailing lists can deliver identical
+    # copies under distinct UIDs. The deterministic id above is the idempotency
+    # key for retries of this exact account/folder/UIDVALIDITY/UID tuple.
     refs=re.findall(r'<[^<>\s]+>',str(message.get('References',''))+' '+str(message.get('In-Reply-To','')))
     refs=list(dict.fromkeys(refs+[mid] if mid else refs))
     attachments=[];used=0
@@ -144,11 +130,6 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
         # Duplicate event during a concurrent retry cannot create another thread.
         existing=c.execute(text('SELECT id FROM records WHERE id=:id'),{'id':ident}).first()
         if existing:return result(ident,False)
-        c.execute(text('INSERT OR IGNORE INTO mail_source_fingerprints VALUES(:a,:f,:p,:id)'),
-                  {'a':account_id,'f':folder,'p':fingerprint,'id':ident})
-        owner=c.execute(text('SELECT record_id FROM mail_source_fingerprints WHERE account_id=:a AND folder=:f AND fingerprint=:p'),
-                        {'a':account_id,'f':folder,'p':fingerprint}).scalar_one()
-        if owner!=ident:return result(owner,False)
         found=[]
         for ref in refs:
             r=c.execute(text('SELECT thread_id FROM mail_refs WHERE account_id=:a AND reference=:ref'),{'a':account_id,'ref':ref}).first()

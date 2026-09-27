@@ -27,10 +27,8 @@ test('本地日程创建、编辑、回收与移动端导航', async ({ page }, 
   await expect(updated).toBeVisible({ timeout: 10000 });
   await updated.getByRole('button', { name: '移入回收站' }).click();
   await expect(updated).toHaveCount(0);
-  await page.screenshot({ path: info.outputPath('calendar-workspace.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('nav').getByRole('button', { name: '邮箱账号', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
-  await page.screenshot({ path: info.outputPath('workspace-mobile.png'), fullPage: true });
   expect(errors).toEqual([]);
 });
