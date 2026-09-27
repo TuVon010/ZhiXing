@@ -5,7 +5,7 @@ import { label, pretty, type Row } from "../../shared/mail";
 type WorkView = "todos" | "replies" | "review" | "reminders";
 
 export function FollowupsPage() {
-  const { page, account, list, busy, setTrace, setDraftForm, act, api, navigate, openMail } = useWorkspace();
+  const { page, account, followups: list, busy, setTrace, setDraftForm, act, api, navigate, openMail, refresh } = useWorkspace();
   const [digest, setDigest] = useState<any>(null);
   const [view, setView] = useState<WorkView>("todos");
   useEffect(() => {
@@ -30,6 +30,19 @@ export function FollowupsPage() {
     navigate("inbox");
     await openMail(item.body.source_message);
   }
+  async function createReply(item: Row, ai: boolean) {
+    await act(async () => {
+      const draft = await api("mail/drafts", {
+        account_id: item.scope.replace("web:mail:", ""),
+        mode: "reply",
+        message_id: item.body.source_message,
+      });
+      setDraftForm(draft);
+      navigate("drafts");
+      if (ai) setDraftForm(await api(`mail/drafts/${draft.id}/suggest`, {}));
+      await refresh("drafts");
+    }, ai ? "AI 回复草稿已生成，请核对后发送" : "回复草稿已创建；发送前需要你最终确认", false);
+  }
   function itemCard(item: Row) {
     const source = item.body.source_message;
     return <article className="panel" key={item.id}>
@@ -53,12 +66,8 @@ export function FollowupsPage() {
         {item.kind === "todo" && item.status === "completed" &&
           <button disabled={busy} onClick={() => void act(() => api(`mail/todos/${item.id}/reopen`, {}), "待办已重新打开")}>重新打开</button>}
         {item.kind === "mail_followup" && item.status === "active" && source &&
-          <button disabled={busy} onClick={() => void act(async () => {
-            const draft = await api("mail/drafts", { account_id: item.scope.replace("web:mail:", ""),
-              mode: "reply", message_id: source });
-            setDraftForm(draft);
-            navigate("drafts");
-          }, "回复草稿已创建；发送前需要你在草稿页最终确认")}>起草回复</button>}
+          <><button disabled={busy} onClick={() => void createReply(item, false)}>手动回复</button>
+            <button className="primary" disabled={busy} onClick={() => void createReply(item, true)}>AI 起草</button></>}
         {item.kind === "mail_followup" && item.status !== "resolved" &&
           <button disabled={busy} onClick={() => void act(() => api(`mail/followups/${item.id}/resolve`, {}), "邮件跟进已处理")}>标记已处理</button>}
         {item.kind === "mail_followup" && item.status === "resolved" &&

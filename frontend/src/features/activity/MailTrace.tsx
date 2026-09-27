@@ -53,6 +53,7 @@ const events: Record<string, string> = {
   MODEL_REQUEST: "请求模型",
   MODEL_RESPONSE: "模型返回",
   MODEL_FAILED: "模型调用失败",
+  MAIL_REPLY_SUGGESTED: "生成 AI 回复建议",
 };
 const date = (value: string) =>
   new Date(value).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" });
@@ -80,7 +81,8 @@ export function MailTrace({
     <div className="modal" role="dialog" aria-label="运行 Trace">
       <section className="panel mail-trace">
         <div className="mail-sectionbar">
-          <h2>{data.root.kind === "mail_message" ? "邮件感知 Trace" : "运行 Trace"}</h2>
+          <h2>{data.root.kind === "mail_message" ? "邮件感知 Trace" :
+            data.root.kind === "mail_draft" ? "AI 回复生成 Trace" : "运行 Trace"}</h2>
           <div className="actions">
             <button onClick={onRefresh}>刷新执行结果</button>
             <button onClick={onClose}>关闭</button>
@@ -89,10 +91,12 @@ export function MailTrace({
         <p>
           {data.root.body.text ||
             data.root.body.summary ||
+            data.root.body.subject ||
             data.root.body.message?.text}
         </p>
         <p>
-          {data.root.kind === "mail_message" ? "邮件状态" : "Agent / 主运行"}：{statusName(data.root.status)} ·{" "}
+          {data.root.kind === "mail_message" ? "邮件状态" :
+            data.root.kind === "mail_draft" ? "草稿状态" : "Agent / 主运行"}：{statusName(data.root.status)} ·{" "}
           {date(data.root.created_at)}
         </p>
         <small>

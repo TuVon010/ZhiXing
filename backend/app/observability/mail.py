@@ -35,7 +35,7 @@ def activity(db, account_id=None, limit=30, offset=0):
 
 def trace(db, ident):
     root=db.get(ident)
-    if root['kind']=='mail_message':
+    if root['kind'] in {'mail_message', 'mail_draft'}:
         calls=db.for_run('model_call',ident)
         audit=db.for_run('audit',ident)
         jobs=jobs_for_message(db,ident)

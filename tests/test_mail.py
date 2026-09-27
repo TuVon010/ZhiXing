@@ -7,7 +7,8 @@ from sqlalchemy import text
 from backend.app.modules.mail.repository import initialize, save_account, rows, migrate, protect, enqueue, job
 from backend.app.modules.mail.schemas import MailAccount, DraftInput, SessionInput, TurnInput
 from backend.app.modules.mail.ingestion import store_message, scan, lease
-from backend.app.modules.mail.assistant import draft, submit_draft, create_session, create_turn, run_turn, thread_messages
+from backend.app.modules.mail.assistant import draft, submit_draft, create_session, create_turn, run_turn, thread_messages, suggest_reply
+from backend.app.observability.mail import trace
 from backend.app.modules.mail.retrieval import index_message, search
 from backend.app.agent.graph import work_once, approve
 from backend.app.agent.tools import execute
@@ -56,6 +57,20 @@ def test_reply_all_excludes_self_and_duplicates(db):
     assert d['body']['to']==['teacher@example.com','colleague@example.com']
     assert d['body']['cc']==['another@example.com']
     assert d['body']['in_reply_to']=='<m1@example.com>'
+
+
+def test_ai_reply_suggestion_is_editable_traceable_and_never_sent(db):
+    aid=account(db);mid=message(db,aid)
+    created=draft(db,DraftInput(account_id=aid,message_id=mid,mode='reply'))
+    suggested=suggest_reply(db,created['id'])
+    assert suggested['status']=='draft'
+    assert suggested['body']['version']==2
+    assert suggested['body']['content']
+    assert suggested['body']['ai_suggestion']['source_message_ids']==[mid]
+    result=trace(db,created['id'])
+    assert result['root']['kind']=='mail_draft'
+    assert any(item['body']['event_type']=='MAIL_REPLY_SUGGESTED' for item in result['audit'])
+    assert not db.list('run')
 
 
 def test_send_requires_approval_and_completed_ledger_replays(db):

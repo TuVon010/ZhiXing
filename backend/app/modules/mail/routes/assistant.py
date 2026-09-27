@@ -39,6 +39,12 @@ def update_draft(ident: str, body: DraftInput, db=Depends(database)):
     return draft(db, body, ident)
 
 
+@router.post("/mail/drafts/{ident}/suggest")
+def suggest_draft_reply(ident: str, db=Depends(database)):
+    from backend.app.modules.mail.assistant import suggest_reply
+    return suggest_reply(db, ident)
+
+
 class Version(BaseModel):
     version: int = Field(ge=1)
 

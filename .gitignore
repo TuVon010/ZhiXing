@@ -20,9 +20,9 @@ frontend/playwright-report/
 *.sqlite*
 artifacts/
 
-# 内部文档与面试材料（不公开）
+# 本地资料（不公开）
+.local/
 ZhiXing_Project_Design_and_OpenSource_Integration.md
-docs/interview/
 docs/JEV.md
 docs/VALIDATION.md
 docs/TESTING.md

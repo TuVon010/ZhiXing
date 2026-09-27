@@ -9,6 +9,8 @@ export function useMailWorkspace(api: Api) {
     [accounts, setAccounts] = useState<Row[]>([]),
     [account, setAccount] = useState(() => stored("account", "")),
     [list, setList] = useState<Row[]>([]),
+    [drafts, setDrafts] = useState<Row[]>([]),
+    [followups, setFollowups] = useState<Row[]>([]),
     [offset, setOffset] = useState(0),
     [config, setConfig] = useState<any>({}),
     [error, setError] = useState(""),
@@ -104,7 +106,7 @@ export function useMailWorkspace(api: Api) {
       );
     }
     if (target === "drafts")
-      setList(
+      setDrafts(
         (await api("mail/drafts" + (account ? "?account_id=" + account : "")))
           .items,
       );
@@ -123,7 +125,7 @@ export function useMailWorkspace(api: Api) {
         ),
       );
     if (target === "followups")
-      setList(
+      setFollowups(
         (
           await api(
             "mail/followups" + (account ? "?account_id=" + account : ""),
@@ -164,14 +166,18 @@ export function useMailWorkspace(api: Api) {
     source.onmessage = () => void refresh().catch((e) => setError(String(e)));
     return () => source.close();
   }, [ready, page, account, offset, showTest, inboxSort, inboxView, inboxCategory]);
-  async function act(fn: () => Promise<any>, message = "已保存") {
+  async function act(
+    fn: () => Promise<any>,
+    message = "已保存",
+    refreshTarget: string | false = page,
+  ) {
     setBusy(true);
     setError("");
     setNotice("");
     try {
       const result = await fn();
       setNotice(message);
-      await refresh();
+      if (refreshTarget) await refresh(refreshTarget);
       return result;
     } catch (e) {
       setError(String(e));
@@ -209,20 +215,24 @@ export function useMailWorkspace(api: Api) {
     setError("");
     setNotice("");
   }
-  async function makeDraft(mode = "new") {
+  async function makeDraft(mode = "new", ai = false) {
     await act(async () => {
       const a = opened?.body.account_id || account;
       if (!a) throw new Error("请先选择发件邮箱");
+      if (mode !== "new" && !opened?.id) throw new Error("请先打开需要回复的邮件");
       const result = await api("mail/drafts", {
         account_id: a,
         mode,
         ...(mode !== "new" ? { message_id: opened.id } : {}),
       });
+      // Open the safe, empty draft first. If model generation fails, the user
+      // still keeps a usable draft and can continue manually.
       setDraftForm(result);
       setPage("drafts");
       setOpened(null);
+      if (ai) setDraftForm(await api("mail/drafts/" + result.id + "/suggest", {}));
       await refresh("drafts");
-    }, "已创建草稿");
+    }, ai ? "AI 回复草稿已生成，请核对后发送" : "已创建草稿，可直接编辑", false);
   }
   function draftPayload() {
     const b = draftForm.body;
@@ -296,6 +306,10 @@ export function useMailWorkspace(api: Api) {
     setAccount,
     list,
     setList,
+    drafts,
+    setDrafts,
+    followups,
+    setFollowups,
     offset,
     setOffset,
     config,

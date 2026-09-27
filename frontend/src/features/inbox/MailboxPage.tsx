@@ -146,10 +146,13 @@ export function MailboxPage() {
                       setOpened(null);
                     }, "邮件已移入本地回收站；原邮箱邮件未删除")}>移入回收站</button>
                     <button onClick={() => void makeDraft("reply")}>
-                      回复草稿
+                      手动回复
                     </button>
                     <button onClick={() => void makeDraft("reply_all")}>
                       回复全部
+                    </button>
+                    <button className="primary" onClick={() => void makeDraft("reply", true)}>
+                      AI 起草
                     </button>
                     <button onClick={() => void act(async () => {
                       await api(`mail/messages/${opened.id}/read`, { read: false });
