@@ -79,7 +79,7 @@ class SearchRequest(BaseModel):
     start: datetime | None = None
     end: datetime | None = None
     sender: str | None = None
-    mode: Literal['hybrid','keyword','vector','fusion'] = 'hybrid'
+    mode: Literal['hybrid','keyword','vector','fusion'] = 'vector'
     @field_validator('start','end')
     @classmethod
     def timezone_required(cls,v):

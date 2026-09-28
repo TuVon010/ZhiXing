@@ -74,6 +74,17 @@ def test_ai_reply_suggestion_is_editable_traceable_and_never_sent(db):
     result=trace(db,created['id'])
     assert result['root']['kind']=='mail_draft'
     assert any(item['body']['event_type']=='MAIL_REPLY_SUGGESTED' for item in result['audit'])
+
+
+def test_ai_reply_refuses_source_removed_from_visible_thread(db):
+    aid=account(db);mid=message(db,aid)
+    created=draft(db,DraftInput(account_id=aid,message_id=mid,mode='reply',content=''))
+    db.update(mid,status='review')
+    with pytest.raises(ValueError,match='原邮件当前不可见'):
+        suggest_reply(db,created['id'])
+    assert not db.get(created['id'])['body'].get('ai_suggestion')
+    assert not [row for row in db.for_run('audit',created['id'])
+                if row['body']['event_type']=='MAIL_REPLY_SUGGESTED']
     assert not db.list('run')
 
 

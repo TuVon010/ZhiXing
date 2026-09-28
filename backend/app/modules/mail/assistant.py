@@ -165,7 +165,13 @@ def suggest_reply(db, ident):
         raise ValueError('AI 回复建议需要关联一封原邮件')
     account_id = body['account_id']
     source = require(db, body['message_id'], 'mail_message', [account_id])
+    if source['status'] not in {'active', 'archived', 'legacy'}:
+        raise ValueError('原邮件当前不可见，请先恢复处理后再生成回复')
     thread = thread_messages(db, source['body']['thread_id'], [account_id])[-8:]
+    if not thread:
+        raise ValueError('原邮件线程没有可用证据，不能生成回复建议')
+    if all(item['id'] != source['id'] for item in thread):
+        thread = [source, *thread[-7:]]
     evidence = [{
         'id': item['id'],
         'sender': item['body'].get('sender', ''),

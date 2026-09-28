@@ -2197,7 +2197,7 @@ export interface components {
             sender?: string | null;
             /**
              * Mode
-             * @default hybrid
+             * @default vector
              * @enum {string}
              */
             mode: "hybrid" | "keyword" | "vector" | "fusion";

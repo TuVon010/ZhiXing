@@ -1,0 +1,45 @@
+{"id":"e01","category":"exact","subject":"设备编号 QX-731 校准","messages":["QX-731 光谱仪的校准证书已交给仪器管理员，序列号为 SN-4831。"],"question":"QX-731 的序列号是多少？","relevant_indices":[0]}
+{"id":"e02","category":"exact","subject":"合同 HT-204 付款条款","messages":["合同 HT-204 的第二笔款项应在验收后十个工作日支付。"],"question":"HT-204 第二笔款项何时支付？","relevant_indices":[0]}
+{"id":"e03","category":"exact","subject":"会议室 A302 预约确认","messages":["周五的组会安排在教学楼 A302，门禁需要校园卡。"],"question":"周五组会在哪个会议室？","relevant_indices":[0]}
+{"id":"e04","category":"exact","subject":"报销单 BX-507 退回","messages":["报销单 BX-507 缺少高铁电子发票，请补充后重新提交。"],"question":"BX-507 为什么被退回？","relevant_indices":[0]}
+{"id":"e05","category":"exact","subject":"工单 INC-924 处理记录","messages":["INC-924 的原因是预发环境证书到期，已完成证书轮换。"],"question":"INC-924 的故障原因是什么？","relevant_indices":[0]}
+{"id":"e06","category":"exact","subject":"论文图表 Fig.6 修改","messages":["Fig.6 的纵轴单位应从毫秒改为秒，图注也要同步更新。"],"question":"Fig.6 的纵轴单位改为什么？","relevant_indices":[0]}
+{"id":"e07","category":"exact","subject":"采购单 PO-1187 审核","messages":["PO-1187 已由财务审核通过，供应商为星河仪器。"],"question":"PO-1187 的供应商是谁？","relevant_indices":[0]}
+{"id":"e08","category":"exact","subject":"实验批次 EXP-42 留样","messages":["EXP-42 的样本存放在低温柜 B 区第三层。"],"question":"EXP-42 的样本放在哪里？","relevant_indices":[0]}
+{"id":"e09","category":"exact","subject":"面试编号 IV-605","messages":["IV-605 的线上面试链接会在开始前一小时单独发送。"],"question":"IV-605 的面试链接何时发送？","relevant_indices":[0]}
+{"id":"e10","category":"exact","subject":"版本 v2.4.1 发布说明","messages":["v2.4.1 修复了邮箱账号切换后查询范围未刷新的问题。"],"question":"v2.4.1 修复了什么问题？","relevant_indices":[0]}
+{"id":"e11","category":"exact","subject":"课程 CS-309 作业","messages":["CS-309 的期末作业是实现一个简易全文检索服务。"],"question":"CS-309 的期末作业是什么？","relevant_indices":[0]}
+{"id":"e12","category":"exact","subject":"发票 FP-890 开具","messages":["FP-890 已开具，抬头为启明实验室。"],"question":"FP-890 的发票抬头是什么？","relevant_indices":[0]}
+{"id":"e13","category":"exact","subject":"服务器 srv-node-8 维护","messages":["srv-node-8 将于周日凌晨两点重启，预计中断十五分钟。"],"question":"srv-node-8 预计中断多久？","relevant_indices":[0]}
+{"id":"e14","category":"exact","subject":"稿件编号 MS-771 审稿","messages":["MS-771 的审稿意见要求补充数据集来源说明。"],"question":"MS-771 要补充什么说明？","relevant_indices":[0]}
+{"id":"e15","category":"exact","subject":"资产编号 AS-590 移交","messages":["AS-590 已移交给计算机学院实验室，接收人是陈老师。"],"question":"AS-590 的接收人是谁？","relevant_indices":[0]}
+{"id":"s01","category":"semantic","subject":"实验数据可靠性检查","messages":["连续三次测量的结果波动异常，请重新检查传感器和采样条件。"],"question":"实验结果不稳定时需要核查哪些环节？","relevant_indices":[0]}
+{"id":"s02","category":"semantic","subject":"出差费用凭证","messages":["去外地参加研讨会的交通票据和住宿水单须在返程后交给财务。"],"question":"参加外地会议回来要交哪些报销材料？","relevant_indices":[0]}
+{"id":"s03","category":"semantic","subject":"软件上线前检查","messages":["正式发布前先跑完回归测试，再确认数据库备份可以恢复。"],"question":"系统投产前有哪些质量保障工作？","relevant_indices":[0]}
+{"id":"s04","category":"semantic","subject":"新同学入组准备","messages":["新成员到岗前需开通代码仓库权限并领取实验室门禁卡。"],"question":"新人加入团队之前应该准备什么？","relevant_indices":[0]}
+{"id":"s05","category":"semantic","subject":"论文重复率处理","messages":["文稿与已有文献存在较多雷同段落，请改写相关工作部分并规范引用。"],"question":"文章相似度过高应如何修改？","relevant_indices":[0]}
+{"id":"s06","category":"semantic","subject":"样机异常处置","messages":["设备连续发出过热警报时应立即断电，等待维修人员排查散热模块。"],"question":"机器温度告警后要怎么处理？","relevant_indices":[0]}
+{"id":"s07","category":"semantic","subject":"求职笔试通知","messages":["在线测评将在本周末开放，建议提前检查摄像头与网络连接。"],"question":"参加远程笔试前需要检查哪些设备？","relevant_indices":[0]}
+{"id":"s08","category":"semantic","subject":"项目经费结项","messages":["本季度经费核销需补全采购合同、签收单和付款凭证。"],"question":"结算项目花费要提交什么证明？","relevant_indices":[0]}
+{"id":"s09","category":"semantic","subject":"数据集共享条件","messages":["样本资料仅供课题组内部研究，未经许可不能上传公开仓库。"],"question":"研究数据能不能直接放到 GitHub？","relevant_indices":[0]}
+{"id":"s10","category":"semantic","subject":"服务延迟排查","messages":["接口响应变慢主要由于数据库连接池耗尽，需要调整连接上限并排查长事务。"],"question":"请求卡顿的根因和处置建议是什么？","relevant_indices":[0]}
+{"id":"s11","category":"semantic","subject":"知识库失效内容","messages":["旧版操作手册已经废止，请使用新发布的维护指南回答用户问题。"],"question":"过时的使用说明还能作为答复依据吗？","relevant_indices":[0]}
+{"id":"s12","category":"semantic","subject":"场地更换原因","messages":["原定报告厅空调检修，因此讲座改在图书馆多功能厅举办。"],"question":"讲座为什么换地方？","relevant_indices":[0]}
+{"id":"s13","category":"semantic","subject":"账户安全提醒","messages":["发现异常登录后请立即重置密码，并撤销所有仍有效的会话。"],"question":"账号疑似被盗后应该做什么？","relevant_indices":[0]}
+{"id":"s14","category":"semantic","subject":"测试报告改进建议","messages":["缺陷报告请附上复现步骤、预期结果、实际结果和环境版本。"],"question":"怎样把故障描述写得便于开发定位？","relevant_indices":[0]}
+{"id":"s15","category":"semantic","subject":"会议材料预读","messages":["讨论会开始前请先浏览上一轮实验的消融结果与误差分析。"],"question":"开会之前要看哪些研究资料？","relevant_indices":[0]}
+{"id":"t01","category":"temporal","subject":"答辩安排调整","messages":["论文答辩暂定周二上午九点。","时间更正：论文答辩改到周四下午两点，地点不变。"],"question":"论文答辩最终在什么时候？","relevant_indices":[1]}
+{"id":"t02","category":"temporal","subject":"采购报价截止","messages":["供应商报价请在周三下班前送达。","采购部门通知：报价截止延至周五中午。"],"question":"供应商报价的最新截止时间是什么？","relevant_indices":[1]}
+{"id":"t03","category":"temporal","subject":"课程项目提交","messages":["课程项目下周一晚上八点截止。","老师更新了截止日期：项目改在下周三晚上八点前提交。"],"question":"课程项目现在什么时候交？","relevant_indices":[1]}
+{"id":"t04","category":"temporal","subject":"体检预约变更","messages":["年度体检预约在九月二十九日上午。","医院来电，体检改为十月二日上午十点。"],"question":"体检的最终预约时间是哪天？","relevant_indices":[1]}
+{"id":"t05","category":"temporal","subject":"面试时间调整","messages":["技术面试安排在周四上午十点。","候选人确认改期到周五下午四点，面试链接不变。"],"question":"技术面试现在几点开始？","relevant_indices":[1]}
+{"id":"t06","category":"temporal","subject":"实验室停电通知","messages":["实验楼预计周六上午停电维护。","后勤最新通知：停电调整为周日凌晨一点至三点。"],"question":"实验楼最终何时停电？","relevant_indices":[1]}
+{"id":"t07","category":"temporal","subject":"论文返修期限","messages":["审稿返修材料须于本月十五日前提交。","编辑部批准延期：返修稿最迟本月二十二日上传。"],"question":"返修稿最新提交期限是哪一天？","relevant_indices":[1]}
+{"id":"t08","category":"temporal","subject":"组会地点变化","messages":["本周组会在教学楼 A302。","因设备故障，组会地点改为图书馆 B105。"],"question":"本周组会最终在哪个房间？","relevant_indices":[1]}
+{"id":"t09","category":"temporal","subject":"培训报名延期","messages":["安全培训报名周一关闭。","学院通知：报名入口延长开放至周三下午五点。"],"question":"安全培训报名现在何时结束？","relevant_indices":[1]}
+{"id":"t10","category":"temporal","subject":"演示版本变动","messages":["客户演示使用 v3.1 版本。","产品经理确认：演示改用 v3.2 预发布版本。"],"question":"客户演示最终使用哪个版本？","relevant_indices":[1]}
+{"id":"t11","category":"temporal","subject":"论文作者顺序","messages":["论文作者顺序为张、李、王。","所有作者确认调整顺序为李、张、王，投稿前请按新顺序核对。"],"question":"论文最终作者排序是什么？","relevant_indices":[1]}
+{"id":"t12","category":"temporal","subject":"交付地址更新","messages":["样品寄送至实验楼西门收发室。","收件人提醒：样品改寄科研楼一层 108 室。"],"question":"样品最后应该寄到哪里？","relevant_indices":[1]}
+{"id":"t13","category":"temporal","subject":"支付方式变更","messages":["设备款按原方案使用银行转账。","财务审批后改为对公电子汇票支付。"],"question":"设备款最终采用什么支付方式？","relevant_indices":[1]}
+{"id":"t14","category":"temporal","subject":"服务器维护窗口","messages":["数据库维护定在周二凌晨。","运维更新：维护窗口改为周三凌晨两点到四点。"],"question":"数据库维护的最新时间段是什么？","relevant_indices":[1]}
+{"id":"t15","category":"temporal","subject":"论文海报尺寸","messages":["会议海报尺寸要求为 A0 竖版。","主办方修订：现场展示改用 A1 横版海报。"],"question":"现场展示最终要求什么海报规格？","relevant_indices":[1]}

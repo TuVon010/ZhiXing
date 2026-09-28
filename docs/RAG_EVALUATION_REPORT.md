@@ -1,5 +1,7 @@
 # 知行 RAG 评测报告
 
+> 本文是旧版小样本历史记录，不作为当前检索链路的效果证明。尤其“语义类 Recall=1.000”仅基于 3 条查询，且使用发件人标签；“Recall@1”并非标准 Top-1 召回。新的样本、指标和复现方案见 [邮件检索评测 V2](RAG_EVALUATION_V2.md)。
+
 > 生成时间：2026-09-23
 > 模型：intfloat/multilingual-e5-small（嵌入）+ cross-encoder/mmarco-mMiniLMv2-L12-H384-v1（重排序）
 > 数据：17 封合成邮件，20 条评测查询

@@ -5462,7 +5462,7 @@
               "fusion"
             ],
             "title": "Mode",
-            "default": "hybrid"
+            "default": "vector"
           }
         },
         "type": "object",
