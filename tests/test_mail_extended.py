@@ -244,7 +244,7 @@ class TestFiltering:
 
     def test_ad_category_auto_filtered(self, db):
         aid = account(db)
-        filters(aid, FilterRules(auto_filter_categories=['ad', 'subscription']), db)
+        filters(aid, FilterRules(classification_mode='rules',auto_filter_categories=['ad', 'subscription']), db)
         msg = make_message(from_addr='shop@ad.com', subject='限时优惠', body='点击立即购买，满减活动，免费领取')
         mid = store(db, aid, msg)
         assert db.get(mid)['status'] == 'filtered'
@@ -252,6 +252,7 @@ class TestFiltering:
 
     def test_manual_category_goes_to_review(self, db):
         aid = account(db)
+        filters(aid,FilterRules(classification_mode='rules'),db)
         msg = make_message(from_addr='friend@personal.com', subject='问候', body='今天天气不错')
         mid = store(db, aid, msg)
         assert db.get(mid)['status'] == 'review'
@@ -287,6 +288,7 @@ class TestFiltering:
 
     def test_review_message_not_indexed_until_active(self, db):
         aid = account(db)
+        filters(aid,FilterRules(classification_mode='rules'),db)
         msg = make_message(from_addr='unknown@x.com', subject='模糊内容实验报告')
         mid = store(db, aid, msg)
         assert db.get(mid)['status'] == 'review'
@@ -364,30 +366,33 @@ class TestRAG:
         assert result['mode'] == 'keyword'
         assert any(e['message_id'] == mid for e in result['evidence'])
 
-    def test_search_account_isolation(self, db):
+    @pytest.mark.parametrize('mode',['auto','vector','fusion','hybrid'])
+    def test_search_account_isolation(self, db, mode):
         a1, a2 = account(db), account(db, 2)
         m1 = store(db, a1, make_message(subject='账号A的邮件', body='实验报告内容'))
         m2 = store(db, a2, make_message(subject='账号B的邮件', body='实验报告内容'), uid=2)
         index_message(db, m1)
         index_message(db, m2)
-        result = search(db, {'account_ids': [a1], 'query': '实验报告'})
+        result = search(db, {'account_ids': [a1], 'query': '实验报告','mode':mode})
         ids = {e['message_id'] for e in result['evidence']}
         assert m1 in ids
         assert m2 not in ids
 
-    def test_search_time_range_filter(self, db):
+    @pytest.mark.parametrize('mode',['auto','vector','fusion','hybrid'])
+    def test_search_time_range_filter(self, db, mode):
         aid = account(db)
         mid = store(db, aid, make_message(), received='2026-09-22T10:00:00+00:00')
         index_message(db, mid)
-        result = search(db, {'account_ids': [aid], 'query': '实验报告', 'start': '2026-09-23T00:00:00+00:00', 'end': '2026-09-24T00:00:00+00:00'})
+        result = search(db, {'account_ids': [aid], 'query': '实验报告','mode':mode, 'start': '2026-09-23T00:00:00+00:00', 'end': '2026-09-24T00:00:00+00:00'})
         assert len(result['evidence']) == 0
 
-    def test_filtered_message_excluded_from_search(self, db):
+    @pytest.mark.parametrize('mode',['auto','vector','fusion','hybrid'])
+    def test_filtered_message_excluded_from_search(self, db, mode):
         aid = account(db)
         filters(aid, FilterRules(blacklist_senders=['spam@bad.com']), db)
         mid = store(db, aid, make_message(from_addr='spam@bad.com', subject='过滤的实验报告'))
         index_message(db, mid)
-        result = search(db, {'account_ids': [aid], 'query': '实验报告'})
+        result = search(db, {'account_ids': [aid], 'query': '实验报告','mode':mode})
         assert not any(e['message_id'] == mid for e in result['evidence'])
 
     def test_chunks_keyword_fallback(self):

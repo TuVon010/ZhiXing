@@ -986,6 +986,511 @@
         }
       }
     },
+    "/api/mail/accounts/{account_id}/classification": {
+      "get": {
+        "summary": "Classification",
+        "operationId": "classification_api_mail_accounts__account_id__classification_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/config": {
+      "post": {
+        "summary": "Configure",
+        "operationId": "configure_api_mail_accounts__account_id__classification_config_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenceConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/labels/{ident}/withdraw": {
+      "post": {
+        "summary": "Withdraw",
+        "operationId": "withdraw_api_mail_accounts__account_id__classification_labels__ident__withdraw_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "ident",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ident"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/labels/backfill": {
+      "post": {
+        "summary": "Backfill",
+        "operationId": "backfill_api_mail_accounts__account_id__classification_labels_backfill_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/candidates": {
+      "post": {
+        "summary": "Candidate",
+        "operationId": "candidate_api_mail_accounts__account_id__classification_candidates_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/evaluations": {
+      "post": {
+        "summary": "Evaluate",
+        "operationId": "evaluate_api_mail_accounts__account_id__classification_evaluations_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/evaluations/{ident}": {
+      "get": {
+        "summary": "Evaluation",
+        "operationId": "evaluation_api_mail_accounts__account_id__classification_evaluations__ident__get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "ident",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ident"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/evaluations/{ident}/export": {
+      "post": {
+        "summary": "Export",
+        "operationId": "export_api_mail_accounts__account_id__classification_evaluations__ident__export_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "ident",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ident"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/evaluations/{ident}/cancel": {
+      "post": {
+        "summary": "Cancel",
+        "operationId": "cancel_api_mail_accounts__account_id__classification_evaluations__ident__cancel_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "ident",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ident"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/candidates/{ident}/publish": {
+      "post": {
+        "summary": "Publish",
+        "operationId": "publish_api_mail_accounts__account_id__classification_candidates__ident__publish_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "ident",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ident"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mail/accounts/{account_id}/classification/rollback": {
+      "post": {
+        "summary": "Rollback",
+        "operationId": "rollback_api_mail_accounts__account_id__classification_rollback_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/mail/messages": {
       "get": {
         "summary": "Messages",
@@ -4359,12 +4864,55 @@
         ],
         "title": "DraftInput"
       },
+      "EvaluationInput": {
+        "properties": {
+          "split": {
+            "type": "string",
+            "enum": [
+              "optimization",
+              "holdout"
+            ],
+            "title": "Split",
+            "default": "optimization"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 20
+          },
+          "candidate_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidate Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EvaluationInput"
+      },
       "FilterRules": {
         "properties": {
           "enabled": {
             "type": "boolean",
             "title": "Enabled",
             "default": true
+          },
+          "classification_mode": {
+            "type": "string",
+            "enum": [
+              "model",
+              "rules"
+            ],
+            "title": "Classification Mode",
+            "default": "model"
           },
           "whitelist_senders": {
             "items": {
@@ -4880,6 +5428,34 @@
             ],
             "title": "Spam Score"
           },
+          "spam_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "normal",
+                  "spam",
+                  "uncertain"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spam Label"
+          },
+          "expected_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Revision"
+          },
           "priority": {
             "anyOf": [
               {
@@ -5296,6 +5872,19 @@
         ],
         "title": "PricingUpdate"
       },
+      "PublishInput": {
+        "properties": {
+          "evaluation_id": {
+            "type": "string",
+            "title": "Evaluation Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evaluation_id"
+        ],
+        "title": "PublishInput"
+      },
       "Reconciliation": {
         "properties": {
           "action_id": {
@@ -5320,6 +5909,25 @@
           "evidence"
         ],
         "title": "Reconciliation"
+      },
+      "ReferenceConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "max_examples": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Max Examples",
+            "default": 3
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReferenceConfig"
       },
       "ReminderAction": {
         "properties": {
@@ -5456,13 +6064,14 @@
           "mode": {
             "type": "string",
             "enum": [
+              "auto",
               "hybrid",
               "keyword",
               "vector",
               "fusion"
             ],
             "title": "Mode",
-            "default": "vector"
+            "default": "auto"
           }
         },
         "type": "object",

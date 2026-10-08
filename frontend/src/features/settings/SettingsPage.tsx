@@ -1,6 +1,7 @@
 import { useWorkspace } from "../../app/workspace/context";
 import { pretty, label } from "../../shared/mail";
 import { PricingSettings } from "./PricingSettings";
+import { ClassificationSettings } from "./ClassificationSettings";
 export function SettingsPage() {
   const { page, accounts, account, setTrace, rules, setRules, act, api } =
     useWorkspace();
@@ -64,6 +65,7 @@ export function SettingsPage() {
               重建本地检索索引
             </button>
           </section>
+          <ClassificationSettings />
           <section className="panel">
             <h3>升级与历史数据</h3>
             <button

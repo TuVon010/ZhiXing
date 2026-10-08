@@ -1,6 +1,7 @@
 """HTTP adapter for per-account settings, memory and migration review."""
 
 from email.message import EmailMessage
+from typing import Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -19,6 +20,7 @@ database = get_store
 class FilterRules(BaseModel):
     model_config = ConfigDict(extra="forbid")
     enabled: bool = True
+    classification_mode: Literal['model','rules'] = 'model'
     whitelist_senders: list[str] = Field(default_factory=list, max_length=200)
     blacklist_senders: list[str] = Field(default_factory=list, max_length=200)
     blacklist_domains: list[str] = Field(default_factory=list, max_length=200)

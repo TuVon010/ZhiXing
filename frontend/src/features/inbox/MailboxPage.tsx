@@ -168,28 +168,30 @@ function PerceptionPanel({ opened, feedback, analyze, trace }: any) {
   const [category, setCategory] = useState(perception.category);
   const [priority, setPriority] = useState(perception.priority);
   const [needsReply, setNeedsReply] = useState(String(Boolean(perception.needs_reply)));
-  const [spam, setSpam] = useState(perception.spam_score >= 0.5 ? "spam" : "normal");
+  const [spam, setSpam] = useState(opened.body.perception_overrides?.spam_label || "unconfirmed");
   const [remember, setRemember] = useState(false);
   const [note, setNote] = useState("");
-  useEffect(() => { setCategory(perception.category); setPriority(perception.priority); setNeedsReply(String(Boolean(perception.needs_reply))); setSpam(perception.spam_score >= 0.5 ? "spam" : "normal"); setRemember(false); setNote(""); }, [opened.id, perception.category, perception.priority, perception.needs_reply, perception.spam_score]);
+  useEffect(() => { setCategory(perception.category); setPriority(perception.priority); setNeedsReply(String(Boolean(perception.needs_reply))); setSpam(opened.body.perception_overrides?.spam_label || "unconfirmed"); setRemember(false); setNote(""); }, [opened.id, perception.category, perception.priority, perception.needs_reply, perception.spam_score, opened.body.classification_label_revision]);
   const changes = useMemo(() => {
     const result: Record<string, unknown> = {};
     if (category !== perception.category) result.category = category;
     if (priority !== perception.priority) result.priority = priority;
     if ((needsReply === "true") !== Boolean(perception.needs_reply)) result.needs_reply = needsReply === "true";
-    if ((spam === "spam") !== (perception.spam_score >= 0.5)) result.spam_score = spam === "spam" ? 0.95 : 0;
+    if (spam !== "unconfirmed" && spam !== opened.body.perception_overrides?.spam_label) result.spam_label = spam;
     return result;
-  }, [category, priority, needsReply, spam, perception]);
+  }, [category, priority, needsReply, spam, perception, opened.body.perception_overrides]);
   const changed = Object.keys(changes).length > 0;
   return <div className="mail-perception">
     <div className="mail-sectionbar"><div><h3>AI 感知结果</h3>{Object.keys(opened.body.perception_overrides || {}).length > 0 && <small>已应用人工纠正，重新分析不会覆盖</small>}</div><div className="actions"><button onClick={() => void trace()}>查看 Trace</button><button onClick={() => void analyze()}>重新分析</button></div></div>
     <div className="mail-perception-grid"><div><strong>摘要</strong><p>{perception.summary || "（无）"}</p></div><div><strong>分类</strong><p>{categoryLabel(perception.category)}</p></div><div><strong>优先级</strong><p>{priorityLabel(perception.priority)}</p></div><div><strong>垃圾评分</strong><p>{(perception.spam_score * 100).toFixed(0)}%</p></div><div><strong>需要回复</strong><p>{perception.needs_reply ? "是" : "否"}</p></div><div><strong>置信度</strong><p>{(perception.confidence * 100).toFixed(0)}%</p></div></div>
+    <small>评分与置信度是 AI 的参考判断，未经概率校准；广告或订阅不等于垃圾邮件。</small>
     {perception.todos?.length > 0 && <div><strong>提取的待办</strong><ul>{perception.todos.map((todo: any, index: number) => <li key={index}>{todo.action}{todo.deadline && ` · 截止: ${new Date(todo.deadline).toLocaleString("zh-CN")}`}</li>)}</ul></div>}
     {perception.calendar_events?.length > 0 && <div><strong>提取的日程</strong><ul>{perception.calendar_events.map((event: any, index: number) => <li key={index}>{event.title}{event.start && ` · ${new Date(event.start).toLocaleString("zh-CN")}`}{event.location && ` · ${event.location}`}</li>)}</ul></div>}
     {perception.reasons?.length > 0 && <div className="mail-perception-reasons"><strong>判断理由</strong><ul>{perception.reasons.map((reason: string, index: number) => <li key={index}>{reason}</li>)}</ul></div>}
-    <details><summary>调整 AI 判断</summary><form className="mail-correction" onSubmit={(event) => { event.preventDefault(); void feedback({ ...changes, remember, note }, remember ? "已保存纠正，并生成待确认的记忆候选" : "已保存本封邮件的纠正"); }}>
-      <div className="mail-correction-grid"><label>分类<select value={category} onChange={(event) => setCategory(event.target.value)}><option value="work">工作</option><option value="personal">个人</option><option value="notification">系统通知</option><option value="ad">广告/营销</option><option value="other">其他</option></select></label><label>优先级<select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="high">高</option><option value="normal">普通</option><option value="low">低</option></select></label><label>是否需要回复<select value={needsReply} onChange={(event) => setNeedsReply(event.target.value)}><option value="true">需要回复</option><option value="false">无需回复</option></select></label><label>邮件性质<select value={spam} onChange={(event) => setSpam(event.target.value)}><option value="normal">正常邮件</option><option value="spam">垃圾邮件</option></select></label></div>
-      <label className="mail-memory-choice"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />也把这次纠正提炼为长期偏好候选</label>{remember && <textarea rows={2} value={note} onChange={(event) => setNote(event.target.value)} placeholder="可选：说明今后应如何判断同类邮件" />}<p>{remember ? "候选还需要在“记忆”页确认后，才会影响未来邮件。" : "默认只修正当前邮件，不会擅自改变未来判断。"}</p><button className="primary" disabled={!changed}>保存调整</button>
+    <details><summary>调整 AI 判断</summary><form className="mail-correction" onSubmit={(event) => { event.preventDefault(); void feedback({ ...changes, remember, note, expected_revision: opened.body.classification_label_revision || 0 }, remember ? "已保存确认标注，并生成待确认的记忆候选" : "已保存本封邮件纠正与确认标注"); }}>
+      <div className="mail-correction-grid"><label>分类<select value={category} onChange={(event) => setCategory(event.target.value)}><option value="work">工作</option><option value="personal">个人</option><option value="notification">系统通知</option><option value="ad">广告/营销</option><option value="other">其他</option></select></label><label>优先级<select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="high">高</option><option value="normal">普通</option><option value="low">低</option></select></label><label>是否需要回复<select value={needsReply} onChange={(event) => setNeedsReply(event.target.value)}><option value="true">需要回复</option><option value="false">无需回复</option></select></label><label>邮件性质<select value={spam} onChange={(event) => setSpam(event.target.value)}><option value="unconfirmed">尚未人工确认</option><option value="normal">正常邮件</option><option value="spam">垃圾邮件</option><option value="uncertain">不能确定，待复核</option></select></label></div>
+      <textarea rows={2} value={note} onChange={(event) => setNote(event.target.value)} placeholder="可选：说明判断依据；勾选长期偏好时，可说明今后的适用范围" />
+      <label className="mail-memory-choice"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />也把这次纠正提炼为长期偏好候选</label><p>仅确认的字段进入标注集，可供后续相似邮件参考；广告不等于垃圾。{remember ? "长期偏好候选仍需在“记忆”页确认。" : "不会自动形成发件人白名单或修改模型参数。"}</p><div className="actions"><button className="primary" disabled={!changed}>保存调整</button><button type="button" onClick={() => void feedback({ category, priority, needs_reply: needsReply === "true", ...(spam !== "unconfirmed" ? { spam_label: spam } : {}), note, remember, expected_revision: opened.body.classification_label_revision || 0 }, "已确认所选判断，保存为抽查标注")}>确认所选判断（抽查）</button></div>
     </form></details>
   </div>;
 }

@@ -4,6 +4,7 @@
 | --- | --- |
 | test_mail.py | 多邮箱主要业务、作用域、草稿审批、导入和恢复 |
 | test_mail_extended.py | 邮件/附件/检索的边界和故障案例 |
+| test_mail_classification.py | 原子反馈与标注、案例隔离、API 比较、发布回滚、预算与缓存 Trace |
 | test_mail_workspace.py | 统一 Trace、通知、日程、导入续批和队列公平 |
 | test_billing.py | 仍在使用的计价、缓存与快照 |
 | test_tracing.py | 仍在使用的模型调用与执行审计 |
@@ -15,3 +16,5 @@
 当前不把两个邮件测试文件机械拼成上千行大文件。后续新增测试优先按功能命名，如 workspace；确需再拆分时按收取、检索、草稿等行为拆分并提取公共 fixture。
 
 所有外部邮箱与主模型测试默认合成/mock。运行 scripts/test.ps1 保存每轮命令、数据库、日志、JUnit 和浏览器证据，不能把模拟通过表述为真实接入成功。
+
+分类专项复现命令、指标定义及真实 API 验证流程见 [分类反馈与效果验证](../docs/MAIL_CLASSIFICATION_FEEDBACK.md)。浏览器对应 `frontend/e2e/classification.spec.ts` 和 `perception.spec.ts`。

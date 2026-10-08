@@ -65,6 +65,24 @@ def compact_evidence(items: list[dict]) -> list[dict]:
     } for item in items[-8:]]
 
 
+def serialize_search_step(result: dict) -> str:
+    """Keep a valid bounded search summary; full rankings live in audit Trace.
+
+    Cutting raw JSON at a character boundary drops trailing warnings and makes
+    the next decision unable to parse its prior tool result.
+    """
+    summary = {key: result.get(key) for key in
+               ('mode', 'requested_mode', 'degraded', 'reason', 'latency_ms')}
+    summary['warnings'] = [str(w)[:300] for w in (result.get('warnings') or [])[:2]]
+    if 'error' in result:
+        summary['error'] = str(result['error'])[:300]
+    policy = result.get('ranking_policy') or {}
+    summary['ranking_policy'] = {key: policy.get(key) for key in ('route', 'rerank_applied', 'candidate_count')}
+    summary['evidence'] = [{key: str(item.get(key) or '')[:180] for key in ('id', 'message_id', 'subject', 'location')}
+                           for item in result.get('evidence', [])[:8]]
+    return json.dumps(summary, ensure_ascii=False, default=str)
+
+
 def compact_steps(steps: list[dict]) -> list[dict]:
     compact = []
     for step in steps[-4:]:

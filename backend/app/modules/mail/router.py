@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from backend.app.modules.mail.routes import (
     accounts,
+    classification,
     assistant,
     imports,
     messages,
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/api")
 
 for feature_router in (
     accounts.router,
+    classification.router,
     messages.router,
     imports.router,
     assistant.router,

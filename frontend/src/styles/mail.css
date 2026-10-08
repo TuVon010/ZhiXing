@@ -822,6 +822,12 @@
 .assistant-composer { box-shadow: 0 8px 28px rgba(33,55,35,.08); }
 .assistant-composer textarea { width: 100%; border: 0; padding: 4px; outline: 0; }
 .assistant-compose-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
+.classification-settings .mail-list-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 0; border-bottom: 1px solid #e1e8df; }
+.classification-settings details { margin: 14px 0; }
+.classification-settings pre { max-height: 360px; overflow: auto; }
+.classification-table { overflow-x: auto; }
+.classification-table table { width: 100%; text-align: left; border-collapse: collapse; }
+.classification-table th,.classification-table td { white-space: nowrap; padding: 10px; border-bottom: 1px solid #e1e8df; }
 .assistant-mode { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #edf2ea; }
 .assistant-mode button { border: 0; background: transparent; padding: 7px 11px; }
 .assistant-mode button.selected { background: white; box-shadow: 0 1px 5px rgba(40,60,42,.12); }

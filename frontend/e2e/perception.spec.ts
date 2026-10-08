@@ -20,16 +20,16 @@ test('邮件感知、Trace 与可撤销纠偏形成闭环（离线演示）', as
   const items = (await response.json()).items as any[];
   const target = items.find(item => item.body.subject === '实验报告修改') || items[0];
   const messageId = target.id as string;
-  const targetRow = page.locator('.mail-row').filter({ hasText: target.body.subject });
+  const targetRow = page.locator('.mail-row').filter({ has: page.getByText(target.body.subject, { exact: true }) });
   await targetRow.click();
   const analyze = page.getByRole('button', { name: '立即分析' });
-  await expect(analyze).toBeVisible();
-  await analyze.click();
+  if (await analyze.isVisible()) await analyze.click();
+  else await page.getByRole('button', { name: '重新分析', exact: true }).click();
   await expect.poll(async () => {
     const result = await page.request.get(`/api/mail/messages/${messageId}/perception`);
     return (await result.json()).status;
   }, { timeout: 15000 }).toBe('ready');
-  await page.locator('.mail-row').filter({ hasText: target.body.subject }).click();
+  await page.locator('.mail-row').filter({ has: page.getByText(target.body.subject, { exact: true }) }).click();
   await expect(page.getByRole('heading', { name: 'AI 感知结果' })).toBeVisible();
   await page.getByRole('button', { name: '查看 Trace', exact: true }).click();
   await expect(page.getByRole('heading', { name: '邮件感知 Trace' })).toBeVisible();
@@ -39,7 +39,7 @@ test('邮件感知、Trace 与可撤销纠偏形成闭环（离线演示）', as
   await page.getByRole('button', { name: '保存调整' }).click();
   await expect(page.getByRole('status')).toContainText('本封邮件');
   await page.locator('nav').getByRole('button', { name: '垃圾与过滤', exact: true }).click();
-  const filteredRow = page.locator('.mail-row').filter({ hasText: target.body.subject });
+  const filteredRow = page.locator('.mail-row').filter({ has: page.getByText(target.body.subject, { exact: true }) });
   await expect(filteredRow).toBeVisible();
   await filteredRow.click();
   await page.getByText('调整 AI 判断').click();
@@ -50,6 +50,6 @@ test('邮件感知、Trace 与可撤销纠偏形成闭环（离线演示）', as
     return (await response.json()).status;
   }).toBe('active');
   await page.locator('nav').getByRole('button', { name: '收件箱', exact: true }).click();
-  await expect(page.locator('.mail-row').filter({ hasText: target.body.subject })).toBeVisible();
+  await expect(page.locator('.mail-row').filter({ has: page.getByText(target.body.subject, { exact: true }) })).toBeVisible();
   expect(errors).toEqual([]);
 });

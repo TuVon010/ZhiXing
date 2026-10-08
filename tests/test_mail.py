@@ -206,7 +206,10 @@ def test_agent_repairs_invalid_time_and_compacts_followup_context(db,monkeypatch
         calls.append(messages)
         if len(calls)==1:
             return {'tool':'search','args':{'query':'实验报告','start':'2020-0','sender':'导师'}}
-        return {'tool':'answer','answer':'请核对实验报告任务','citations':[mid+'-chunk-0']}
+        # Cite the evidence actually exposed to the model. De-duplication can
+        # select another overlapping chunk; its ordinal is not a contract.
+        context=json.loads(messages[1]['content'])
+        return {'tool':'answer','answer':'请核对实验报告任务','citations':[context['evidence'][0]['id']]}
     monkeypatch.setattr(settings,'mode','live')
     monkeypatch.setattr(planner,'model_json',decide)
     result=run_turn(db,turn['id'])
@@ -346,7 +349,7 @@ def test_invalid_configuration_rejected(field,value):
 
 def test_review_mail_stays_out_of_context_until_released(db):
     aid=account(db)
-    db.update('mail-filter:'+aid,{'enabled':True,'whitelist_senders':[]})
+    db.update('mail-filter:'+aid,{'enabled':True,'whitelist_senders':[],'classification_mode':'rules'})
     mid=message(db,aid,body='一段无法确定用途的普通文字',subject='问候')
     assert db.get(mid)['status']=='review'
     assert index_message(db,mid)['skipped']

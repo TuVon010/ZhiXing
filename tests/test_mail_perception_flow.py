@@ -84,7 +84,7 @@ def test_ai_filter_respects_whitelist_and_actionable_mail(db):
     assert db.get(mid)['status'] == 'active'
     db.update('mail-filter:' + aid, {'whitelist_senders': []})
     _store_result(db, mid, {'spam_score': 0.99, 'confidence': 0.99, 'todos': [{'action': '提交报告'}]})
-    assert db.get(mid)['status'] == 'active'
+    assert db.get(mid)['status'] == 'review'  # 保留有行动事项的冲突邮件，不自动丢进垃圾箱。
     _store_result(db, mid, {'spam_score': 0.99, 'confidence': 0.99})
     assert db.get(mid)['status'] == 'filtered'
 

@@ -301,7 +301,7 @@ def search(db,request,frozen_version=None):
     words=list(dict.fromkeys(tokens(q.query).split()))[:40]
     if words:
         match=' OR '.join('"'+w.replace('"','""')+'"' for w in words)
-        sql=text("SELECT c.*,json_extract(r.body,'$.subject') AS subject,json_extract(r.body,'$.sender_display') AS sender_display,bm25(mail_fts) AS rank FROM mail_fts JOIN mail_chunks c ON c.id=mail_fts.chunk_id JOIN records r ON r.id=c.message_id WHERE mail_fts MATCH :match AND "+clause+' ORDER BY rank,c.id LIMIT 40').bindparams(bindparam('accounts',expanding=True))
+        sql=text("SELECT c.*,json_extract(r.body,'$.subject') AS subject,json_extract(r.body,'$.sender_display') AS sender_display,bm25(mail_fts) AS rank FROM mail_fts JOIN mail_chunks c ON c.id=mail_fts.chunk_id JOIN records r ON r.id=c.message_id WHERE mail_fts MATCH :match AND "+clause+' ORDER BY rank,c.content_hash,c.id LIMIT 40').bindparams(bindparam('accounts',expanding=True))
         with db.engine.connect() as conn:
             found=conn.execute(sql,{**args,'match':match}).mappings().all()
         for row in found:lookup[row['id']]=dict(row);keyword.append(row['id'])
@@ -326,7 +326,9 @@ def search(db,request,frozen_version=None):
                 sql=text("SELECT c.*,json_extract(r.body,'$.subject') AS subject,json_extract(r.body,'$.sender_display') AS sender_display FROM mail_chunks c JOIN records r ON r.id=c.message_id WHERE c.id IN :ids AND "+clause+" AND r.status IN ('active','archived','legacy') AND c.model_version=:version").bindparams(bindparam('accounts',expanding=True),bindparam('ids',expanding=True))
                 with db.engine.connect() as conn:found=conn.execute(sql,{**args,'version':version,'ids':ids}).mappings().all()
                 by_id={r['id']:dict(r) for r in found}
-                for hit in hits:
+                # Equal scores use content identity rather than random record
+                # IDs, so rebuilding a benchmark does not reshuffle its ties.
+                for hit in sorted(hits,key=lambda h:(-float(h.score),by_id.get((h.payload or {}).get('chunk_id'),{}).get('content_hash',''))):
                     cid=(hit.payload or {}).get('chunk_id')
                     if cid in by_id:lookup[cid]=by_id[cid];dense.append(cid)
             # Missing vectors remain visible as a degraded index, not false hybrid success.
@@ -335,18 +337,21 @@ def search(db,request,frozen_version=None):
             if missing:degraded=True;reason='部分资料尚无当前版本向量'
         except Exception as exc:
             degraded=True;reason=type(exc).__name__;dense=[]
-    if q.mode=='keyword':ordered=keyword[:20]
-    elif q.mode=='vector' and not degraded:ordered=dense[:20]
+    from backend.app.modules.mail.retrieval_ranking import rank_candidates
+    diagnostics={'route':q.mode,'rerank_applied':False}
+    if q.mode=='keyword':ordered=keyword
+    elif q.mode=='vector' and not degraded:ordered=dense
     else:
-        scores={}
-        for result in (keyword,dense):
-            for i,cid in enumerate(result):scores[cid]=scores.get(cid,0)+1/(60+i+1)
-        ordered=sorted(scores,key=lambda k:(-scores[k],k))[:20]
+        ordered,diagnostics=rank_candidates(q.query,keyword,dense,lookup,automatic=q.mode=='auto')
     fusion=list(ordered)
     if q.mode=='hybrid' and dense and ordered:
         try:
-            with _lock:rank=reranker.predict([(q.query,lookup[k]['content']) for k in ordered])
-            ordered=[k for _,k in sorted(zip(map(float,rank),ordered),reverse=True)]
+            # Rerank only the bounded head; preserve the remaining candidates
+            # for diversity backfill rather than truncating them prematurely.
+            head=ordered[:20]
+            with _lock:rank=reranker.predict([(q.query,lookup[k]['content']) for k in head])
+            ordered=[k for _,k in sorted(zip(map(float,rank),head),key=lambda pair:-pair[0])]+ordered[20:]
+            diagnostics.update(rerank_applied=True,rerank_scores=dict(zip(head,map(float,rank))))
         except Exception as exc:degraded=True;reason='重排序不可用：'+type(exc).__name__
     selected_ids,duplicate_sources,dedup=_select_diverse_results(ordered,lookup)
     evidence=[]
@@ -359,4 +364,5 @@ def search(db,request,frozen_version=None):
     return {'mode':'keyword' if q.mode!='keyword' and not dense else q.mode,'requested_mode':q.mode,'degraded':degraded,'reason':reason,
             'model_version':version,'reranker_version':model_manifest().get('reranker',{}).get('revision'),
             'evidence':evidence,'rankings':{'keyword':keyword,'vector':dense,'fusion':fusion,'final':selected_ids},'dedup':dedup,
+            'ranking_policy':diagnostics,
             'latency_ms':round((time.monotonic()-started)*1000),'account_ids':accounts}

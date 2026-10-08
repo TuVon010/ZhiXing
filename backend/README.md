@@ -35,3 +35,5 @@ backend/
 建议阅读：`app/main.py → api/router.py → modules/mail/routes/assistant.py → modules/mail/services/assistant.py → modules/mail/assistant.py → agent/graph.py → agent/tools.py → modules/mail/sending.py → observability/mail.py`。
 
 更完整的职责、调用链和新增功能示例见 [代码结构与开发规范](../docs/CODE_STRUCTURE.md)。
+
+邮件分类反馈按同样的层次组织：`routes/classification.py → services/classification.py → repositories/classification.py`，领域规则在 `modules/mail/classification.py`，基础提示词在 `modules/mail/prompts/perception.md`。普通感知、候选生成与对比评测共用 `agent/model_client.py`，避免各自实现调用预算与计价。

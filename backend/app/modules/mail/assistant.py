@@ -12,7 +12,7 @@ from backend.app.modules.mail.schemas import DraftInput,SessionInput,TurnInput,S
 from backend.app.modules.mail.assistant_context import (
     INPUT_TOKEN_LIMIT, MAX_DECISIONS, MAX_SEARCHES, compact_evidence,
     compact_history, compact_steps, estimate_prompt_tokens,
-    normalize_search_args, observed_prompt_tokens,
+    normalize_search_args, observed_prompt_tokens, serialize_search_step,
 )
 from backend.app.agent.schemas import ActionPlan
 from backend.app.core.config import settings
@@ -266,7 +266,7 @@ def run_turn(db,ident):
         step={'round':1,'tool':'search','args':{'query':b['text']},'result':result}
         b.update(answer=(f"找到 {len(evidence)} 组相关邮件证据，请打开来源核对。" if evidence else "没有找到相关邮件。可以更换关键词或确认邮箱范围。"), citations=list(evidence),
                  evidence=list(evidence.values()), searches=1,
-                 steps=[{**step,'result':json.dumps(result,ensure_ascii=False,default=str)[:5000]}])
+                 steps=[{**step,'result':serialize_search_step(result)}])
         db.audit(ident,'MAIL_RETRIEVAL',**result)
         db.audit(ident,'MAIL_AGENT_STEP',**step)
         db.update(ident,b,'completed')
@@ -372,7 +372,8 @@ def run_turn(db,ident):
             result={'error':str(exc) or '对象不存在'}
         step={'round':turn+1,'tool':d.tool,'args':d.args,'result':result}
         db.audit(ident,'MAIL_AGENT_STEP',**step)
-        b['steps'].append({**step,'result':json.dumps(result,ensure_ascii=False,default=str)[:5000]})
+        saved_result=serialize_search_step(result) if d.tool=='search' and isinstance(result,dict) else json.dumps(result,ensure_ascii=False,default=str)[:5000]
+        b['steps'].append({**step,'result':saved_result})
         b.pop('pending_decision',None);b['evidence']=list(evidence.values())
         with db.engine.connect() as c:
             begin_immediate(c)

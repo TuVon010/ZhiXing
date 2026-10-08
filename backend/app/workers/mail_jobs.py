@@ -78,6 +78,12 @@ def _schedule_daily_digest(db):
 
 def execute_job(db,job):
     payload=json.loads(job['payload']);kind=job['kind'];aid=job['account_id']
+    if kind=='classification_candidate':
+        from backend.app.modules.mail.services.classification import generate_candidate
+        return generate_candidate(db,payload['candidate_id'])
+    if kind=='classification_evaluation':
+        from backend.app.modules.mail.services.classification import evaluate_step
+        return evaluate_step(db,payload['evaluation_id'])
     from backend.app.modules.mail.ingestion import scan
     if kind=='sync':return scan(db,aid)
     if kind=='baseline':

@@ -122,8 +122,12 @@ def store_message(db,account_id,validity,mail_uid,raw,received_at,folder='INBOX'
     try:rules=db.get('mail-filter:'+account_id)['body']
     except KeyError:rules={**DEFAULT_RULES}
     # Parse actual addresses before applying the user's sender rules.
-    filtered,reason,category,evidence=should_filter({'sender_id':sender_address,'text':subject+'\n'+body},rules=rules)
-    status='filtered' if filtered else 'review' if category=='manual' else 'active'
+    model_first=rules.get('classification_mode','model')=='model'
+    # Only explicit user rules can block mail before the single perception
+    # API call. Built-in ad/subscription heuristics become recorded hints.
+    entry_rules={**rules,'auto_filter_categories':[]} if model_first else rules
+    filtered,reason,category,evidence=should_filter({'sender_id':sender_address,'text':subject+'\n'+body},rules=entry_rules)
+    status='filtered' if filtered else 'review' if category=='manual' and not model_first else 'active'
     tid='thread-'+uid()
     with db.engine.connect() as c:
         c.exec_driver_sql('BEGIN IMMEDIATE')
@@ -204,7 +208,7 @@ def scan(db,account_id,request=None,preview=False,import_id=None):
                 return {'attention':'uidvalidity_changed'}
             if cursor.get('paused'):return {'paused':True,'reason':'积压需要选择处理方式'}
             if not cursor.get('catchup') and (datetime.now(timezone.utc)-datetime.fromisoformat(cursor['last_poll'])).total_seconds()>90:
-                cursor['catchup']={'ceiling':max(all_uids,default=0),'count':0,'after':(datetime.now(timezone.utc)-timedelta(hours=24)).isoformat()}
+                cursor['catchup']={'ceiling':max(all_uids,default=0),'count':0,'after':(datetime.now(timezone.utc)-timedelta(hours=48)).isoformat()}
             selected=[u for u in all_uids if u>cursor['uid']][:account['scan_limit']]
         else:
             selected=all_uids

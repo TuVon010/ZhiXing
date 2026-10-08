@@ -79,7 +79,7 @@ class SearchRequest(BaseModel):
     start: datetime | None = None
     end: datetime | None = None
     sender: str | None = None
-    mode: Literal['hybrid','keyword','vector','fusion'] = 'vector'
+    mode: Literal['auto','hybrid','keyword','vector','fusion'] = 'auto'
     @field_validator('start','end')
     @classmethod
     def timezone_required(cls,v):
@@ -253,6 +253,9 @@ class PerceptionFeedback(BaseModel):
     category: Literal['work', 'personal', 'ad', 'notification', 'other'] | None = None
     # 用户纠正后的垃圾评分
     spam_score: float | None = Field(default=None, ge=0, le=1)
+    # Explicit human judgment; category changes never imply a spam label.
+    spam_label: Literal['normal','spam','uncertain'] | None = None
+    expected_revision: int | None = Field(default=None, ge=0)
     # 用户纠正后的优先级
     priority: Literal['high', 'normal', 'low'] | None = None
     # 用户是否认为需要回复

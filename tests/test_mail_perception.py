@@ -149,9 +149,10 @@ class TestPerceptionStorage:
         initial_status = db.get(mid)['status']
         perceive(db, mid)
         msg = db.get(mid)
-        # 规则可能先过滤，但 Demo 感知不能再次改变邮件状态。
+        # 演示分数 0.7 只能待复核；不能当作高置信垃圾自动过滤。
         assert msg['body']['perception']['spam_score'] == 0.7
-        assert msg['status'] == initial_status
+        assert initial_status == 'active'
+        assert msg['status'] == 'review'
 
 
 # ============================================================
