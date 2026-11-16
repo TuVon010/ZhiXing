@@ -10,3 +10,5 @@
 | 开发辅助 | export_openapi.py、e2e_server.py、create_environment.py、demo.ps1 | 生成契约、测试服务、创建环境、演示 |
 
 保留已有路径是为了兼容安装与恢复文档，不把迁移脚本放进日常启动链。具体业务学习从 backend/README.md 和 docs/WORKSPACE_GUIDE.md 开始。
+
+`start.ps1` 默认最多等待 60 秒，确认本次启动的 API 进程监听 `127.0.0.1:8000`，且 `/api/health` 返回正常状态后才显示控制台地址。脚本会直接使用项目的 Conda Python，无需手动激活。启动超时先看 `logs/api.err.log`；如果日志显示仍在初始化，可以用 `.\scripts\start.ps1 -StartupTimeoutSeconds 120` 延长等待。端口占用时会给出 PID，不会结束占用端口的其他进程。
